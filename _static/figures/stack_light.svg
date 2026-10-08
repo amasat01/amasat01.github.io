@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%" role="img" aria-labelledby="stk-title stk-desc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title id="stk-title">The four RAPTOR-family packages, top to bottom</title>
+  <desc id="stk-desc">A stack. At the top, you write: a hawk kernel, in Python. Below it, eagle runs the kernel: launches, graphs and compaction, on CPU or GPU, and hawk kernels run through eagle. At the base sit the two foundations: aether, a header-only C++23 numerics core that eagle builds on, and raptor, the dependency-free contracts spine that both eagle and hawk declare. At the very bottom is the hardware everything ultimately runs on: CPU and GPUs.</desc>
+
+  <rect x="0" y="0" width="400" height="500" fill="#fcfcfb"/>
+
+  <!-- caption: you write -->
+  <text x="205" y="26" text-anchor="middle" font-size="12" font-style="italic" fill="#52514e">you write</text>
+
+  <!-- hawk -->
+  <rect x="40" y="38" width="330" height="78" rx="14" fill="#9a6a00" fill-opacity="0.16" stroke="#9a6a00" stroke-width="2"/>
+  <text x="56" y="66" font-size="15" font-weight="700" fill="#0b0b0b">hawk</text>
+  <text x="56" y="86" font-size="12" fill="#52514e">write a kernel once, in Python</text>
+  <text x="56" y="102" font-size="12" fill="#52514e">autodiff included</text>
+
+  <!-- arrow: eagle -> hawk (hawk kernels run through eagle) -->
+  <g stroke="#0b0b0b" stroke-width="2" fill="none">
+    <line x1="180" y1="173" x2="180" y2="122"/>
+  </g>
+  <path d="M 180 116 L 174 128 L 186 128 Z" fill="#0b0b0b"/>
+
+  <!-- eagle -->
+  <rect x="40" y="173" width="280" height="78" rx="14" fill="#a61e4d" fill-opacity="0.16" stroke="#a61e4d" stroke-width="2"/>
+  <text x="56" y="201" font-size="15" font-weight="700" fill="#0b0b0b">eagle</text>
+  <text x="56" y="221" font-size="12" fill="#52514e">launches, graphs, compaction</text>
+  <text x="56" y="237" font-size="12" fill="#52514e">CPU and GPU</text>
+
+  <!-- arrows: aether -> eagle, raptor -> eagle -->
+  <g stroke="#0b0b0b" stroke-width="2" fill="none">
+    <line x1="110" y1="308" x2="110" y2="258"/>
+    <line x1="260" y1="308" x2="260" y2="258"/>
+  </g>
+  <path d="M 110 252 L 104 264 L 116 264 Z" fill="#0b0b0b"/>
+  <path d="M 260 252 L 254 264 L 266 264 Z" fill="#0b0b0b"/>
+
+  <!-- arrow: raptor -> hawk (raptor is the spine both eagle and hawk declare), routed right of eagle -->
+  <g stroke="#0b0b0b" stroke-width="2" fill="none" stroke-dasharray="1 0">
+    <polyline points="332,308 348,308 348,122"/>
+  </g>
+  <path d="M 348 116 L 342 128 L 354 128 Z" fill="#0b0b0b"/>
+
+  <!-- aether -->
+  <rect x="40" y="308" width="140" height="68" rx="14" fill="#1c78b0" fill-opacity="0.18" stroke="#1c78b0" stroke-width="2"/>
+  <text x="54" y="334" font-size="14" font-weight="700" fill="#0b0b0b">aether</text>
+  <text x="54" y="352" font-size="12" fill="#52514e">C++23 core</text>
+  <text x="54" y="367" font-size="12" fill="#52514e">header-only</text>
+
+  <!-- raptor -->
+  <rect x="190" y="308" width="140" height="68" rx="14" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="2"/>
+  <text x="204" y="334" font-size="14" font-weight="700" fill="#0b0b0b">raptor</text>
+  <text x="204" y="352" font-size="12" fill="#52514e">contracts, zero</text>
+  <text x="204" y="367" font-size="12" fill="#52514e">dependencies</text>
+
+  <!-- arrow: eagle runs on hardware (execution, not a package dependency: shown dashed) -->
+  <g stroke="#898781" stroke-width="2" fill="none" stroke-dasharray="4 4">
+    <line x1="180" y1="251" x2="180" y2="395"/>
+  </g>
+  <path d="M 180 401 L 174 389 L 186 389 Z" fill="#898781"/>
+
+  <!-- caption: it runs on -->
+  <text x="200" y="420" text-anchor="middle" font-size="12" font-style="italic" fill="#52514e">it runs on</text>
+
+  <!-- hardware band -->
+  <rect x="40" y="430" width="320" height="56" rx="14" fill="#e1e0d9" fill-opacity="0.5" stroke="#c3c2b7" stroke-width="1.5"/>
+  <g>
+    <rect x="88" y="446" width="26" height="24" rx="3" fill="none" stroke="#0b0b0b" stroke-width="1.6"/>
+    <line x1="94" y1="446" x2="94" y2="440" stroke="#0b0b0b" stroke-width="1.6"/>
+    <line x1="108" y1="446" x2="108" y2="440" stroke="#0b0b0b" stroke-width="1.6"/>
+    <line x1="94" y1="470" x2="94" y2="476" stroke="#0b0b0b" stroke-width="1.6"/>
+    <line x1="108" y1="470" x2="108" y2="476" stroke="#0b0b0b" stroke-width="1.6"/>
+    <text x="101" y="494" text-anchor="middle" font-size="12" fill="#0b0b0b">CPU</text>
+  </g>
+  <g>
+    <rect x="266" y="446" width="46" height="24" rx="4" fill="none" stroke="#0b0b0b" stroke-width="1.6"/>
+    <line x1="266" y1="452" x2="312" y2="452" stroke="#0b0b0b" stroke-width="1.2"/>
+    <line x1="266" y1="458" x2="312" y2="458" stroke="#0b0b0b" stroke-width="1.2"/>
+    <line x1="266" y1="464" x2="312" y2="464" stroke="#0b0b0b" stroke-width="1.2"/>
+    <text x="289" y="494" text-anchor="middle" font-size="12" fill="#0b0b0b">GPUs</text>
+  </g>
+</svg>

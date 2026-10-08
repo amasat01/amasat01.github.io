@@ -1,0 +1,188 @@
+/* Copyright 2026 Alessandro Masat
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * RAPTOR palette tokens (text colours from the final brand kit's tokens.css,
+ * October 2026, never redrawn) plus the type-A hero/compare layout for
+ * index.md (the hero_A mockup port).
+ * Dark values apply under the book theme's own toggle, html[data-theme],
+ * the same attribute every other themed rule on this site keys off (see
+ * _build/html/_static/pygments.css) -- a prefers-color-scheme media query
+ * would only track the OS, not the toggle a visitor can click.
+ *
+ * Fonts: Recursive (OFL, self-hosted, _static/fonts/) -- one variable family,
+ * three voices via its CASL/MONO/CRSV axes: Casual headings, Linear body,
+ * Mono code. Applies to
+ * every page on the site, not just the hero -- "the new type and tokens,
+ * not a redesign" for start_here/compare/where_raptor_fits/about/
+ * build_from_source.
+ */
+@font-face {
+  font-family: "Recursive";
+  src: url("fonts/recursive-full.woff2") format("woff2");
+  font-weight: 300 1000;
+  font-display: swap;
+}
+
+:root {
+  --f-display: "Recursive", system-ui, sans-serif;
+  --f-body: "Recursive", system-ui, sans-serif;
+  --f-code: "Recursive", ui-monospace, monospace;
+  --v-display: "CASL" 1, "MONO" 0, "CRSV" 0.5;
+  --w-display: 760;
+  --v-body: "CASL" 0, "MONO" 0;
+  --w-body: 400;
+  --w-strong: 620;
+  --v-code: "CASL" 0, "MONO" 1;
+  /* Modular scale, ratio 1.25 on an 18px body. */
+  --s0: 18px; --s1: 22.5px; --s2: 28px; --s3: 35px; --s4: 44px; --s5: 55px;
+  --code-size: 15px;
+  /* mark-* : logo colours, one value for light AND dark (3:1 on white,
+     #fcfcfb, #1a1a19, GitHub dark). Graphics only. */
+  --mark-raptor: #7d53dc;
+  --mark-aether: #0398e3;
+  --mark-eagle: #cf416b;
+  --mark-hawk: #c18711;
+  --mark-neutral: rgba(127, 126, 120, 0.5);
+  /* other tools in comparison figures: chip dots and regions only. */
+  --tool-pytorch: #ee4c2c;
+  --tool-jax: #1a9a8c;
+}
+:root, html[data-theme="light"] {
+  --raptor: #7245ce; --raptor-soft: #c9b8f2; --raptor-wash: #eee8fb;
+  --aether: #0679b6; --aether-tone: #7cc8f0;
+  --hawk: #9a6a00; --hawk-tone: #e0a82e;
+  --eagle: #c13360;
+  --rpt-muted: #898781; --rpt-border: #e1e0d9;
+  --rpt-surface: #fcfcfb; --rpt-panel: #ffffff;
+  --rpt-ink: #0b0b0b; --rpt-ink-secondary: #52514e;
+  --on-raptor: #ffffff;
+  --tool-cupy: #518d05; --tool-warp: #306101;
+}
+html[data-theme="dark"] {
+  --raptor: #9269f5; --raptor-soft: #5a46a0; --raptor-wash: #2a2240;
+  --aether: #1fa4f2; --aether-tone: #5fb6e4;
+  --hawk: #ce9428; --hawk-tone: #c9952a;
+  --eagle: #df5078;
+  --rpt-muted: #898781; --rpt-border: #2c2c2a;
+  --rpt-surface: #1a1a19; --rpt-panel: #242422;
+  --rpt-ink: #ffffff; --rpt-ink-secondary: #c3c2b7;
+  --on-raptor: #1a1a19;
+  --tool-cupy: #76b900; --tool-warp: #88e97e;
+}
+
+/* ---- Typography: applies site-wide (every page, new type + tokens, not a
+ * redesign -- the docs sites' own, narrower version of the same rule). ---- */
+body {
+  font-family: var(--f-body);
+  font-variation-settings: var(--v-body);
+  font-weight: var(--w-body);
+}
+h1, h2, h3, h4, h5, h6,
+.bd-content h1, .bd-content h2, .bd-content h3 {
+  font-family: var(--f-display);
+  font-variation-settings: var(--v-display);
+  font-weight: var(--w-display);
+}
+code, pre, kbd,
+.bd-content code, .bd-content pre {
+  font-family: var(--f-code);
+  font-variation-settings: var(--v-code);
+  font-size: var(--code-size);
+}
+
+/* ============================= Hero (type A) ============================= */
+/* compact brand bar: mark + "RAPTOR" wordmark, left; quick links, right. */
+.rpt-bar { display: flex; align-items: center; gap: 28px; padding: 4px 0 18px; flex-wrap: wrap; }
+.rpt-bar .rpt-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--rpt-ink); margin-right: auto; }
+.rpt-bar .rpt-brand img { height: 30px; width: auto; }
+.rpt-bar .rpt-brand span { font-family: var(--f-display); font-variation-settings: var(--v-display); font-weight: var(--w-display); font-size: 18px; letter-spacing: 0.04em; }
+.rpt-bar nav { display: flex; gap: 24px; }
+.rpt-bar nav a { color: var(--rpt-ink); text-decoration: none; font-size: 15px; }
+.rpt-bar nav a:hover { text-decoration: underline; }
+
+.rpt-hero { padding: 8px 0 0; text-align: left; }
+.rpt-hero h1 { font-size: var(--s5); line-height: 1.05; margin: 0; max-width: 26ch; color: var(--rpt-ink); }
+.rpt-hero h1 span { display: block; text-wrap: balance; }
+.rpt-lead { font-size: var(--s1); line-height: 1.5; max-width: 54ch; margin: 24px 0 0; color: var(--rpt-ink-secondary); }
+.rpt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin: 28px 0 0; }
+.rpt-actions .btn { display: inline-block; background: var(--raptor); color: var(--on-raptor); text-decoration: none;
+  font-weight: var(--w-strong); padding: 10px 20px; border-radius: 999px; font-size: 16px; }
+.rpt-actions .btn:hover { text-decoration: underline; }
+.rpt-actions .quiet { font-size: 16px; color: var(--raptor); text-decoration: none; }
+.rpt-actions .quiet:hover { text-decoration: underline; }
+.rpt-actions code { color: var(--rpt-ink); background: var(--rpt-panel); border: 1px solid var(--rpt-border);
+  padding: 6px 11px; border-radius: 6px; font-size: 14px; }
+
+/* the thread */
+.rpt-thread { margin: 40px 0 0; }
+.rpt-thread svg { display: block; width: 100%; height: 220px; overflow: visible; }
+.rpt-thread figcaption { font-size: 14px; color: var(--rpt-ink-secondary); margin-top: 6px; }
+.t-stroke { fill: var(--mark-raptor); }
+.t-hair { fill: none; stroke-width: 0.8; stroke-linecap: round; --grey: 0;
+  stroke: color-mix(in srgb, var(--mark-neutral) calc(var(--grey) * 100%), var(--mark-raptor)); stroke-opacity: calc(0.75 - 0.15 * var(--grey)); }
+.t-drop { fill: var(--mark-raptor); }
+
+/* "What you write" / "What happened" pair: a sphinx-design {grid} (real
+ * MyST content, so the Python fence gets proper pygments highlighting +
+ * copy button) with explicit :columns: 7/5 (the code column must fit the
+ * snippet's longest line at 1280, not
+ * a 50/50 split) -- these rules style sphinx-design's own row/col markup,
+ * never redefine its grid (that fought the nested bootstrap-style column
+ * split and produced the clipping the fix was for). */
+.rpt-pair.sd-container-fluid { margin-top: 56px; }
+.rpt-pair .sd-row { align-items: flex-start; }
+.rpt-pair h3, .rpt-pair .rubric { font-size: var(--s2); margin: 0 0 14px; }
+/* MyST renders a heading inside a grid item as p.rubric: give it the heading voice, not the theme rubric rule */
+.rpt-pair .rubric { font-family: var(--f-display); font-variation-settings: var(--v-display); font-weight: var(--w-display); color: var(--rpt-ink); border-bottom: none; padding: 0; }
+.rpt-pair p { margin: 0 0 16px; max-width: 42ch; color: var(--rpt-ink-secondary); }
+.rpt-pair p:first-of-type { margin-top: 0; }
+.rpt-pair .highlight { overflow-x: auto; }
+
+/* "How it compares": plain HTML bar charts (compare_time_chart.md,
+ * compare_memory_chart.md) + the honest note (landing_honest.md), all
+ * generated by tools/sync_cards.py -- never a hand-typed number. */
+.chart { margin: 20px 0 6px; max-width: 900px; }
+.chart .row { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: center; gap: 14px; padding: 6px 0; }
+.chart .who { color: var(--rpt-ink); font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.chart .chip { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; }
+.chart .track { position: relative; height: 20px; margin-right: 64px; }  /* room for the value label after a full-width bar */
+.chart .fill { position: absolute; left: 0; top: 3px; height: 13px; border-radius: 0 7px 7px 0; background: var(--mark-neutral); }
+.chart .row.us .fill { background: var(--mark-raptor); }
+.chart .val { position: absolute; top: 0; font-size: 14px; color: var(--rpt-ink); white-space: nowrap; padding-left: 9px; font-variant-numeric: tabular-nums; }
+.axis-note { font-size: 14px; color: var(--rpt-ink-secondary); margin: 4px 0 0 234px; }
+.rpt-mem-chart { margin: 32px 0 0; max-width: 900px; }
+.rpt-mem-chart h4 { font-size: var(--s1); margin: 0 0 4px; color: var(--rpt-ink); }
+.honest { margin: 28px 0 0; padding: 0 0 0 18px; border-left: 3px solid var(--mark-raptor); max-width: 68ch; }
+.honest p { margin: 0 0 10px; color: var(--rpt-ink-secondary); }
+.honest .fine { font-size: 14px; }
+
+/* "Four libraries": a plain list (no cards --
+ * cards are a SaaS-kit tell). */
+.rpt-lib-list { list-style: none; margin: 20px 0 0; padding: 0; max-width: 68ch; }
+.rpt-lib-list li { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rpt-border); }
+.rpt-lib-list li:first-child { border-top: none; }
+.rpt-lib-list img { height: 20px; width: 20px; flex: none; }
+.rpt-lib-list strong { font-family: var(--f-display); font-variation-settings: var(--v-display); font-weight: var(--w-display); color: var(--rpt-ink); margin-right: 6px; }
+.rpt-lib-list span { color: var(--rpt-ink-secondary); }
+.rpt-lib-list a { margin-left: auto; white-space: nowrap; font-size: 14px; }
+
+.rpt-footer { margin: 48px 0 8px; padding: 24px 0 0; border-top: 1px solid var(--rpt-border); font-size: 14px; color: var(--rpt-ink-secondary); }
+
+/* Note: the earlier 3-tile number strip (.strip .sd-card, fed by
+ * hero_strip.md) is no longer included on index.md -- it was rejected
+ * as a generic-default tell ("tile strip") in favour of the lead
+ * sentence above. hero_strip.md/honest_box.md are still generated (cheap,
+ * deterministic, and may still be useful e.g. for a README excerpt) but
+ * nothing on this site includes them any more. */
+
+@media (max-width: 720px) {
+  .rpt-hero h1 { font-size: 34px; }
+  .rpt-lead { font-size: 18px; }
+  .rpt-pair { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .chart .row { grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 5px 0 7px; }
+  .axis-note { margin-left: 0; }
+  .chart, .axis-note { padding-inline: 12px; }  /* the chart sits in a grid row with -12px gutters */
+  .rpt-lib-list li { flex-wrap: wrap; }
+  .rpt-lib-list a { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

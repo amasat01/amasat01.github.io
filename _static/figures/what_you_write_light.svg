@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 570" width="100%" height="100%" role="img" aria-labelledby="wyw-title wyw-desc" xml:space="preserve" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="wyw-title">What you write: Warp's thread program next to a RAPTOR (hawk) kernel</title>
+<desc id="wyw-desc">Two side-by-side columns for the same batch-of-trajectories task, each sample stopping at its own time. Left, Warp: you write the thread program -- a tiny wp.kernel with a per-thread while-loop and its own exit test, launched once over all threads. Right, RAPTOR: you write one step of one sample -- a tiny hawk.kernel that writes the per-sample math as plain local variables and sets its own terminated flag; eagle.simulate drives the repeated launches. Below each code sketch, a list of six run-time decisions -- the per-sample loop and exit, launch timing, compaction and reorder, graph capture, running on CPU and GPU, and derivatives -- each tagged 'you' when the author writes it explicitly (true of every item in Warp's column, framed as control) or 'engine' when eagle decides it at run time (true for launch timing, compaction, graph capture, CPU/GPU dispatch and generating derivatives in RAPTOR's column). Warp and RAPTOR both differentiate their kernels, Warp by recording a wp.Tape, RAPTOR by deriving forward- and backward-mode kernels from the same source. Code sketches are syntax-coloured to match this site's own code blocks.</desc>
+<rect x="0" y="0" width="700" height="570" fill="#fcfcfb"/>
+<text x="350.0" y="16" text-anchor="middle" font-size="12" font-style="italic" fill="#52514e">same task: a batch of trajectories, each sample stopping at its own time</text>
+<text x="180.0" y="38" text-anchor="middle" font-size="16" font-weight="700" fill="#0b0b0b">Warp</text>
+<text x="180.0" y="55" text-anchor="middle" font-size="12" fill="#52514e">you write the thread program</text>
+<rect x="20" y="61" width="320" height="3" fill="#9a6a00"/>
+<text x="20" y="81" font-size="12" font-weight="600" fill="#0b0b0b">what you write</text>
+<rect x="20" y="89" width="320" height="160" rx="8" fill="#ffffff" stroke="#e1e0d9" stroke-width="1"/>
+<text x="30.0" y="108" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="30.0" fill="#5c35cc" font-weight="700">@wp.kernel</tspan></text>
+<text x="30.0" y="124" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="30.0" fill="#204a87" font-weight="700">def</tspan><tspan fill="#0b0b0b"> oscillators</tspan><tspan fill="#0b0b0b">(x, v, k, ...):</tspan></text>
+<text x="58.8" y="140" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="58.8" fill="#0b0b0b">i = wp</tspan><tspan fill="#0b0b0b">.</tspan><tspan fill="#0b0b0b">tid</tspan><tspan fill="#0b0b0b">()</tspan></text>
+<text x="58.8" y="156" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="58.8" fill="#204a87" font-weight="700">while</tspan><tspan fill="#0b0b0b"> ks &lt; ns:</tspan></text>
+<text x="87.6" y="172" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="87.6" fill="#8f5902" font-style="italic"># ...RK4 math on xs, vs...</tspan></text>
+<text x="87.6" y="188" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="87.6" fill="#0b0b0b">ks += wp</tspan><tspan fill="#0b0b0b">.</tspan><tspan fill="#0b0b0b">float64</tspan><tspan fill="#0b0b0b">(</tspan><tspan fill="#0000cf" font-weight="700">1.0</tspan><tspan fill="#0b0b0b">)</tspan></text>
+<text x="30.0" y="204" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="30.0" fill="#8f5902" font-style="italic"># run the batch:</tspan></text>
+<text x="30.0" y="220" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="30.0" fill="#0b0b0b">wp</tspan><tspan fill="#0b0b0b">.</tspan><tspan fill="#0b0b0b">launch</tspan><tspan fill="#0b0b0b">(oscillators, dim=n, ...)</tspan></text>
+<text x="20" y="263" font-size="12" font-style="italic" fill="#52514e">warp_kernel, condensed from eagle's perf_card.py</text>
+<text x="20" y="288" font-size="12" font-weight="600" fill="#0b0b0b">who decides</text>
+<text x="520.0" y="38" text-anchor="middle" font-size="16" font-weight="700" fill="#0b0b0b">RAPTOR</text>
+<text x="520.0" y="55" text-anchor="middle" font-size="12" fill="#52514e">you write one step of one sample</text>
+<rect x="360" y="61" width="320" height="3" fill="#6b3fc4"/>
+<text x="360" y="81" font-size="12" font-weight="600" fill="#0b0b0b">what you write</text>
+<rect x="360" y="89" width="320" height="160" rx="8" fill="#ffffff" stroke="#e1e0d9" stroke-width="1"/>
+<text x="370.0" y="108" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="370.0" fill="#5c35cc" font-weight="700">@hawk.kernel</tspan></text>
+<text x="370.0" y="124" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="370.0" fill="#204a87" font-weight="700">def</tspan><tspan fill="#0b0b0b"> oscillator</tspan><tspan fill="#0b0b0b">(x, v, terminated, ...):</tspan></text>
+<text x="398.8" y="140" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="398.8" fill="#8f5902" font-style="italic"># the step's math</tspan></text>
+<text x="398.8" y="156" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="398.8" fill="#0b0b0b">x, v = x + dt*v, v - dt*w*w*x</tspan></text>
+<text x="398.8" y="172" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="398.8" fill="#0b0b0b">t += dt</tspan></text>
+<text x="398.8" y="188" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="398.8" fill="#0b0b0b">terminated = t &gt;= t_end</tspan></text>
+<text x="370.0" y="204" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="370.0" fill="#8f5902" font-style="italic"># run the batch:</tspan></text>
+<text x="370.0" y="220" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="370.0" fill="#0b0b0b">eagle</tspan><tspan fill="#0b0b0b">.</tspan><tspan fill="#0b0b0b">simulate</tspan><tspan fill="#0b0b0b">(oscillator, w=w,</tspan></text>
+<text x="398.8" y="236" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"><tspan x="398.8" fill="#0b0b0b">t_end=1.0, x=x, v=v, max_steps=S)</tspan></text>
+<text x="360" y="263" font-size="12" font-style="italic" fill="#52514e">oscillator + eagle.simulate, from the quickstart</text>
+<text x="360" y="288" font-size="12" font-weight="600" fill="#0b0b0b">who decides</text>
+<line x1="350" y1="64" x2="350" y2="508" stroke="#e1e0d9" stroke-width="1"/>
+<rect x="20" y="298" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="310.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="310.5" font-size="12" font-weight="600" fill="#0b0b0b">loop &amp; exit</text>
+<text x="84" y="325" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">while-loop exits in the kernel</text>
+<rect x="20" y="332" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="344.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="344.5" font-size="12" font-weight="600" fill="#0b0b0b">launch timing</text>
+<text x="84" y="359" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">wp.launch(kernel, dim=n), once</text>
+<rect x="20" y="366" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="378.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="378.5" font-size="12" font-weight="600" fill="#0b0b0b">compaction + reorder</text>
+<text x="84" y="393" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">one launch; add it yourself</text>
+<rect x="20" y="400" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="412.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="412.5" font-size="12" font-weight="600" fill="#0b0b0b">graph capture</text>
+<text x="84" y="427" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">wrap calls in wp.ScopedCapture</text>
+<rect x="20" y="434" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="446.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="446.5" font-size="12" font-weight="600" fill="#0b0b0b">CPU &amp; GPU</text>
+<text x="84" y="461" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">pick the device per wp.launch call</text>
+<rect x="20" y="468" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="37.0" y="480.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="84" y="480.5" font-size="12" font-weight="600" fill="#0b0b0b">derivatives</text>
+<text x="84" y="495" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">record it with wp.Tape(), backward</text>
+<rect x="360" y="298" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="377.0" y="310.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="424" y="310.5" font-size="12" font-weight="600" fill="#0b0b0b">loop &amp; exit</text>
+<text x="424" y="325" font-size="12" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" fill="#52514e">terminated = t &gt;= t_end</text>
+<rect x="360" y="332" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="388.0" y="344.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="424" y="344.5" font-size="12" font-weight="600" fill="#0b0b0b">launch timing</text>
+<text x="424" y="359" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">auto by default; eagle times it</text>
+<rect x="360" y="366" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="388.0" y="378.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="424" y="378.5" font-size="12" font-weight="600" fill="#0b0b0b">compaction + reorder</text>
+<text x="424" y="393" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">drops finished samples, can reorder</text>
+<rect x="360" y="400" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="388.0" y="412.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="424" y="412.5" font-size="12" font-weight="600" fill="#0b0b0b">graph capture</text>
+<text x="424" y="427" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">eagle.simulate captures &amp; replays</text>
+<rect x="360" y="434" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="388.0" y="446.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="424" y="446.5" font-size="12" font-weight="600" fill="#0b0b0b">CPU &amp; GPU</text>
+<text x="424" y="461" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">dispatches on the array's own type</text>
+<rect x="360" y="468" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="388.0" y="480.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="424" y="480.5" font-size="12" font-weight="600" fill="#0b0b0b">derivatives</text>
+<text x="424" y="495" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#52514e">derives forward &amp; backward kernels</text>
+<rect x="20" y="516" width="660" height="38" rx="8" fill="#ffffff" stroke="#e1e0d9"/>
+<rect x="34" y="528" width="34" height="17" rx="8.5" fill="none" stroke="#898781" stroke-width="1"/>
+<text x="51.0" y="540.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">you</text>
+<text x="78" y="540" font-size="12" fill="#0b0b0b">you write it, explicitly</text>
+<rect x="320" y="528" width="56" height="17" rx="8.5" fill="#6b3fc4" fill-opacity="0.18" stroke="#6b3fc4" stroke-width="1.25"/>
+<text x="348.0" y="540.5" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">engine</text>
+<text x="386" y="540" font-size="12" fill="#0b0b0b">the engine decides it at run time</text>
+</svg>

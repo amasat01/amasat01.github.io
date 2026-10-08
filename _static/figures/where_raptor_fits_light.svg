@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 450" width="100%" height="100%" role="img" aria-labelledby="wrf-title wrf-desc" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title id="wrf-title">Where RAPTOR fits among GPU tools</title>
+  <desc id="wrf-desc">A two-axis map. The horizontal axis is how you write the code, from whole-array operations to per-thread kernels to per-sample application code. The vertical axis is how independently each sample may branch or stop, from a lockstep batch to divergent, adaptive samples. Tensor frameworks (PyTorch, JAX) and CuPy sit at the whole-array, lockstep corner and overlap each other. Warp sits toward per-thread kernels and spans toward divergent control. RAPTOR sits at per-sample application code and divergent, adaptive control, overlapping Warp. The regions overlap on purpose: the tools are complementary, not ranked.</desc>
+
+  <rect x="0" y="0" width="440" height="450" fill="#fcfcfb"/>
+
+  <!-- plot axes -->
+  <g stroke="#898781" stroke-width="1.5">
+    <line x1="90" y1="360" x2="90" y2="48"/>
+    <line x1="90" y1="360" x2="410" y2="360"/>
+  </g>
+  <g fill="#898781">
+    <path d="M 90 48 L 85 58 L 95 58 Z"/>
+    <path d="M 410 360 L 400 355 L 400 365 Z"/>
+  </g>
+
+  <!-- axis titles -->
+  <text x="250" y="430" text-anchor="middle" font-size="13" font-weight="600" fill="#0b0b0b">How you write the code</text>
+  <text x="22" y="205" text-anchor="middle" font-size="13" font-weight="600" fill="#0b0b0b" transform="rotate(-90 22 205)">Sample independence</text>
+
+  <!-- x tick labels -->
+  <g font-size="12" fill="#52514e" text-anchor="middle">
+    <text x="143" y="378"><tspan x="143" dy="0">whole-array</tspan><tspan x="143" dy="15">operations</tspan></text>
+    <text x="250" y="378"><tspan x="250" dy="0">per-thread</tspan><tspan x="250" dy="15">kernels</tspan></text>
+    <text x="357" y="378"><tspan x="357" dy="0">per-sample</tspan><tspan x="357" dy="15">application</tspan><tspan x="357" dy="15">code</tspan></text>
+  </g>
+
+  <!-- y tick labels -->
+  <g font-size="12" fill="#52514e" text-anchor="end">
+    <text x="84" y="354"><tspan x="84" dy="0">lockstep</tspan><tspan x="84" dy="14">batch</tspan></text>
+    <text x="84" y="44"><tspan x="84" dy="0">divergent,</tspan><tspan x="84" dy="14">adaptive</tspan></text>
+  </g>
+
+  <!-- regions (overlaps are intentional: complementary, not "better") -->
+  <g>
+    <rect x="92" y="240" width="150" height="105" rx="16" fill="#1c78b0" fill-opacity="0.17" stroke="#1c78b0" stroke-opacity="0.85" stroke-width="2"/>
+    <rect x="205" y="258" width="185" height="87" rx="16" fill="#a61e4d" fill-opacity="0.17" stroke="#a61e4d" stroke-opacity="0.85" stroke-width="2"/>
+    <rect x="180" y="68" width="170" height="172" rx="16" fill="#9a6a00" fill-opacity="0.15" stroke="#9a6a00" stroke-opacity="0.85" stroke-width="2"/>
+    <rect x="300" y="50" width="108" height="150" rx="16" fill="#6b3fc4" fill-opacity="0.17" stroke="#6b3fc4" stroke-opacity="0.85" stroke-width="2"/>
+  </g>
+
+  <!-- label chips: swatch + name on a neutral chip, descriptor below, so text never sits on a saturated fill -->
+  <g>
+    <!-- tensor frameworks -->
+    <g>
+      <rect x="96" y="282" width="130" height="42" rx="8" fill="#ffffff" stroke="#e1e0d9"/>
+      <circle cx="108" cy="298" r="5" fill="#1c78b0"/>
+      <text x="118" y="302" font-size="13" font-weight="600" fill="#0b0b0b">PyTorch, JAX</text>
+      <text x="108" y="318" font-size="12" fill="#52514e">whole-array ops</text>
+    </g>
+    <!-- cupy -->
+    <g>
+      <rect x="248" y="300" width="138" height="42" rx="8" fill="#ffffff" stroke="#e1e0d9"/>
+      <circle cx="260" cy="316" r="5" fill="#a61e4d"/>
+      <text x="270" y="320" font-size="13" font-weight="600" fill="#0b0b0b">CuPy</text>
+      <text x="260" y="336" font-size="12" fill="#52514e">NumPy-style, GPU</text>
+    </g>
+    <!-- warp -->
+    <g>
+      <rect x="188" y="82" width="150" height="42" rx="8" fill="#ffffff" stroke="#e1e0d9"/>
+      <circle cx="200" cy="98" r="5" fill="#9a6a00"/>
+      <text x="210" y="102" font-size="13" font-weight="600" fill="#0b0b0b">Warp</text>
+      <text x="200" y="118" font-size="12" fill="#52514e">per-thread, Python</text>
+    </g>
+    <!-- raptor -->
+    <g>
+      <rect x="305" y="130" width="134" height="42" rx="8" fill="#ffffff" stroke="#e1e0d9"/>
+      <circle cx="317" cy="146" r="5" fill="#6b3fc4"/>
+      <text x="327" y="150" font-size="13" font-weight="600" fill="#0b0b0b">RAPTOR</text>
+      <text x="317" y="166" font-size="12" fill="#52514e">per-sample code</text>
+    </g>
+  </g>
+</svg>

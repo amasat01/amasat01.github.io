@@ -1,0 +1,10 @@
+# docs/requirements.txt analogue for this landing site -- pins the Sphinx
+# toolchain `Makefile` builds against. Versions match the family's own
+# per-repo docs/requirements.txt pins (Sphinx toolchain shared across all
+# RAPTOR family sites), verified via `python -m pip show <pkg>` in the
+# raptor_lite dev environment, 2026-10-01.
+Sphinx==8.2.3
+sphinx-book-theme==1.2.0
+myst-parser==5.0.0
+sphinx-design==0.7.0
+sphinx-copybutton==0.5.2

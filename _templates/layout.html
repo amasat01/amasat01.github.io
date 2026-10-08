@@ -1,0 +1,56 @@
+{# Copyright 2026 Alessandro Masat
+   SPDX-License-Identifier: Apache-2.0
+
+   Dedicated page template for index.html only: index.md's own custom header (mark + RAPTOR + Start here / Docs /
+   Compare / GitHub, with its own small light/dark toggle) is the only
+   header on that page -- the book-theme's top navbar, its article-header
+   icon row (download/fullscreen/theme-switch/GitHub) and both sidebars
+   (left nav, right "Contents" TOC) are hidden there. Every other page keeps
+   the theme unchanged. Scoped purely by CSS (gated on {{ pagename }} at
+   render time, so it costs nothing on any other page) rather than
+   overriding docs_navbar/docs_toc/docs_main: those blocks don't cleanly
+   cover the article-header row or the sidebar-primary wrapper on their own,
+   and duplicating big chunks of the theme's own layout.html here would
+   silently drift the next time the theme is upgraded. #}
+{% extends "!layout.html" %}
+
+{% block extrahead %}
+{{ super() }}
+{% if pagename == "index" %}
+<style>
+  /* index-only: hide every theme chrome element except the page's own
+     custom header (index.md). The theme's light/dark JS still runs
+     unconditionally and still wires any element with class
+     "theme-switch-button" by querySelectorAll, so the small toggle index.md
+     places in its own header (copied from the theme's own component)
+     keeps working, and "auto" (OS preference) stays the default mode --
+     neither is theme-markup-specific. */
+  .bd-header.navbar,
+  .bd-header-article,
+  .bd-sidebar-primary,
+  .bd-sidebar-secondary,
+  .prev-next-area,
+  .bd-footer-content {
+    display: none !important;
+  }
+  /* The real MyST document title ("# RAPTOR") stays in the DOM (document
+     structure, <title>/search index) but is not shown a second time above
+     the page's own custom header/H1: MyST wraps it as
+     <section id="raptor"><h1>RAPTOR...</h1>, immediately followed by this
+     page's own <header class="rpt-bar">, so target exactly that h1 by its
+     relationship to the custom header rather than by the heading-derived
+     section id (which would silently stop matching if the heading text
+     ever changes) -- the hero's own <h1> is nested inside a div, never a
+     sibling of .rpt-bar, so it is untouched either way. */
+  h1:has(+ .rpt-bar) {
+    display: none;
+  }
+  .bd-container__inner.bd-page-width {
+    max-width: none;
+  }
+  .bd-article-container {
+    max-width: none;
+  }
+</style>
+{% endif %}
+{% endblock extrahead %}

@@ -1,0 +1,78 @@
+{
+  "schema": "eagle-perf-card/1",
+  "device_slug": "quadro-p2000",
+  "script": "benchmarks/perf_card/perf_card.py",
+  "device": {"name": "Fixture GPU", "compute_capability": "9.9", "sm_count": 1},
+  "workload": {"problem": "fixture damped oscillator, RK4"},
+  "ns": [10],
+  "configs": [
+    {"distribution": "spread", "max_steps": 5},
+    {"distribution": "spread", "max_steps": 1000},
+    {"distribution": "uniform", "max_steps": 1000}
+  ],
+  "arms": {
+    "eagle_graph": "eagle graph", "cupy_masked": "CuPy masked",
+    "eagle_simulate": "eagle.simulate", "eagle_graph_auto": "eagle graph, auto",
+    "warp_kernel": "Warp per-thread kernel", "jax_vmap": "JAX jit + vmap(while_loop)",
+    "torch_masked": "PyTorch masked"
+  },
+  "code": {
+    "blocks": {
+      "eagle_body": {"first_line": 5, "last_line": 6, "lines": 2},
+      "cupy_body": {"first_line": 10, "last_line": 11, "lines": 2}
+    },
+    "arms": {
+      "eagle_graph": {"blocks": ["eagle_body"], "lines": 2},
+      "cupy_masked": {"blocks": ["cupy_body"], "lines": 2}
+    }
+  },
+  "results": [
+    {"n": 10, "arm": "eagle_graph", "distribution": "spread", "max_steps": 5,
+     "wall_s": {"median": 0.001}},
+    {"n": 10, "arm": "cupy_masked", "distribution": "spread", "max_steps": 5,
+     "wall_s": {"median": 0.01}},
+
+    {"n": 10, "arm": "eagle_simulate", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.005}, "kernel_only_s": 0.004},
+    {"n": 10, "arm": "eagle_graph_auto", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.0051}, "kernel_only_s": 0.00401},
+    {"n": 10, "arm": "warp_kernel", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.02}},
+    {"n": 10, "arm": "jax_vmap", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.04}},
+    {"n": 10, "arm": "cupy_masked", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.045}},
+    {"n": 10, "arm": "torch_masked", "distribution": "spread", "max_steps": 1000,
+     "wall_s": {"median": 0.05}},
+
+    {"n": 10, "arm": "warp_kernel", "distribution": "uniform", "max_steps": 1000,
+     "wall_s": {"median": 0.03}},
+    {"n": 10, "arm": "eagle_graph", "distribution": "uniform", "max_steps": 1000,
+     "wall_s": {"median": 0.0305}}
+  ],
+  "memory": {
+    "rows": [
+      {"arm": "eagle_graph", "n": 10, "distribution": "spread", "max_steps": 5,
+       "device_peak_bytes": 2097152},
+
+      {"arm": "eagle_simulate", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 4194304, "minimum_bytes": 2097152, "device_factor": 2.0},
+      {"arm": "eagle_graph", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 2097152, "minimum_bytes": 2097152, "device_factor": 1.0},
+      {"arm": "warp_kernel", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 3145728, "minimum_bytes": 2097152, "device_factor": 1.5},
+      {"arm": "jax_vmap", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 6291456, "minimum_bytes": 2097152, "device_factor": 3.0},
+      {"arm": "cupy_masked", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 9437184, "minimum_bytes": 2097152, "device_factor": 4.5},
+      {"arm": "torch_masked", "n": 10, "distribution": "spread", "max_steps": 1000,
+       "device_peak_bytes": 11534336, "minimum_bytes": 2097152, "device_factor": 5.5}
+    ]
+  },
+  "compile_time": {
+    "rows": [
+      {"key": "eagle:eagle_graph", "arms": ["eagle_graph"],
+       "cold_s": {"median": 0.5}, "warm_s": {"median": 0.05}}
+    ]
+  }
+}

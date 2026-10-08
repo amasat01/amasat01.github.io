@@ -1,0 +1,46 @@
+{
+  "schema": "eagle-rk78-card/1",
+  "device_slug": "fixture-device",
+  "script": "benchmarks/rk78_card/rk78_card.py",
+  "device": {"name": "Fixture GPU", "compute_capability": "9.9", "sm_count": 1},
+  "workload": {"problem": "fixture two-body orbit, adaptive scheme"},
+  "ns": [10, 100],
+  "arms": {
+    "eagle_graph": "eagle graph",
+    "cupy_masked": "CuPy masked",
+    "torch_masked": "PyTorch masked",
+    "jax_vmap": "JAX jit+vmap",
+    "warp_kernel": "Warp per-thread kernel",
+    "eagle_cpu": "eagle CPU (OpenMP)"
+  },
+  "code_lines": {
+    "blocks": {"eagle_body": 2, "cupy_body": 2, "torch_body": 2, "jax_body": 2, "warp_body": 2},
+    "arms": {"eagle_graph": 2, "cupy_masked": 2, "torch_masked": 2, "jax_vmap": 2, "warp_kernel": 2},
+    "arm_blocks": {
+      "eagle_graph": ["eagle_body"],
+      "cupy_masked": ["cupy_body"],
+      "torch_masked": ["torch_body"],
+      "jax_vmap": ["jax_body"],
+      "warp_kernel": ["warp_body"]
+    }
+  },
+  "results": [
+    {"n": 10, "arm": "eagle_graph", "wall_s": {"median": 0.001}},
+    {"n": 10, "arm": "cupy_masked", "wall_s": {"median": 0.01}},
+    {"n": 100, "arm": "eagle_graph", "wall_s": {"median": 0.002}},
+    {"n": 100, "arm": "cupy_masked", "wall_s": {"median": 0.02}},
+    {"n": 100, "arm": "torch_masked", "wall_s": {"median": 0.03}},
+    {"n": 100, "arm": "jax_vmap", "wall_s": {"median": 0.04}},
+    {"n": 100, "arm": "warp_kernel", "wall_s": {"median": 0.0005}},
+    {"n": 100, "arm": "eagle_cpu", "wall_s": {"median": 0.0003}}
+  ],
+  "fit": {
+    "arms": {
+      "eagle_graph": "fixture note for eagle: 2 ms.",
+      "cupy_masked": "fixture note for cupy: 20 ms.",
+      "torch_masked": "fixture note for torch: 30 ms.",
+      "jax_vmap": "fixture note for jax: 40 ms.",
+      "warp_kernel": "fixture note for warp: 0.5 ms."
+    }
+  }
+}

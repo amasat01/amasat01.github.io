@@ -1,0 +1,16 @@
+{
+  "schema": "eagle-cpu-card/1",
+  "script": "benchmarks/perf_card/cpu_card.py",
+  "cpu": {"model": "Fixture CPU", "cores": 1, "logical_cpus": 1},
+  "workload": {"problem": "fixture damped oscillator, RK4, host"},
+  "ns": [10],
+  "configs": [{"distribution": "spread", "max_steps": 5}],
+  "arms": ["eagle_term8"],
+  "arm_labels": {"eagle_term8": "eagle host, termination loop, 8 threads"},
+  "results": [
+    {"n": 10, "arm": "eagle_term8", "distribution": "spread", "max_steps": 5,
+     "wall_s": {"median": 0.02}}
+  ],
+  "memory": {"rows": []},
+  "compile_time": {"rows": []}
+}

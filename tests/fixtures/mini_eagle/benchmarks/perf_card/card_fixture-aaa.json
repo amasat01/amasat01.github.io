@@ -1,0 +1,6 @@
+{
+  "device_slug": "fixture-aaa",
+  "script": "benchmarks/perf_card/perf_card.py",
+  "device": {"name": "Fixture AAA GPU", "compute_capability": "1.0", "sm_count": 1},
+  "generated_utc": "2026-01-01T00:00:00Z"
+}
