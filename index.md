@@ -161,7 +161,7 @@ your own toolchain), see [Building from source](build_from_source.md).
 
 ````{dropdown} Citing
 Each repository is cited independently: its own `CITATION.cff` carries the metadata (GitHub shows it under "Cite
-this repository"), and each tagged release will be archived on Zenodo with its own DOI (to come).
+this repository"), and every tagged release is archived on Zenodo: hawk [doi:10.5281/zenodo.23250242](https://doi.org/10.5281/zenodo.23250242), eagle [doi:10.5281/zenodo.23250240](https://doi.org/10.5281/zenodo.23250240), aether [doi:10.5281/zenodo.23250238](https://doi.org/10.5281/zenodo.23250238), raptor [doi:10.5281/zenodo.23250234](https://doi.org/10.5281/zenodo.23250234).
 ````
 
 ````{dropdown} License
