@@ -118,6 +118,13 @@ Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 ```
 ````
 
+## On your CPU
+
+No GPU needed: the same call runs on your CPU's threads. Here is one desktop CPU running the same batch.
+
+```{include} _generated/cpu_glance.md
+```
+
 ## Four libraries
 
 ```{raw} html

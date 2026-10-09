@@ -46,6 +46,7 @@
   /* other tools in comparison figures: chip dots and regions only. */
   --tool-pytorch: #ee4c2c;
   --tool-jax: #1a9a8c;
+  --tool-numba: #00a3e0;
 }
 :root, html[data-theme="light"] {
   --raptor: #7245ce; --raptor-soft: #c9b8f2; --raptor-wash: #eee8fb;
@@ -57,6 +58,7 @@
   --rpt-ink: #0b0b0b; --rpt-ink-secondary: #52514e;
   --on-raptor: #ffffff;
   --tool-cupy: #518d05; --tool-warp: #306101;
+  --tool-numpy: #4d77cf;
 }
 html[data-theme="dark"] {
   --raptor: #9269f5; --raptor-soft: #5a46a0; --raptor-wash: #2a2240;
@@ -68,6 +70,7 @@ html[data-theme="dark"] {
   --rpt-ink: #ffffff; --rpt-ink-secondary: #c3c2b7;
   --on-raptor: #1a1a19;
   --tool-cupy: #76b900; --tool-warp: #88e97e;
+  --tool-numpy: #7ea3f2;
 }
 
 /* ---- Typography: applies site-wide (every page, new type + tokens, not a
