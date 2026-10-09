@@ -7,16 +7,11 @@ Source for the RAPTOR family landing site, published at
 and [hawk](https://github.com/amasat01/hawk) — plus a short `about.md`.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="_static/ecosystem/ecosystem_family_dark.svg">
-    <img src="_static/ecosystem/ecosystem_family_light.svg" alt="The RAPTOR family: hawk (write it), eagle (run it), aether (the C++/CUDA numerics underneath) and raptor (the shared contract)." width="760">
-  </picture>
-</p>
-
-<p align="center">
-
-[aether](https://amasat01.github.io/aether/) · [hawk](https://amasat01.github.io/hawk/) · [eagle](https://amasat01.github.io/eagle/) · [raptor](https://amasat01.github.io/raptor/) · [the family](https://amasat01.github.io/)
-
+  <a href="https://amasat01.github.io/"><b>The RAPTOR family</b></a><br>
+  <a href="https://amasat01.github.io/hawk/"><picture><source media="(prefers-color-scheme: dark)" srcset="_static/ecosystem/ecosystem_card_hawk_family_dark.svg"><img src="_static/ecosystem/ecosystem_card_hawk_family_light.svg" alt="hawk" width="430"></picture></a>
+  <a href="https://amasat01.github.io/eagle/"><picture><source media="(prefers-color-scheme: dark)" srcset="_static/ecosystem/ecosystem_card_eagle_family_dark.svg"><img src="_static/ecosystem/ecosystem_card_eagle_family_light.svg" alt="eagle" width="430"></picture></a><br>
+  <a href="https://amasat01.github.io/aether/"><picture><source media="(prefers-color-scheme: dark)" srcset="_static/ecosystem/ecosystem_card_aether_family_dark.svg"><img src="_static/ecosystem/ecosystem_card_aether_family_light.svg" alt="aether" width="430"></picture></a>
+  <a href="https://amasat01.github.io/raptor/"><picture><source media="(prefers-color-scheme: dark)" srcset="_static/ecosystem/ecosystem_card_raptor_family_dark.svg"><img src="_static/ecosystem/ecosystem_card_raptor_family_light.svg" alt="raptor" width="430"></picture></a>
 </p>
 
 ## Build

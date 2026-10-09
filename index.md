@@ -120,19 +120,9 @@ Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 
 ## Four libraries
 
-```{image} _static/ecosystem/ecosystem_family_light.svg
-:alt: The RAPTOR family: hawk (write it), eagle (run it), aether (the C++/CUDA numerics underneath) and raptor (the shared contract).
-:class: only-light
-:align: center
+```{raw} html
+:file: _static/ecosystem/ecosystem_cards_family.html
 ```
-
-```{image} _static/ecosystem/ecosystem_family_dark.svg
-:alt: The RAPTOR family: hawk (write it), eagle (run it), aether (the C++/CUDA numerics underneath) and raptor (the shared contract).
-:class: only-dark
-:align: center
-```
-
-[aether](https://amasat01.github.io/aether/) · [hawk](https://amasat01.github.io/hawk/) · [eagle](https://amasat01.github.io/eagle/) · [raptor](https://amasat01.github.io/raptor/)
 
 (install)=
 ````{dropdown} Install
