@@ -140,11 +140,11 @@ pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cu
 toolkit is needed.
 ```
 
-**Platforms:** built and tested on Linux x86_64 only so far (CPython 3.9–3.14, including free-threaded 3.13t and 3.14t), on NVIDIA GPUs from Pascal (Quadro P2000) and Turing (Tesla T4). There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. Free-threaded builds (3.13t, 3.14t) currently re-enable the GIL when `hawk` or `eagle` is imported and print a RuntimeWarning; results are correct, just not parallel.
+**Platforms:** built and tested on Linux x86_64 only so far (CPython 3.9–3.14, including free-threaded 3.13t and 3.14t), on NVIDIA GPUs from Pascal (Quadro P2000) and Turing (Tesla T4). There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
 
 `raptor-hawk` pulls `aether-dsc` (the sealed C++ headers hawk compiles against) automatically. eagle alone:
-`pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for Pascal, Volta,
-Ampere and Hopper (sm_61/70/80/90) plus PTX for newer GPUs. aether is a header-only C++ library used through CMake;
+`pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for every NVIDIA
+architecture from Pascal (sm_60) through Blackwell plus PTX for newer GPUs. aether is a header-only C++ library used through CMake;
 `aether-dsc` on PyPI is not something C++ users install. To build everything from source (contributors, C++ users,
 your own toolchain), see [Building from source](build_from_source.md).
 ````
