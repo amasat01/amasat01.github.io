@@ -15,7 +15,7 @@ Every command below installs into one prefix, `${CONDA_PREFIX}` if you use conda
 | C++ compiler | C++23 — GCC ≥ 12 or Clang ≥ 16 | aether, eagle; stated identically by both |
 | CUDA toolkit | CUDA 12.6 or newer (tested with 12.6 and 13.0) | Optional — build with `AETHER_CPP_MODE=ON` / `EAGLE_CPP_MODE=ON` and the libraries run on GPUs or on CPU threads (OpenMP) from the same source. eagle's Python package is always a CUDA build (see Pitfalls). |
 | nvcc host-compiler ceiling | GCC 13 for CUDA 12.6 | nvcc accepts a host compiler only up to its own ceiling; pass `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` if your default compiler is newer |
-| Python | ≥ 3.9 for raptor and aether-dsc; ≥ 3.10 for hawk and eagle | hawk and eagle are tested on CPython 3.10–3.13 |
+| Python | ≥ 3.9 for all four packages | hawk and eagle are tested on CPython 3.9–3.14, including free-threaded 3.13t and 3.14t |
 
 ## Install, in dependency order
 
