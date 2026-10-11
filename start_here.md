@@ -237,12 +237,19 @@ decision directly, so the loop could reuse it instead of recomputing it.
 ## Where to next
 
 - **[hawk](https://amasat01.github.io/hawk/)** — write your own kernels and
-  vocabularies.
+  vocabularies. Start with its [Quickstart](https://amasat01.github.io/hawk/content/quickstart.html),
+  then the [Tutorials](https://amasat01.github.io/hawk/content/tutorials.html).
 - **[eagle](https://amasat01.github.io/eagle/)** — make them fast: graphs,
-  compaction, profiling.
+  compaction, profiling. Start with its
+  [Python tutorials](https://amasat01.github.io/eagle/content/userguide/tutorials_python.html).
 - **[aether](https://amasat01.github.io/aether/)** — the C++ underneath, if
-  you need it directly.
+  you need it directly. Start with its [Tutorials](https://amasat01.github.io/aether/content/tutorials.html).
 - **[raptor](https://amasat01.github.io/raptor/)** — plug a new engine or
-  framework into the contracts this page used.
+  framework into the contracts this page used. Start with its
+  [Tutorials](https://amasat01.github.io/raptor/content/tutorials.html).
+
+Every site has the same sections (Start here, Tutorials, How-to guides,
+Explanation, Reference, Contributing), and the words the family shares are
+in one [glossary](https://amasat01.github.io/raptor/content/glossary.html).
 
 *deeper: [where RAPTOR fits](where_raptor_fits.md) has the full four-part story.*

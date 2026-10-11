@@ -45,6 +45,8 @@ cmake --install build --prefix ${CONDA_PREFIX}
 cd ..
 ```
 
+Full details: [aether's installation page](https://amasat01.github.io/aether/content/installation.html).
+
 ### 2. eagle (C++, then the Python package)
 
 eagle depends only on aether, which must already be installed into the same prefix.
@@ -76,6 +78,8 @@ pip install -e ./python
 cd ..
 ```
 
+Full details: [eagle's installation page](https://amasat01.github.io/eagle/content/userguide/installation.html) and its [build options](https://amasat01.github.io/eagle/content/userguide/build_options.html).
+
 ### 3. aether-dsc
 
 `aether-dsc` ships a sealed copy of aether's own headers for Python-only consumers — hawk's device compiler is the
@@ -86,6 +90,8 @@ cd aether
 pip install ./dsc
 cd ..
 ```
+
+Full details: [aether's installation page](https://amasat01.github.io/aether/content/installation.html).
 
 ### 4. hawk
 
@@ -101,6 +107,8 @@ pip install -e .[test]
 cd ..
 ```
 
+Full details: [hawk's installation page](https://amasat01.github.io/hawk/content/installation.html).
+
 ### 5. raptor
 
 raptor is pure Python with zero hard dependencies — no GPU, no CUDA toolkit, no C or C++ compiler needed.
@@ -112,6 +120,8 @@ pip install -e .
 # pip install -e .[demo]
 cd ..
 ```
+
+Full details: [raptor's installation page](https://amasat01.github.io/raptor/content/installation.html).
 
 ## Check it worked
 

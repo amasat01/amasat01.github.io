@@ -157,11 +157,23 @@ for any use, commercial or not, with attribution. See each repository's own `LIC
 
 ```{toctree}
 :maxdepth: 1
+:caption: Start here
 :hidden:
 
 start_here
 where_raptor_fits
 compare
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: The family
+:hidden:
+
 build_from_source
 about
+eagle docs <https://amasat01.github.io/eagle/>
+hawk docs <https://amasat01.github.io/hawk/>
+aether docs <https://amasat01.github.io/aether/>
+raptor docs <https://amasat01.github.io/raptor/>
 ```

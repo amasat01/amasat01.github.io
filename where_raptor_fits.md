@@ -21,7 +21,7 @@ what it is not, and the same task in five tools, side by side.
    the same source and run on the GPU or the CPU like the kernel itself.
 4. **Works with the code you already have.** Arrays cross without copies through DLPack (a standard, framework-neutral
    way for one library to hand another an array without copying it), and a compiled kernel
-   deploys into any program that reads its manifest.
+   deploys into any program that reads its [manifest](https://amasat01.github.io/raptor/content/glossary.html) (the family's shared words are in one glossary).
 
 ## The shape of it
 
