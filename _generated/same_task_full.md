@@ -7,7 +7,7 @@ Same task, five ways, measured by the RK7(8) card: two-body Kepler orbits (mu = 
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 22 |
-| what it brings here | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 23.5 s. |
+| what it brings here | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 3.9 s. |
 | free from the same source | a CPU build from the same hawk kernel, with no second implementation to maintain, and the kernel's own reverse- and forward-mode derivatives. |
 
 ```python
@@ -41,7 +41,7 @@ st.runner = eagle.until_done(eagle.deploy(rkf78_attempt), max_steps=MAX_ATTEMPTS
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 25 |
-| what it brings here | array code in the NumPy style (25 lines), the control flow as masks over the batch: 182 s. |
+| what it brings here | array code in the NumPy style (25 lines), the control flow as masks over the batch: 52.9 s. |
 | free from the same source | no second build and no gradient in this comparison; CuPy itself targets the GPU. |
 
 ```python
@@ -79,7 +79,7 @@ def cupy_run(st):
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 27 |
-| what it brings here | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 184 s. |
+| what it brings here | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 55.1 s. |
 | free from the same source | gradients through `torch.autograd`, and the tensors run on CPU too (untested on this card). |
 
 ```python
@@ -120,7 +120,7 @@ def torch_run(st):
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 25 |
-| what it brings here | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 40.2 s. |
+| what it brings here | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 7.26 s. |
 | free from the same source | gradients through `jax.grad`, and the same code runs on a CPU backend (untested on this card). |
 
 ```python
@@ -160,7 +160,7 @@ def jax_integrate_fn():
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 74 |
-| what it brings here | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 26.3 s. |
+| what it brings here | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 4.27 s. |
 | free from the same source | reverse-mode gradients through `wp.Tape`, and a CPU device (untested on this card). |
 
 ```python

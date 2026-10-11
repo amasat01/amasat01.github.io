@@ -2,19 +2,18 @@
 
 | tool | wall (N = 1,000,000, spread stop steps, up to 1000) |
 |---|---:|
-| eagle.simulate (eagle picks the launch mode) | 50.1 ms |
-| Warp per-thread kernel | 194 ms |
-| JAX jit + vmap(while_loop) | 594 ms |
-| CuPy masked | 3.68 s |
-| PyTorch masked | 3.85 s |
+| eagle.simulate (eagle picks the launch mode) | 30.5 ms |
+| Warp per-thread kernel | 105 ms |
+| JAX jit + vmap(while_loop) | 242 ms |
+| CuPy masked | 1.62 s |
+| PyTorch masked | 1.70 s |
 
 - **Tensor libraries compute every sample, every step** -- a masked array keeps computing the samples that already finished.
 - **hawk + eagle skips finished samples** and packs the live ones into the next launch, so the batch keeps shrinking as samples finish.
-- **Warp is excellent at per-thread kernels**: on a fully dense batch hawk + eagle beats it: 211 ms against Warp's 220 ms -- complementary tools, not a hierarchy.
+- **Warp is excellent at per-thread kernels**: it is the fastest arm in 1 of 12 cells, and on a fully dense batch hawk + eagle beats it: 114 ms against Warp's 119 ms -- complementary tools, not a hierarchy.
 
 RAPTOR adds, from the same source: per-sample Python, device-side stopping, forward- and reverse-mode derivatives, and the identical kernel on the CPU.
 
-On the harder RK7(8) family (N = 1,000,000 adaptive Kepler orbits, every one inside its error bound): hawk + eagle persistent 13.0 s, Warp per-thread kernel 26.3 s, JAX jit(vmap(while_loop)) 40.2 s, CuPy masked 182 s, PyTorch masked 184 s.
-hawk + eagle on the CPU alone, no GPU at all: 7.15 s -- the fastest number on this card, because this GPU's FP64 throughput is modest. Honest, and worth knowing before reaching for a GPU.
+On the harder RK7(8) family (N = 1,000,000 adaptive Kepler orbits, every one inside its error bound): eagle graph + compaction + reorder 2.33 s, Warp per-thread kernel 4.27 s, JAX jit(vmap(while_loop)) 7.26 s, CuPy masked 52.9 s, PyTorch masked 55.1 s.
 
-*Measured on Tesla T4. [Every number, every arm](https://amasat01.github.io/eagle/content/performance.html).*
+*Measured on NVIDIA L4. [Every number, every arm](https://amasat01.github.io/eagle/content/performance.html).*
