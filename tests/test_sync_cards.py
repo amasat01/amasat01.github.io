@@ -114,30 +114,35 @@ class GlanceTable(unittest.TestCase):
         self.assertIn("–", glance)
 
 
-class ReferenceDeviceChosenBySlug(unittest.TestCase):
-    """``card_fixture-aaa.json`` sorts alphabetically before the fixture's
-    reference card (``card_fixture-gpu.json``, ``device_slug`` set to
-    ``sync_cards.REFERENCE_SLUGS["perf_gpu"]``). The old ``_first_json``
-    picked whichever card sorted first; this proves the reference device is
-    still the slug match, and the new, earlier-sorting device shows up only
-    in the "Measured on" list."""
+class DenseClauseOrder(unittest.TestCase):
+    """The subject's number comes first and each number is attributed."""
 
-    def test_new_earlier_sorting_device_does_not_become_the_reference(self):
+    def _clause(self, verdict):
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = sync_cards.Pool(pathlib.Path(tmp))
+            return sync_cards.dense_clause(pool, {"verdict": verdict, "warp_s": 0.220, "eagle_s": 0.211})
+
+    def test_eagle_wins(self):
+        self.assertEqual(self._clause("eagle"), "hawk + eagle beats it: 211 ms against Warp's 220 ms")
+
+    def test_tie(self):
+        self.assertEqual(self._clause("tie"), "it ties hawk + eagle: 220 ms against hawk + eagle's 211 ms")
+
+    def test_warp_wins(self):
+        self.assertEqual(self._clause("warp"), "it beats hawk + eagle: 220 ms against hawk + eagle's 211 ms")
+
+
+class DefaultDeviceChosenByPreference(unittest.TestCase):
+    """The text quotes the DEFAULT card: the first in the tab preference
+    list, else the first alphabetically -- never a hard-coded device."""
+
+    def test_default_device_is_the_one_quoted_and_every_device_is_listed(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
         glance = out["perf_glance.md"]
-        # the reference device's own table is unaffected by the new card
-        self.assertIn("Fixture GPU", glance)
-        self.assertIn("1×", glance)
-        self.assertIn("10×", glance)
-        # the new device appears in "Measured on", linked by its own slug,
-        # not chosen as the reference
+        self.assertIn("Device: Fixture GPU", glance)   # the card with results; no preference match
         self.assertIn("Measured on", glance)
-        self.assertIn("Fixture AAA GPU", glance)
-        # Hyphenated: Sphinx/docutils normalizes a MyST target label's
-        # underscores to hyphens in the built page's HTML id, and this
-        # literal external link is never rewritten for it the way an
-        # in-build MyST cross-reference would be.
+        self.assertIn("Fixture GPU", glance)
         self.assertIn("#perf-card-gpu-fixture-aaa", glance)
         self.assertIn("#perf-card-gpu-quadro-p2000", glance)
 
@@ -149,12 +154,10 @@ class ReferenceDeviceChosenBySlug(unittest.TestCase):
         self.assertIn("benchmarks/perf_card/card_fixture-gpu.json", paths)
         self.assertIn("benchmarks/perf_card/card_fixture-aaa.json", paths)
 
-    def test_reference_card_helper_picks_by_slug_not_sort_order(self):
-        entries = [("fixture-aaa", {"marker": "aaa"}), ("quadro-p2000", {"marker": "ref"})]
-        self.assertEqual(sync_cards.reference_card(entries, "quadro-p2000")["marker"], "ref")
-        # no match for the configured slug: falls back to the first by the
-        # order it was handed (a single-device tree still works)
-        self.assertEqual(sync_cards.reference_card(entries, "no-such-slug")["marker"], "aaa")
+    def test_default_card_helper_follows_the_preference_list(self):
+        entries = [("a", {"device": {"name": "Quadro P2000"}, "ns": [1]}), ("b", {"device": {"name": "Tesla T4"}, "ns": [1]})]
+        self.assertEqual(sync_cards.default_card(entries, sync_cards.GPU_PREFERENCE)["device"]["name"], "Tesla T4")
+        self.assertIsNone(sync_cards.default_card([], sync_cards.GPU_PREFERENCE))
 
 
 class SameTaskFiveWays(unittest.TestCase):
@@ -286,6 +289,22 @@ class CpuGlance(unittest.TestCase):
         text, _ = _render_cpu([("synthetic-cpu", _cpu_card())])
         self.assertIn("::::{tab-set}", text)
         self.assertEqual(text.count(":::{tab-item}"), 1)
+
+    def test_default_tab_follows_the_preference_list(self):
+        entries = [("a", _cpu_card(model="Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz", slug="a")),
+                   ("b", _cpu_card(model="Intel(R) Xeon(R) Platinum 8480+", slug="b")),
+                   ("c", _cpu_card(model="Acme Z9", slug="c"))]
+        text, _ = _render_cpu(entries)
+        order = [text.index(f":::{{tab-item}} {n}") for n in
+                 ("Intel Xeon Platinum 8480+", "Intel Xeon W-2125", "Acme Z9")]
+        self.assertEqual(order, sorted(order))
+
+    def test_gpu_preference_and_unknown_devices(self):
+        entries = [("x", {"device": {"name": "Zed GPU"}}), ("p", {"device": {"name": "Quadro P2000"}}),
+                   ("t", {"device": {"name": "Tesla T4"}}), ("h", {"device": {"name": "NVIDIA H100 80GB"}}),
+                   ("a", {"device": {"name": "Alpha GPU"}})]
+        got = [slug for slug, _ in sync_cards.in_tab_order(entries, sync_cards.GPU_PREFERENCE)]
+        self.assertEqual(got, ["h", "t", "p", "a", "x"])
 
     def test_no_card_renders_a_note_not_a_crash(self):
         text, ok = _render_cpu([])
@@ -642,7 +661,7 @@ class LandingHeroFragments(unittest.TestCase):
         # hero_A's own wording, two named ratios: Warp's own ratio (4.0x), and the smaller/never-overstated
         # of CuPy (9.0x) and PyTorch (10x) -- 9.0x.
         text = self.out["lead_sentence.md"]
-        self.assertIn("5.00 ms and 4 MiB on a modest workstation GPU", text)
+        self.assertIn("5.00 ms and 4 MiB on Fixture GPU, ", text)
         self.assertIn("4.0× faster than NVIDIA Warp and 9.0× faster than PyTorch or CuPy", text)
         self.assertIn("runs on your CPU", text)
         # never the literal "2017" -- no card field sources that year, so the
@@ -672,7 +691,7 @@ class LandingHeroFragments(unittest.TestCase):
         text = self.out["landing_honest.md"]
         self.assertIn('class="honest"', text)
         self.assertIn("fastest arm in 1 of the 3 RK4 cells", text)
-        self.assertIn("it ties hawk + eagle (30.0 ms against 30.5 ms)", text)
+        self.assertIn("it ties hawk + eagle: 30.0 ms against hawk + eagle's 30.5 ms", text)
         self.assertIn("1.0× the minimum against Warp's 1.5×", text)
         self.assertIn("uses 2.0×", text)
         self.assertIn("Fixture GPU", text)
@@ -803,8 +822,8 @@ class WarpClaimsFollowTheCard(unittest.TestCase):
         self.assertIn("NVIDIA Warp is an excellent per-thread kernel compiler: "
                       "when every sample runs all 1000 steps hawk + eagle beats it",
                       out["landing_honest.md"])
-        self.assertIn("- **Warp is excellent at per-thread kernels**: it trails hawk + eagle "
-                      "here on a fully dense batch", out["why_raptor.md"])
+        self.assertIn("- **Warp is excellent at per-thread kernels**: on a fully dense batch "
+                      "hawk + eagle beats it: 30.5 ms against Warp's 30.0 s", out["why_raptor.md"])
         self.assertNotIn("fastest arm in 0", out["landing_honest.md"])
         self.assertNotIn("fastest arm in 0", out["why_raptor.md"])
 

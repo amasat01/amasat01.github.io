@@ -4,26 +4,26 @@
 
 A batch where each sample stops on its own step (the "spread" distribution here) is exactly what eagle's compaction targets: once enough samples finish, the live ones are packed into the next launch instead of carrying the whole batch along.
 
-- N = 1,000: fastest is `cpu_openmp` (CPU OpenMP), 437 µs, of 15 arms run.
-- N = 10,000: fastest is `cpu_openmp` (CPU OpenMP), 1.78 ms, of 15 arms run.
-- N = 100,000: fastest is `cpu_openmp` (CPU OpenMP), 15.0 ms, of 15 arms run.
-- N = 1,000,000: fastest is `cpu_openmp` (CPU OpenMP), 149 ms, of 15 arms run.
+- N = 1,000: fastest is `eagle_graph_auto` (eagle auto (eagle picks the launch mode)), 502 µs, of 16 arms run.
+- N = 10,000: fastest is `eagle_graph_steps_compact` (eagle graph, K fused steps per launch + compaction), 2.05 ms, of 16 arms run.
+- N = 100,000: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 6.17 ms, of 16 arms run.
+- N = 1,000,000: fastest is `eagle_graph_auto` (eagle auto (eagle picks the launch mode)), 50.1 ms, of 16 arms run.
 
-[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-quadro-p2000).
+[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-tesla-t4).
 
 ## My batch is dense (every sample runs the same number of steps)
 
-At N = 1,000,000 with nothing to compact, `warp_kernel` (693 ms) and `eagle_graph_auto` (699 ms) are a tie -- a plain per-thread kernel is the better fit once nothing finishes early, and hawk + eagle's plain graph arm matches it.
+At N = 1,000,000 with nothing to compact, `warp_kernel` (220 ms) and `eagle_simulate` (211 ms) are hawk + eagle's win -- a plain per-thread kernel is the better fit once nothing finishes early, and hawk + eagle's plain graph arm matches it.
 
-[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-quadro-p2000).
+[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-tesla-t4).
 
 ## My batches are small
 
 At the smallest size this card runs (N = 1,000), launch and compaction overhead can cost more than they save:
 
-- spread, 100 steps: fastest is `eagle_graph_auto` (eagle auto (eagle picks the launch mode)), 125 µs.
-- spread, 1000 steps: fastest is `cpu_openmp` (CPU OpenMP), 437 µs.
-- uniform, 1000 steps: fastest is `cpu_openmp` (CPU OpenMP), 419 µs.
+- spread, 100 steps: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 123 µs.
+- spread, 1000 steps: fastest is `eagle_graph_auto` (eagle auto (eagle picks the launch mode)), 502 µs.
+- uniform, 1000 steps: fastest is `eagle_graph_auto` (eagle auto (eagle picks the launch mode)), 505 µs.
 
 ## Will it fit on my GPU?
 
