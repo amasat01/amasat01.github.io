@@ -40,6 +40,21 @@
 <script>RaptorThread.mount(document.getElementById("thread"), { desktopSamples: 150, phoneSamples: 60, seed: 20261001 });</script>
 ```
 
+(how-it-compares)=
+## How it compares
+
+Wall time for a million samples, each stopping at its own step. Pick the hardware, then the device.
+
+```{include} _generated/perf_switch.md
+```
+
+`````{container} perf-gpu-only
+````{dropdown} Full numbers on the default GPU, every arm
+```{include} _generated/why_raptor.md
+```
+````
+`````
+
 (what-you-write)=
 ## What you write
 
@@ -94,36 +109,6 @@ Samples that finished were dropped from the next launch, so the batch shrank as 
 Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 :::
 ::::
-
-(how-it-compares)=
-## How it compares
-
-```{include} _generated/compare_time_chart.md
-```
-
-```{raw} html
-<div class="rpt-mem-chart">
-<h4>Memory, as a multiple of what the samples need</h4>
-</div>
-```
-
-```{include} _generated/compare_memory_chart.md
-```
-
-```{include} _generated/landing_honest.md
-```
-
-````{dropdown} Full numbers, every arm
-```{include} _generated/why_raptor.md
-```
-````
-
-## On your CPU
-
-No GPU needed: the same call runs on your CPU's threads. Here is one desktop CPU running the same batch.
-
-```{include} _generated/cpu_glance.md
-```
 
 ## Four libraries
 

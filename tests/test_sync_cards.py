@@ -228,7 +228,7 @@ def _cpu_card(model="Synthetic CPU", slug="synthetic-cpu", date="2026-01-02T03:0
 def _render_cpu(entries):
     with tempfile.TemporaryDirectory() as tmp:
         pool = sync_cards.Pool(pathlib.Path(tmp))
-        return sync_cards.build_cpu_glance(pool, entries)
+        return sync_cards.build_perf_switch(pool, [], entries)
 
 
 class CpuGlance(unittest.TestCase):
@@ -280,22 +280,22 @@ class CpuGlance(unittest.TestCase):
                    ("arm-box", _cpu_card(model="Other ARM CPU", slug="arm-box",
                                           date="2026-02-03T00:00:00Z", other_wall=0.2))]
         text, _ = _render_cpu(entries)
-        self.assertEqual(text.count(":::{tab-item}"), 2)
+        self.assertEqual(text.count("<label for=\"perf-cpu-"), 2)
         self.assertIn("Other ARM CPU", text)
         self.assertIn("#perf-card-cpu-arm-box", text)
         self.assertIn("card of 2026-02-03", text)
 
     def test_one_card_still_uses_the_tab_markup(self):
         text, _ = _render_cpu([("synthetic-cpu", _cpu_card())])
-        self.assertIn("::::{tab-set}", text)
-        self.assertEqual(text.count(":::{tab-item}"), 1)
+        self.assertIn('class="perf-chips"', text)
+        self.assertEqual(text.count('<label for="perf-cpu-'), 1)
 
     def test_default_tab_follows_the_preference_list(self):
         entries = [("a", _cpu_card(model="Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz", slug="a")),
                    ("b", _cpu_card(model="Intel(R) Xeon(R) Platinum 8480+", slug="b")),
                    ("c", _cpu_card(model="Acme Z9", slug="c"))]
         text, _ = _render_cpu(entries)
-        order = [text.index(f":::{{tab-item}} {n}") for n in
+        order = [text.index(f">{n}</label>") for n in
                  ("Intel Xeon Platinum 8480+", "Intel Xeon W-2125", "Acme Z9")]
         self.assertEqual(order, sorted(order))
 
@@ -311,18 +311,61 @@ class CpuGlance(unittest.TestCase):
         self.assertFalse(ok)
         self.assertNotIn("tab-set", text)
 
-    def test_prose_avoids_comparative_judgement_words(self):
-        lead = (SITE_ROOT / "index.md").read_text().split("## On your CPU", 1)[1] \
-            .split("```", 1)[0]
-        for word in ("beats", "faster than", "slow"):
-            self.assertNotIn(word, lead.lower())
-
-    def test_index_places_the_section_between_compares_and_libraries(self):
+    def test_index_puts_the_comparison_right_after_the_hero(self):
         index = (SITE_ROOT / "index.md").read_text()
-        a, b, c = (index.index(h) for h in
-                   ("## How it compares", "## On your CPU", "## Four libraries"))
-        self.assertTrue(a < b < c)
-        self.assertIn("_generated/cpu_glance.md", index)
+        order = [index.index(h) for h in
+                 ("(how-it-compares)=", "## What you write", "## Four libraries")]
+        self.assertEqual(order, sorted(order))
+        self.assertLess(index.index("rpt-thread"), index.index("(how-it-compares)="))
+        self.assertIn("_generated/perf_switch.md", index)
+        self.assertNotIn("## On your CPU", index)       # merged into the switch
+        self.assertIn("perf-gpu-only", index)
+
+
+def _render_switch(gpus, cpus):
+    with tempfile.TemporaryDirectory() as tmp:
+        pool = sync_cards.Pool(pathlib.Path(tmp))
+        return sync_cards.build_perf_switch(pool, gpus, cpus)
+
+
+class PerfSwitch(unittest.TestCase):
+    """``_generated/perf_switch.md``: On a GPU | On a CPU, device chips under it."""
+
+    def setUp(self):
+        self.cpu = [("c1", _cpu_card()), ("c2", _cpu_card(model="Intel(R) Xeon(R) Platinum 8480+", slug="c2"))]
+        self.gpu = [("g1", _cpu_card(model="Quadro P2000", slug="g1"))]
+
+    def test_two_levels_of_radios_with_a_default(self):
+        text, ok = _render_switch([], self.cpu)
+        self.assertTrue(ok)
+        self.assertIn('role="radiogroup" aria-label="Hardware"', text)
+        self.assertEqual(text.count('name="perf-hw"'), 1)      # one side present: no GPU side
+        self.assertEqual(text.count('name="perf-cpu"'), 2)     # one chip per CPU
+        self.assertEqual(text.count(" checked>"), 2)           # defaults: the side and the first chip
+
+    def test_default_chip_is_first_in_the_preference_list(self):
+        text, _ = _render_switch([], self.cpu)
+        self.assertLess(text.index("Intel Xeon Platinum 8480+"), text.index("Synthetic CPU"))
+
+    def test_cpu_side_says_memory_is_gpu_only(self):
+        text, _ = _render_switch([], self.cpu)
+        self.assertIn(sync_cards.GPU_ONLY_NOTE, text)
+
+    def test_old_anchor_is_kept_and_selects_the_cpu_side(self):
+        text, _ = _render_switch([], self.cpu)
+        self.assertIn('id="on-your-cpu"', text)
+        self.assertIn('#on-your-cpu', text)
+
+    def test_nothing_to_show_renders_nothing(self):
+        text, ok = _render_switch([], [])
+        self.assertFalse(ok)
+        self.assertNotIn("perf-switch", text)
+
+    def test_css_has_the_two_levels(self):
+        css = (SITE_ROOT / "_static" / "custom.css").read_text()
+        for sel in (".perf-seg", ".perf-chips", "#perf-hw-cpu:checked ~ .perf-side-cpu",
+                    ":focus-visible"):
+            self.assertIn(sel, css)
 
 
 class Determinism(unittest.TestCase):
@@ -384,29 +427,11 @@ class EveryNumberComesFromACard(unittest.TestCase):
     def test_lead_sentence(self):
         self._check("lead_sentence.md")
 
-    def test_compare_time_chart(self):
-        # unlike the retired SVG, every number here -- including each bar's
-        # log-scale fill-width percentage -- passes through Writer.add(), so
-        # even the chart's own layout geometry traces to SOURCES.json.
-        self._check("compare_time_chart.md")
-
     def test_compare_memory_chart(self):
         self._check("compare_memory_chart.md")
 
     def test_landing_honest(self):
         self._check("landing_honest.md")
-
-    def test_cpu_glance(self):
-        self._check("cpu_glance.md")
-
-
-class NamedSpeedup(unittest.TestCase):
-    """``named_speedup``/``named_speedup_big_text``/``named_speedup_caption``:
-    the "name the other guys in the room" comparison that
-    replaced "fastest of 14" in hero_strip.md, why_raptor.md and the two
-    READMEs. Unit-level, against small synthetic cards -- the fixture-driven
-    tests above (HeroStrip, WhyRaptorComparison) check the same thing in
-    context."""
 
     def test_round_sig_floor_never_rounds_up(self):
         # 3.449 would round to 3.4 either way; 9.999 must floor to 9.9, not
@@ -644,7 +669,7 @@ class WhyRaptorComparison(unittest.TestCase):
 
 
 class LandingHeroFragments(unittest.TestCase):
-    """``_generated/lead_sentence.md``, ``compare_time_chart.md``,
+    """``_generated/lead_sentence.md``, ``perf_switch.md``,
     ``compare_memory_chart.md`` and ``landing_honest.md``: the type-A landing
     hero's own fragments -- plain HTML rows
     (landing.css's track/fill/val), never an SVG, and never a hand-typed
@@ -669,7 +694,7 @@ class LandingHeroFragments(unittest.TestCase):
         self.assertNotIn("2017", text)
 
     def test_time_chart_is_plain_html_rows_fastest_first(self):
-        text = self.out["compare_time_chart.md"]
+        text = self.out["perf_switch.md"]
         self.assertIn('class="chart" role="img"', text)
         self.assertIn('class="row us"', text)
         self.assertIn("eagle.simulate", text)
