@@ -160,11 +160,34 @@ class Writer:
 # uses "code_lines"; cpu_card's "arms" is a list with a separate "arm_labels",
 # the others' "arms" is a {key: label} dict).
 # --------------------------------------------------------------------------- #
+#: The driver accounts device memory in pages of about 2 MiB.
+DRIVER_PAGE_BYTES = 2 * 2**20
+
+
+def device_reading_valid(row):
+    """False when a memory row's device reading is below the state the
+    workload needs (less one driver page): the run cannot have fit in less,
+    so the reading missed memory the library reserved before the baseline."""
+    peak, minimum = row.get("device_peak_bytes"), row.get("minimum_bytes")
+    if peak is None or not minimum:
+        return True
+    return peak + DRIVER_PAGE_BYTES >= minimum
+
+
 def load_card(pool, relpath):
+    """The card's JSON, with every device reading `device_reading_valid`
+    rejects withheld (``device_peak_bytes``/``device_factor`` None,
+    ``device_withheld`` True) so no page quotes a number below the minimum."""
     path = pool.source(relpath)
     if not path.is_file():
         return None
-    return json.loads(path.read_text())
+    card = json.loads(path.read_text())
+    for row in (card.get("memory") or {}).get("rows", []):
+        if not device_reading_valid(row):
+            row["device_peak_bytes"] = None
+            row["device_factor"] = None
+            row["device_withheld"] = True
+    return card
 
 
 #: (directory, filename prefix) under the eagle root, by family key.
@@ -732,6 +755,15 @@ def will_it_fit_rows(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
             rows.append((arm, row["device_peak_bytes"], row.get("device_factor")))
     rows.sort(key=lambda r: r[1])
     return rows, n
+
+
+def withheld_memory_arms(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
+    """`arms` whose device reading at the card's largest N and `config` was
+    withheld by `load_card`, in `arms` order."""
+    if not card or not card.get("ns"):
+        return []
+    n = max(card["ns"])
+    return [a for a in arms if (_mem_row(card, a, n, config) or {}).get("device_withheld")]
 
 
 def named_speedup(card, base_arm="eagle_simulate", arms=COMPARISON_ARMS, config=WHY_CONFIG):
@@ -1551,6 +1583,15 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                   "the per-sample state the workload itself needs. "
                   + memory_comparison_sentence(pool, sim_mem_row, warp_mem_row, graph_mem_row))
             w.add("")
+            withheld = withheld_memory_arms(perf_gpu)
+            if withheld:
+                names = ", ".join(pool.track(MEMORY_TABLE_LABELS.get(a, arm_label(perf_gpu, a)))
+                                  for a in withheld)
+                w.add(f"Not shown: {names}. Its allocator reserves its memory pool during the warm-up, "
+                      "before the baseline reading, so the reading after the run cannot see that pool "
+                      "and falls below the state the workload needs. The figure returns once the "
+                      "measurement takes its baseline before any library allocates.")
+                w.add("")
             any_section = True
 
     honest78 = rk78_honest(rk78_gpu) if rk78_gpu else None

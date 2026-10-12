@@ -14,7 +14,7 @@
 | spread S=100 | Warp per-thread kernel | 10.7 ms | 2.16× | 64 MiB | 809 ms / 112 ms |
 | spread S=100 | eagle graph (device loop) | 11.2 ms | 2.26× | 50 MiB | 2.1 s / 143 ms |
 | spread S=100 | eager launch loop | 15.5 ms | 3.13× | 50 MiB | 1.88 s / 128 ms |
-| spread S=100 | JAX jit + vmap(while_loop) | 24.9 ms | 5.04× | 0 MiB | 285 ms / 58.9 ms |
+| spread S=100 | JAX jit + vmap(while_loop) | 24.9 ms | 5.04× | – | 285 ms / 58.9 ms |
 | spread S=100 | PyTorch torch.compile (reduce-overhead) | 25.5 ms | 5.15× | 188 MiB | 6.9 s / 4.32 s |
 | spread S=100 | CPU OpenMP | 42.6 ms | 8.61× | – | 1.95 s / 153 ms |
 | spread S=100 | CuPy masked | 161 ms | 32.6× | 194 MiB | 1.05 s / 40.8 ms |
@@ -30,7 +30,7 @@
 | spread S=1000 | eagle graph, K fused steps per launch | 103 ms | 3.4× | 50 MiB | 2.02 s / 138 ms |
 | spread S=1000 | Warp per-thread kernel | 105 ms | 3.45× | 64 MiB | 809 ms / 112 ms |
 | spread S=1000 | eager launch loop | 155 ms | 5.09× | 50 MiB | 1.88 s / 128 ms |
-| spread S=1000 | JAX jit + vmap(while_loop) | 242 ms | 7.98× | 0 MiB | 285 ms / 58.9 ms |
+| spread S=1000 | JAX jit + vmap(while_loop) | 242 ms | 7.98× | – | 285 ms / 58.9 ms |
 | spread S=1000 | PyTorch torch.compile (reduce-overhead) | 251 ms | 8.25× | 80 MiB | 6.9 s / 4.32 s |
 | spread S=1000 | CPU OpenMP | 400 ms | 13.2× | – | 1.95 s / 153 ms |
 | spread S=1000 | CuPy masked | 1.62 s | 53.3× | 194 MiB | 1.05 s / 40.8 ms |
@@ -46,7 +46,7 @@
 | uniform S=1000 | eager launch loop | 173 ms | 1.52× | 50 MiB | 1.88 s / 128 ms |
 | uniform S=1000 | eagle graph + compaction | 184 ms | 1.62× | 66 MiB | 2 s / 134 ms |
 | uniform S=1000 | eagle graph + compaction + reorder | 185 ms | 1.62× | 94 MiB | 2.09 s / 137 ms |
-| uniform S=1000 | JAX jit + vmap(while_loop) | 242 ms | 2.13× | 0 MiB | 285 ms / 58.9 ms |
+| uniform S=1000 | JAX jit + vmap(while_loop) | 242 ms | 2.13× | – | 285 ms / 58.9 ms |
 | uniform S=1000 | PyTorch torch.compile (reduce-overhead) | 251 ms | 2.21× | 80 MiB | 6.9 s / 4.32 s |
 | uniform S=1000 | CPU OpenMP | 450 ms | 3.95× | – | 1.95 s / 153 ms |
 | uniform S=1000 | CuPy masked | 1.62 s | 14.2× | 194 MiB | 1.05 s / 40.8 ms |
@@ -96,10 +96,12 @@
 
 **Measured on:**
 
+- RK4 oscillators, GPU: [NVIDIA A100-SXM4-40GB](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-a100-sxm4-40gb)
 - RK4 oscillators, GPU: [NVIDIA L4](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-l4)
 - RK4 oscillators, GPU: [Quadro P2000](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-quadro-p2000)
 - RK4 oscillators, GPU: [Tesla T4](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-tesla-t4)
 - RK4 oscillators, CPU: [Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz](https://amasat01.github.io/eagle/content/performance.html#perf-card-cpu-intel-xeon-w-2125)
+- RK7(8) orbits, GPU: [NVIDIA A100-SXM4-40GB](https://amasat01.github.io/eagle/content/performance.html#rk78-card-gpu-nvidia-a100-sxm4-40gb)
 - RK7(8) orbits, GPU: [NVIDIA L4](https://amasat01.github.io/eagle/content/performance.html#rk78-card-gpu-nvidia-l4)
 - RK7(8) orbits, GPU: [Quadro P2000](https://amasat01.github.io/eagle/content/performance.html#rk78-card-gpu-quadro-p2000)
 - RK7(8) orbits, CPU: [Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz](https://amasat01.github.io/eagle/content/performance.html#rk78-card-cpu-intel-r-xeon-r-w-2125-cpu-4-00ghz)
