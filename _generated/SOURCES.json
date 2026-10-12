@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-12T10:46:12Z",
+  "generated_utc": "2026-10-12T11:00:50Z",
   "sources": [
     {
       "path": "benchmarks/perf_card/card_nvidia-a100-sxm4-40gb.json",
@@ -220,6 +220,7 @@
     "3.04",
     "3.13",
     "3.2",
+    "3.36",
     "3.4",
     "3.45",
     "3.46",

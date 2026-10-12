@@ -32,13 +32,15 @@
 <div class="rpt-mem-chart">
 <h4>Memory, as a multiple of what the samples need</h4>
 </div>
-<div class="chart" role="img" aria-label="Device memory as a multiple of the minimum: eagle graph (device loop) 1.3×, NVIDIA Warp 1.7×, eagle.simulate 1.7×, CuPy 5.1×, PyTorch 6.9×.">
+<div class="chart" role="img" aria-label="Device memory as a multiple of the minimum: eagle graph (device loop) 1.3×, NVIDIA Warp 1.7×, eagle.simulate 1.7×, JAX† 3.4×, CuPy 5.1×, PyTorch 6.9×.">
 <div class="row us"><div class="who"><span class="chip" style="background:var(--mark-eagle)"></span>eagle graph (device loop)</div><div class="track"><div class="fill" style="width:15.3%"></div><span class="val" style="left:15.3%">1.3×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-warp)"></span>NVIDIA Warp</div><div class="track"><div class="fill" style="width:19.5%"></div><span class="val" style="left:19.5%">1.7×</span></div></div>
 <div class="row us"><div class="who"><span class="chip" style="background:var(--mark-eagle)"></span>eagle.simulate</div><div class="track"><div class="fill" style="width:20.2%"></div><span class="val" style="left:20.2%">1.7×</span></div></div>
+<div class="row"><div class="who"><span class="chip" style="background:var(--tool-jax)"></span>JAX†</div><div class="track"><div class="fill" style="width:39.1%"></div><span class="val" style="left:39.1%">3.4×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-cupy)"></span>CuPy</div><div class="track"><div class="fill" style="width:59.2%"></div><span class="val" style="left:59.2%">5.1×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-pytorch)"></span>PyTorch</div><div class="track"><div class="fill" style="width:80.0%"></div><span class="val" style="left:80.0%">6.9×</span></div></div>
 </div>
+<p class="axis-note">† JAX: measured on Quadro P2000 and Tesla T4; the reading on this card missed the pool the library reserves before the measurement's baseline, and the pool's size does not depend on the card.</p>
 <div class="honest">
 <p>NVIDIA Warp is an excellent per-thread kernel compiler: it is the fastest arm in 1 of the 12 RK4 cells this card runs, and when every sample runs all 1000 steps hawk + eagle beats it: 114 ms against Warp's 119 ms.</p>
 <p>On memory, hawk + eagle's lower-level building blocks go lighter than Warp: 1.3× the minimum against Warp's 1.7×. eagle.simulate keeps room to compact the batch and uses 1.7×.</p>
@@ -57,13 +59,15 @@
 <div class="rpt-mem-chart">
 <h4>Memory, as a multiple of what the samples need</h4>
 </div>
-<div class="chart" role="img" aria-label="Device memory as a multiple of the minimum: eagle graph (device loop) 1.3×, NVIDIA Warp 1.7×, eagle.simulate 1.7×, CuPy 5.1×, PyTorch 6.9×.">
+<div class="chart" role="img" aria-label="Device memory as a multiple of the minimum: eagle graph (device loop) 1.3×, NVIDIA Warp 1.7×, eagle.simulate 1.7×, JAX† 3.4×, CuPy 5.1×, PyTorch 6.9×.">
 <div class="row us"><div class="who"><span class="chip" style="background:var(--mark-eagle)"></span>eagle graph (device loop)</div><div class="track"><div class="fill" style="width:15.3%"></div><span class="val" style="left:15.3%">1.3×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-warp)"></span>NVIDIA Warp</div><div class="track"><div class="fill" style="width:19.5%"></div><span class="val" style="left:19.5%">1.7×</span></div></div>
 <div class="row us"><div class="who"><span class="chip" style="background:var(--mark-eagle)"></span>eagle.simulate</div><div class="track"><div class="fill" style="width:20.2%"></div><span class="val" style="left:20.2%">1.7×</span></div></div>
+<div class="row"><div class="who"><span class="chip" style="background:var(--tool-jax)"></span>JAX†</div><div class="track"><div class="fill" style="width:39.1%"></div><span class="val" style="left:39.1%">3.4×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-cupy)"></span>CuPy</div><div class="track"><div class="fill" style="width:59.2%"></div><span class="val" style="left:59.2%">5.1×</span></div></div>
 <div class="row"><div class="who"><span class="chip" style="background:var(--tool-pytorch)"></span>PyTorch</div><div class="track"><div class="fill" style="width:80.0%"></div><span class="val" style="left:80.0%">6.9×</span></div></div>
 </div>
+<p class="axis-note">† JAX: measured on Quadro P2000 and Tesla T4; the reading on this card missed the pool the library reserves before the measurement's baseline, and the pool's size does not depend on the card.</p>
 <div class="honest">
 <p>NVIDIA Warp is an excellent per-thread kernel compiler: it is the fastest arm in 9 of the 12 RK4 cells this card runs, and when every sample runs all 1000 steps hawk + eagle beats it: 5.46 ms against Warp's 6.69 ms.</p>
 <p>On memory, hawk + eagle's lower-level building blocks go lighter than Warp: 1.3× the minimum against Warp's 1.7×. eagle.simulate keeps room to compact the batch and uses 1.7×.</p>

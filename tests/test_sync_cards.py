@@ -921,6 +921,23 @@ class DeviceReadingValidity(unittest.TestCase):
         text = (GENERATED / "compare.md").read_text()
         self.assertNotRegex(text, r"\| 0 MiB \| 0× \|")
 
+    def test_withheld_reading_borrows_the_family_value(self):
+        mib = 2**20
+        def card(peak, name):
+            return {"device": {"name": name}, "memory": {"rows": [
+                {"arm": "jax_vmap", "n": 10**6, "device_peak_bytes": peak, "minimum_bytes": 40 * mib}]}}
+        l4, p2, t4 = card(None, "L4"), card(128 * mib, "P2000"), card(128 * mib, "T4")
+        l4["memory"]["rows"][0]["device_withheld"] = True
+        sync_cards.borrow_withheld_readings([("l4", l4), ("p2", p2), ("t4", t4)])
+        row = l4["memory"]["rows"][0]
+        self.assertEqual(row["device_peak_bytes"], 128 * mib)
+        self.assertEqual(row["device_borrowed_from"], ["P2000", "T4"])
+        # disagreeing cards: stays withheld
+        l4b = card(None, "L4"); l4b["memory"]["rows"][0]["device_withheld"] = True
+        sync_cards.borrow_withheld_readings([("l4", l4b), ("p2", card(128 * mib, "P2000")),
+                                             ("x", card(256 * mib, "X"))])
+        self.assertIsNone(l4b["memory"]["rows"][0]["device_peak_bytes"])
+
 
 if __name__ == "__main__":
     unittest.main()
