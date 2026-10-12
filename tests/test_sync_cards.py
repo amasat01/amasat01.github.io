@@ -901,5 +901,43 @@ class SourcesFreshnessIfEagleAvailable(unittest.TestCase):
             self.assertEqual(sync_cards._md5(p), entry["md5"], entry["path"])
 
 
+class DeviceReadingValidity(unittest.TestCase):
+    """A device reading below the workload's minimum state (less one driver
+    page) is withheld, never published: the run cannot have fit in less."""
+
+    def test_reading_below_minimum_is_withheld(self):
+        mib = 2**20
+        self.assertFalse(sync_cards.device_reading_valid(
+            {"device_peak_bytes": 0, "minimum_bytes": 40 * mib}))
+        self.assertTrue(sync_cards.device_reading_valid(
+            {"device_peak_bytes": 50 * mib, "minimum_bytes": 40 * mib}))
+        # small N: the driver's ~2 MiB page granularity can read 0 honestly
+        self.assertTrue(sync_cards.device_reading_valid(
+            {"device_peak_bytes": 0, "minimum_bytes": 40_000}))
+        self.assertTrue(sync_cards.device_reading_valid(
+            {"device_peak_bytes": None, "minimum_bytes": 40 * mib}))
+
+    def test_committed_output_quotes_no_impossible_reading(self):
+        text = (GENERATED / "compare.md").read_text()
+        self.assertNotRegex(text, r"\| 0 MiB \| 0× \|")
+
+    def test_withheld_reading_borrows_the_family_value(self):
+        mib = 2**20
+        def card(peak, name):
+            return {"device": {"name": name}, "memory": {"rows": [
+                {"arm": "jax_vmap", "n": 10**6, "device_peak_bytes": peak, "minimum_bytes": 40 * mib}]}}
+        l4, p2, t4 = card(None, "L4"), card(128 * mib, "P2000"), card(128 * mib, "T4")
+        l4["memory"]["rows"][0]["device_withheld"] = True
+        sync_cards.borrow_withheld_readings([("l4", l4), ("p2", p2), ("t4", t4)])
+        row = l4["memory"]["rows"][0]
+        self.assertEqual(row["device_peak_bytes"], 128 * mib)
+        self.assertEqual(row["device_borrowed_from"], ["P2000", "T4"])
+        # disagreeing cards: stays withheld
+        l4b = card(None, "L4"); l4b["memory"]["rows"][0]["device_withheld"] = True
+        sync_cards.borrow_withheld_readings([("l4", l4b), ("p2", card(128 * mib, "P2000")),
+                                             ("x", card(256 * mib, "X"))])
+        self.assertIsNone(l4b["memory"]["rows"][0]["device_peak_bytes"])
+
+
 if __name__ == "__main__":
     unittest.main()

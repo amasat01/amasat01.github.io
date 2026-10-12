@@ -31,14 +31,16 @@ Same cell as the speed comparison above (N = 1,000,000, spread stop steps, up to
 
 | tool | GPU memory | × minimum |
 |---|---:|---:|
-| JAX | 0 MiB | 0× |
 | hawk + eagle graph (no compaction) | 50 MiB | 1.31× |
 | NVIDIA Warp | 64 MiB | 1.68× |
 | eagle.simulate | 66 MiB | 1.73× |
+| JAX† | 128 MiB | 3.36× |
 | CuPy | 194 MiB | 5.09× |
 | PyTorch | 262 MiB | 6.87× |
 
 Array libraries like CuPy, PyTorch and JAX keep a temporary for every operation in a step, so their reservations stack up across the batch; hawk + eagle and NVIDIA Warp keep only the per-sample state the workload itself needs. NVIDIA Warp is lighter than eagle.simulate (1.7×), and hawk + eagle's lower-level building blocks, without compaction, are lighter still (1.3×).
+
+† JAX: measured on Quadro P2000 and Tesla T4. On NVIDIA L4 the reading missed the memory pool the library reserves during the warm-up, before the measurement's baseline; the pool's size does not depend on the card, so the other cards' figure stands in until this card is measured again.
 
 ## My steps are adaptive
 

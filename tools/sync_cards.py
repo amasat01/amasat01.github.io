@@ -160,11 +160,36 @@ class Writer:
 # uses "code_lines"; cpu_card's "arms" is a list with a separate "arm_labels",
 # the others' "arms" is a {key: label} dict).
 # --------------------------------------------------------------------------- #
+#: The driver accounts device memory in pages of about 2 MiB.
+DRIVER_PAGE_BYTES = 2 * 2**20
+#: Marks a device-memory figure borrowed from another card of the family.
+BORROWED_MARK = "†"
+
+
+def device_reading_valid(row):
+    """False when a memory row's device reading is below the state the
+    workload needs (less one driver page): the run cannot have fit in less,
+    so the reading missed memory the library reserved before the baseline."""
+    peak, minimum = row.get("device_peak_bytes"), row.get("minimum_bytes")
+    if peak is None or not minimum:
+        return True
+    return peak + DRIVER_PAGE_BYTES >= minimum
+
+
 def load_card(pool, relpath):
+    """The card's JSON, with every device reading `device_reading_valid`
+    rejects withheld (``device_peak_bytes``/``device_factor`` None,
+    ``device_withheld`` True) so no page quotes a number below the minimum."""
     path = pool.source(relpath)
     if not path.is_file():
         return None
-    return json.loads(path.read_text())
+    card = json.loads(path.read_text())
+    for row in (card.get("memory") or {}).get("rows", []):
+        if not device_reading_valid(row):
+            row["device_peak_bytes"] = None
+            row["device_factor"] = None
+            row["device_withheld"] = True
+    return card
 
 
 #: (directory, filename prefix) under the eagle root, by family key.
@@ -204,7 +229,35 @@ def family_cards(pool, eagle_root, reldir, prefix):
         card = load_card(pool, p.relative_to(eagle_root))
         if card is not None:
             out.append((card_slug(card, p, prefix), card))
+    borrow_withheld_readings(out)
     return out
+
+
+def borrow_withheld_readings(entries):
+    """Fill each device reading `load_card` withheld with the family's other
+    cards' reading for the same (arm, n), when those cards measured it validly
+    with ONE value across every configuration -- an allocator's pool that does
+    not depend on the card. The row records ``device_borrowed_from`` (device
+    names); a (arm, n) the other cards disagree on stays withheld."""
+    for slug, card in entries:
+        for row in (card.get("memory") or {}).get("rows", []):
+            if not row.get("device_withheld"):
+                continue
+            values, names = set(), set()
+            for other_slug, other in entries:
+                if other_slug == slug:
+                    continue
+                for r in (other.get("memory") or {}).get("rows", []):
+                    if (r.get("arm") == row.get("arm") and r.get("n") == row.get("n")
+                            and r.get("device_peak_bytes") is not None
+                            and not r.get("device_withheld")):
+                        values.add(r["device_peak_bytes"])
+                        names.add(device_name(other))
+            if len(values) == 1 and row.get("minimum_bytes"):
+                peak = values.pop()
+                row["device_peak_bytes"] = peak
+                row["device_factor"] = peak / row["minimum_bytes"]
+                row["device_borrowed_from"] = sorted(names)
 
 
 def default_card(entries, preference):
@@ -341,6 +394,8 @@ def glance_table(pool, w, card, title):
             ratio = _fmt_x(wall / fastest_eagle) if fastest_eagle else "–"
             mrow = mem_by_key.get((n, dist, steps, arm))
             mem = _fmt_mib((mrow or {}).get("device_peak_bytes", (mrow or {}).get("peak_bytes")))
+            if (mrow or {}).get("device_borrowed_from"):
+                mem += BORROWED_MARK
             crow = compile_by_arm.get(arm)
             compile_cell = (f"{_fmt_time(crow['cold_s']['median'])} / "
                              f"{_fmt_time(crow['warm_s']['median'])}") if crow else "–"
@@ -732,6 +787,17 @@ def will_it_fit_rows(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
             rows.append((arm, row["device_peak_bytes"], row.get("device_factor")))
     rows.sort(key=lambda r: r[1])
     return rows, n
+
+
+def withheld_memory_arms(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
+    """`arms` whose device reading at the card's largest N and `config` was
+    withheld by `load_card`, in `arms` order."""
+    if not card or not card.get("ns"):
+        return []
+    n = max(card["ns"])
+    return [a for a in arms
+            if (_mem_row(card, a, n, config) or {}).get("device_withheld")
+            and not (_mem_row(card, a, n, config) or {}).get("device_borrowed_from")]
 
 
 def named_speedup(card, base_arm="eagle_simulate", arms=COMPARISON_ARMS, config=WHY_CONFIG):
@@ -1272,6 +1338,15 @@ def _gpu_panel(pool, slug, card):
     if have_mem:
         parts.append('<div class="rpt-mem-chart">\n<h4>Memory, as a multiple of what the samples need</h4>\n</div>')
         parts.append(_raw_html(mem))
+        n = max(card["ns"])
+        for arm, _b, _f in rows:
+            names = (_mem_row(card, arm, n, WHY_CONFIG) or {}).get("device_borrowed_from")
+            if names:
+                parts.append(f'<p class="axis-note">{BORROWED_MARK} '
+                             f'{pool.track(MEMORY_TABLE_LABELS.get(arm, arm_label(card, arm)))}: '
+                             f'measured on {pool.track(" and ".join(names))}; the reading on this card '
+                             "missed the pool the library reserves before the measurement's baseline, "
+                             "and the pool's size does not depend on the card.</p>")
     honest, have_honest = build_landing_honest(pool, card)
     if have_honest:
         parts.append(_raw_html(honest))
@@ -1344,10 +1419,16 @@ def build_compare_memory_chart(pool, card, rows):
     w = Writer(pool)
     w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
     w.add("")
+    n = max(card["ns"]) if card and card.get("ns") else None
+
+    def label(arm):
+        borrowed = (_mem_row(card, arm, n, WHY_CONFIG) or {}).get("device_borrowed_from")
+        return _chart_label(card, arm) + (BORROWED_MARK if borrowed else "")
+
     factors = [f for _a, _b, f in rows if f is not None]
     if not rows or not factors:
         return w.text(), False
-    aria = ", ".join(f"{_chart_label(card, arm)} {_fmt_ratio(factor)}"
+    aria = ", ".join(f"{label(arm)} {_fmt_ratio(factor)}"
                       for arm, _b, factor in rows if factor is not None)
     hi = max(factors) * MEM_BAR_HEADROOM
     w.add("```{raw} html")
@@ -1357,7 +1438,7 @@ def build_compare_memory_chart(pool, card, rows):
         if factor is None:
             continue
         pct = 100 * factor / hi
-        w.add(_bar_row_html(pool.track(_chart_label(card, arm)), ARM_CHIP_VAR.get(arm),
+        w.add(_bar_row_html(pool.track(label(arm)), ARM_CHIP_VAR.get(arm),
                              pct, pool.track(_fmt_ratio(factor)), arm.startswith("eagle")))
     w.add("</div>")
     w.add("```")
@@ -1543,6 +1624,8 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
             w.add("|---|---:|---:|")
             for arm, peak_bytes, factor in mem_rows:
                 label = MEMORY_TABLE_LABELS.get(arm, arm_label(perf_gpu, arm))
+                if (_mem_row(perf_gpu, arm, mem_n, WHY_CONFIG) or {}).get("device_borrowed_from"):
+                    label += BORROWED_MARK
                 w.add(f"| {pool.track(label)} | {pool.track(_fmt_mib_int(peak_bytes))} | "
                       f"{pool.track(_fmt_x(factor))} |")
             w.add("")
@@ -1551,6 +1634,26 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                   "the per-sample state the workload itself needs. "
                   + memory_comparison_sentence(pool, sim_mem_row, warp_mem_row, graph_mem_row))
             w.add("")
+            borrowed = [a for a in MEMORY_TABLE_ARMS
+                        if (_mem_row(perf_gpu, a, mem_n, WHY_CONFIG) or {}).get("device_borrowed_from")]
+            for a in borrowed:
+                names = _mem_row(perf_gpu, a, mem_n, WHY_CONFIG)["device_borrowed_from"]
+                w.add(f"{BORROWED_MARK} {pool.track(MEMORY_TABLE_LABELS.get(a, arm_label(perf_gpu, a)))}: "
+                      f"measured on {pool.track(' and '.join(names))}. On "
+                      f"{pool.track(device_name(perf_gpu))} the reading missed the memory pool the library "
+                      "reserves during the warm-up, before the measurement's baseline; the pool's size does "
+                      "not depend on the card, so the other cards' figure stands in until this card is "
+                      "measured again.")
+                w.add("")
+            withheld = withheld_memory_arms(perf_gpu)
+            if withheld:
+                names = ", ".join(pool.track(MEMORY_TABLE_LABELS.get(a, arm_label(perf_gpu, a)))
+                                  for a in withheld)
+                w.add(f"Not shown: {names}. Its allocator reserves its memory pool during the warm-up, "
+                      "before the baseline reading, so the reading after the run cannot see that pool "
+                      "and falls below the state the workload needs. The figure returns once the "
+                      "measurement takes its baseline before any library allocates.")
+                w.add("")
             any_section = True
 
     honest78 = rk78_honest(rk78_gpu) if rk78_gpu else None
