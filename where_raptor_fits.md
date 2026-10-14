@@ -9,37 +9,26 @@ what it is not, and the same task in five tools, side by side.
 
 1. **Efficient on the GPU.** Whole pipelines replay as **CUDA graphs** — a
    GPU's sequence of launches recorded once and replayed without
-   re-issuing each one — so this class of problem makes full use of the
-   hardware.
+   re-issuing each one — so dense batches approach the hardware's peak.
 2. **Written at the level of your application.** A hawk **kernel** (a small
    GPU/CPU function, written once per sample) runs once per sample and
    declares, in its own signature, what each argument is
    (a per-sample state, a read-only table, an output); hawk works out the
    launch layout from that. CUDA C++, Warp, Numba and Triton still work
    right alongside it.
-3. **Differentiable, forward and backward.** Every kernel's reverse- and forward-mode derivatives are generated from
+3. **Differentiable, forward and backward.** Every kernel written in hawk's own vocabulary gets reverse- and forward-mode derivatives generated from
    the same source and run on the GPU or the CPU like the kernel itself.
 4. **Works with the code you already have.** Arrays cross without copies through DLPack (a standard, framework-neutral
    way for one library to hand another an array without copying it), and a compiled kernel
-   deploys into any program that reads its [manifest](https://amasat01.github.io/raptor/content/glossary.html) (the family's shared words are in one glossary).
+   deploys into any program that can load its [manifest](https://amasat01.github.io/raptor/content/glossary.html) (the family's shared words are in one glossary).
 
 ## The shape of it
 
-```{image} _static/figures/where_raptor_fits_light.svg
-:alt: A two-axis map. The horizontal axis is how you write the code, from whole-array operations to per-thread kernels to per-sample application code; the vertical axis is how independently each sample may branch or stop, from a lockstep batch to divergent, adaptive samples. Tensor frameworks and CuPy sit at the whole-array, lockstep corner and overlap each other. Warp sits toward per-thread kernels and spans toward divergent control. RAPTOR sits at per-sample application code and divergent, adaptive control, overlapping Warp.
-:class: only-light
-:width: 440px
-```
+Every tool is strong somewhere. Pick the hardware and the device. Each axis is defined under the chart, and hovering one shows where its
+number comes from. Switch tools on and off to compare.
 
-```{image} _static/figures/where_raptor_fits_dark.svg
-:alt: A two-axis map. The horizontal axis is how you write the code, from whole-array operations to per-thread kernels to per-sample application code; the vertical axis is how independently each sample may branch or stop, from a lockstep batch to divergent, adaptive samples. Tensor frameworks and CuPy sit at the whole-array, lockstep corner and overlap each other. Warp sits toward per-thread kernels and spans toward divergent control. RAPTOR sits at per-sample application code and divergent, adaptive control, overlapping Warp.
-:class: only-dark
-:width: 440px
+```{include} _generated/radar_detailed.md
 ```
-
-*Tensor frameworks and CuPy write whole-array code for a lockstep batch; Warp and RAPTOR write closer to the
-thread or the sample and let samples branch and stop independently — the overlaps are complementary, not a
-ranking.*
 
 ```{image} _static/figures/stack_light.svg
 :alt: A stack diagram. At the top, "you write" a hawk kernel in Python. Below it, eagle runs the kernel with launches, graphs and compaction, on CPU or GPU, and hawk kernels run through eagle. At the base are the two foundations, aether (a header-only C++23 numerics core that eagle builds on) and raptor (the dependency-free contracts foundation that both eagle and hawk declare). At the very bottom, "it runs on" CPU and GPUs.
@@ -79,8 +68,7 @@ RAPTOR addresses each of these by construction:
 - a finished sample does no further work, and active-set compaction (packing the still-running samples together so finished ones stop occupying GPU lanes) keeps the live samples packed, removing the dead lanes;
 - one source serves both machines, so there is no second codebase to drift.
 
-The point is to bring this class of problems toward the efficiency the hardware already delivers on dense tensor work, measured
-against the device's own peak.
+The point is to bring this class of problems toward the device's own peak, which the cards report as a fraction of FP64 peak.
 
 ### What happens to finished samples
 
@@ -143,7 +131,7 @@ One level down, a kernel compiled elsewhere deploys through
 - **Launch overhead taken off the table.** eagle captures whole pipelines as CUDA graphs and replays them, re-tuning
   **launch geometry** (how the work is split across GPU threads) between replays.
 - **Contracts, not glue.** raptor's manifest describes what a compiled kernel computes and how to call it, so a kernel
-  built once can be deployed into any host that speaks the contract.
+  built once can be deployed into any host that can load the contract; today eagle is that loader.
 
 ## What RAPTOR is not
 
@@ -159,7 +147,7 @@ or clearer:
 | You want to… | Common approaches | What RAPTOR adds |
 |---|---|---|
 | Write a custom GPU kernel from Python | write a CUDA C string for CuPy's `RawKernel`, a Numba CUDA kernel, a Triton kernel (GPU-focused), or an NVIDIA Warp kernel (one source for CPU and CUDA) | write a typed Python function once; hawk emits it for the GPU and the CPU, with per-sample state and termination declared in the signature |
-| Differentiate a custom kernel | write the backward pass yourself (e.g. a `torch.autograd.Function` or `jax.custom_vjp`), or use NVIDIA Warp, which differentiates its kernels in reverse mode | hawk derives both reverse- and forward-mode derivatives of the kernel itself, as kernels you can run anywhere the **primal** (the original kernel) runs |
+| Differentiate a custom kernel | write the backward pass yourself (e.g. a `torch.autograd.Function` or `jax.custom_vjp`), or use NVIDIA Warp, whose emphasis is reverse mode on its tape | hawk derives both reverse- and forward-mode derivatives of the kernel itself, as kernels you can run anywhere the **primal** (the original kernel) runs |
 | Run a batch where each sample branches and stops early | vectorise with `vmap`/masks, so finished samples keep occupying the batch | each sample owns its state and a `terminated` flag; finished samples stop working |
 | Run the same algorithm on CPU and GPU | keep two code paths or two programming models (Warp is a notable exception) | one source, two compile targets, same results to within floating point; the CPU build doubles as the reference you test the GPU against |
 | Remove launch overhead from a pipeline | use each framework's own capture API (e.g. `torch.cuda.graph`, Warp's `ScopedCapture`) around the calls | eagle captures and replays the pipeline, with microsecond-class re-tuning of launch sizes between replays |
@@ -201,8 +189,8 @@ two results checked to agree — is
 | **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy (DLPack / array interface) |
 | **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream |
 | **PyTorch** | you train neural networks or need its ecosystem of models and operators | handing tensors over DLPack; a RAPTOR kernel can feed or consume a torch model |
-| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | exchanging arrays over DLPack (JAX support is on our roadmap; see below) |
-| **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (on our roadmap) |
+| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | exchanging arrays over DLPack (not among the certified crossings today; see below) |
+| **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (not among the certified crossings today) |
 | **Numba** | you want to JIT (just-in-time compile — turn a Python function into machine code the first time it runs) ordinary Python loops on the CPU, or write CUDA kernels in Python's CUDA dialect | either side can consume the other's arrays |
 | **Triton** | you are writing high-performance dense GPU operators, especially for machine learning | composing at the array level |
 | **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways; see {ref}`hawk-next-to-warp` for what each makes easier |
@@ -229,30 +217,8 @@ page above.
 
 ### What compaction and `eagle.simulate` actually save
 
-<!-- stale-prose-gate:
-benchmarks/perf_card/card_quadro-p2000.json: d37837fb31567858848e5f1830f19431
--->
-
-The [performance card](https://amasat01.github.io/eagle/content/performance.html) measures this on a development GPU
-(Quadro P2000), one million samples integrated for up to 1000 steps.
-
-On a batch where samples finish at different times:
-
-- the compacted graph takes 415 ms, against 625 ms for the identical workload run without compaction — what
-  compaction itself saves at fixed work;
-- an occasional physical reorder layered on top, opt-in and triggered only once the live samples have thinned and
-  scattered, cuts that further to 279 ms;
-- `eagle.simulate` — the policy that picks between these approaches at run time, so nobody has to choose by hand —
-  reaches 156 ms on this same batch, ahead of NVIDIA Warp (609 ms), JAX (1.36 s), CuPy (7.38 s) and PyTorch (7.4 s)
-  on this card.
-
-On a batch where every sample runs the full 1000 steps instead, there is nothing to compact, and the plain graph is
-the better fit: 703 ms against 862 ms for the compacted graph, whose periodic active-set scan runs with no idle
-lanes left to recover. NVIDIA Warp's per-thread kernel and `eagle.simulate` tie here (693 ms and 699 ms), and the two are level at N = 10,000
-(7.22 ms against 7.22 ms) — worth knowing about. The card also lists the regimes where another approach
-is the better fit: on this FP64-weak development card the 8-thread CPU build is faster than every GPU arm on the dense
-batch (191 ms against 699 ms), and the same computation written as masked CuPy array code is the better fit when
-array-style code matters more than wall time.
+```{include} _generated/compaction_numbers.md
+```
 
 (same-task-five-ways)=
 ### Same task, five ways

@@ -13,9 +13,24 @@ Every command below installs into one prefix, `${CONDA_PREFIX}` if you use conda
 |---|---|---|
 | CMake | ≥ 3.20 | aether, eagle |
 | C++ compiler | C++23 — GCC ≥ 12 or Clang ≥ 16 | aether, eagle; stated identically by both |
-| CUDA toolkit | CUDA 12.6 or newer (tested with 12.6 and 13.0) | Optional — build with `AETHER_CPP_MODE=ON` / `EAGLE_CPP_MODE=ON` and the libraries run on GPUs or on CPU threads (OpenMP) from the same source. eagle's Python package is always a CUDA build (see Pitfalls). |
-| nvcc host-compiler ceiling | GCC 13 for CUDA 12.6 | nvcc accepts a host compiler only up to its own ceiling; pass `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` if your default compiler is newer |
-| Python | ≥ 3.9 for all four packages | hawk and eagle are tested on CPython 3.9–3.14, including free-threaded 3.13t and 3.14t |
+| CUDA toolkit | CUDA 12.6 or newer (the toolkit versions the cards were built with are recorded on each card) | Optional — build with `AETHER_CPP_MODE=ON` / `EAGLE_CPP_MODE=ON` and the libraries run on GPUs or on CPU threads (OpenMP) from the same source. eagle's Python package is always a CUDA build (see Pitfalls). |
+| nvcc host-compiler ceiling | depends on the toolkit release (see NVIDIA's host-compiler table) | nvcc accepts a host compiler only up to its own ceiling; pass `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` if your default compiler is newer |
+| Python | ≥ 3.9 for all four packages | hawk and eagle are tested on the CPython versions in their `pyproject.toml`, including the free-threaded builds (on those, eagle has no CuPy wheel, so it takes the CPU route) |
+
+(compatibility)=
+## Compatibility: shipped, required, measured
+
+Shipped is in the wheel, required is what your machine needs, measured is what the cards ran on.
+
+| | Shipped | Required | Measured |
+|---|---|---|---|
+| GPU architectures | Pascal (sm_60) through Blackwell, plus PTX for newer GPUs | an NVIDIA driver; no CUDA toolkit for the wheel | table below |
+| CUDA | `[cuda12]` and `[cuda13]` extras | a source build: CUDA 12.6 or newer | table below |
+| Host compiler | host `g++` (hawk compiles kernels with it) | source build: GCC 12+ or Clang 16+ (within nvcc's host-compiler limit) | table below |
+| CPUs | wheels for Linux x86_64 only | | x86-64 and aarch64, second table |
+
+```{include} _generated/compatibility.md
+```
 
 ## Install, in dependency order
 
@@ -86,10 +101,17 @@ Full details: [eagle's installation page](https://amasat01.github.io/eagle/conte
 primary one. No CUDA toolchain is needed to install it.
 
 ```bash
-cd aether
-pip install ./dsc
-cd ..
+pip install aether-dsc
 ```
+
+From a clone instead, seal the payload first (it needs an eagle checkout next to aether), then install it:
+
+```bash
+cd aether/dsc && python -m aether_dsc.seal && cd ../..
+pip install ./aether/dsc
+```
+
+Without the seal step the package installs empty and hawk cannot find `aether/aether.h`.
 
 Full details: [aether's installation page](https://amasat01.github.io/aether/content/installation.html).
 
@@ -149,8 +171,7 @@ aether/tests/check_gate.sh cpp aether/build/tests/aether_tests   # or: cuda, for
 
 ## Pitfalls
 
-- **nvcc rejects your host compiler.** nvcc accepts host compilers only up to its own ceiling (GCC 13 for CUDA
-  12.6). Fix: `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` on the CMake configure line (or appended to
+- **nvcc rejects your host compiler.** nvcc accepts host compilers only up to a ceiling that depends on the toolkit release (for example GCC 13 for CUDA 12.6; later toolkits differ). Fix: `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` on the CMake configure line (or appended to
   `SKBUILD_CMAKE_ARGS` for eagle's Python package).
 - **Edited a source file, forgot to rebuild.** `import hawk` refuses a `hawk._core` whose build digest disagrees
   with the sources beside it, naming both digests and the loaded binding's path. Fix: `pip install -e .

@@ -61,10 +61,11 @@ html_theme = "sphinx_book_theme"
 # the theme's own toggle attribute rather than prefers-color-scheme.
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
-# js/thread.js: the hero's thread animation.
+# js/thread.js: the hero's thread animation. js/perf-state.js: the shared device state and the
+# runtime bars' info lines. js/radar.js: the landing radar.
 # Plays once on index.md; mount() is called inline, right after the figure,
 # since no other page loads a <svg id="thread">.
-html_js_files = ["js/thread.js"]
+html_js_files = ["js/thread.js", "js/perf-state.js", "js/radar.js", "js/visuals.js"]
 
 html_theme_options = {
     "repository_url": "https://github.com/amasat01/amasat01.github.io",

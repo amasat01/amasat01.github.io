@@ -18,8 +18,11 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from palette import tool_palette  # noqa: E402
 REPO_ROOT = HERE.parent
 
 MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"
@@ -41,7 +44,7 @@ THEMES = {
         suffix="",
         bg="#fcfcfb", caption="#52514e", heading="#0b0b0b",
         box_fill="#ffffff", box_stroke="#e1e0d9", divider="#e1e0d9",
-        warp_accent="#9a6a00", raptor_accent="#6b3fc4",
+        warp_accent=tool_palette("light")["warp"], raptor_accent=tool_palette("light")["raptor"],
         code_default="#0b0b0b", code_comment="#8f5902",
         code_keyword="#204a87", code_name="#0b0b0b", code_builtin="#5c35cc",
         code_number="#0000cf",
@@ -53,7 +56,7 @@ THEMES = {
         suffix="-d",
         bg="#1a1a19", caption="#c3c2b7", heading="#ffffff",
         box_fill="#242422", box_stroke="#2c2c2a", divider="#2c2c2a",
-        warp_accent="#edb94a", raptor_accent="#a88bf0",
+        warp_accent=tool_palette("dark")["warp"], raptor_accent=tool_palette("dark")["raptor"],
         code_default="#f8f8f2", code_comment="#959077",
         code_keyword="#66d9ef", code_name="#a6e22e", code_builtin="#a6e22e",
         code_number="#ae81ff",

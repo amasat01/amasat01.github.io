@@ -22,7 +22,8 @@ import xml.dom.minidom
 SITE_ROOT = pathlib.Path(__file__).resolve().parent.parent
 FIGURES_DIR = SITE_ROOT / "_static" / "figures"
 
-# Pages that are allowed to reference figures (figures 1
+# Pages that are allowed to reference figures (the two-axis map was replaced by
+# the detailed radar, generated; figures 1
 # and 3 on where_raptor_fits.md, figure 1 small on index.md, figure 2 next to
 # the finished-samples explanation -- also on where_raptor_fits.md; the
 # what_you_write Warp/RAPTOR comparison sits next to "Same task, five ways",
@@ -78,7 +79,6 @@ class FigureReferencesResolve(unittest.TestCase):
         self.assertTrue(directives, "no {image} directives found on the landing pages")
         stems = {pathlib.Path(d["path"]).name for d in directives}
         for expected in (
-            "where_raptor_fits_light.svg", "where_raptor_fits_dark.svg",
             "stack_light.svg", "stack_dark.svg",
             "finished_samples_light.svg", "finished_samples_dark.svg",
             "what_you_write_light.svg", "what_you_write_dark.svg",

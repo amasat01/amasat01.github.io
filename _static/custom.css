@@ -43,10 +43,6 @@
   --mark-eagle: #cf416b;
   --mark-hawk: #c18711;
   --mark-neutral: rgba(127, 126, 120, 0.5);
-  /* other tools in comparison figures: chip dots and regions only. */
-  --tool-pytorch: #ee4c2c;
-  --tool-jax: #1a9a8c;
-  --tool-numba: #00a3e0;
 }
 :root, html[data-theme="light"] {
   --raptor: #7245ce; --raptor-soft: #c9b8f2; --raptor-wash: #eee8fb;
@@ -57,8 +53,6 @@
   --rpt-surface: #fcfcfb; --rpt-panel: #ffffff;
   --rpt-ink: #0b0b0b; --rpt-ink-secondary: #52514e;
   --on-raptor: #ffffff;
-  --tool-cupy: #518d05; --tool-warp: #306101;
-  --tool-numpy: #4d77cf;
 }
 html[data-theme="dark"] {
   --raptor: #9269f5; --raptor-soft: #5a46a0; --raptor-wash: #2a2240;
@@ -69,8 +63,25 @@ html[data-theme="dark"] {
   --rpt-surface: #1a1a19; --rpt-panel: #242422;
   --rpt-ink: #ffffff; --rpt-ink-secondary: #c3c2b7;
   --on-raptor: #1a1a19;
-  --tool-cupy: #76b900; --tool-warp: #88e97e;
-  --tool-numpy: #7ea3f2;
+}
+
+/* ---- The tool palette: ONE categorical set for every chip, bar, radar and figure; tools/palette.py reads
+ * this block, so nothing else spells a tool colour. Each tool keeps the hue family of its own brand; only
+ * lightness and saturation move per theme. Chosen by search so that, within each set shown together (GPU:
+ * raptor, Warp, JAX, PyTorch, CuPy; CPU: raptor, Numba, JAX, PyTorch, NumPy), every pair stays distinct
+ * under normal vision, deuteranopia, protanopia and tritanopia (Machado simulation, floor 10 in CIE Lab) and
+ * every stroke is >= 3:1 on the light and the dark page. Brand sources (logo colours quoted from memory,
+ * not verified offline): raptor = the family purple; PyTorch = brand orange-red #EE4C2C; NVIDIA Warp =
+ * NVIDIA green #76B900; JAX = the teal-green of its logo; CuPy = the green of its logo; Numba = the
+ * blue-cyan of its logo; NumPy = the blue of its logo (#4D77CF family). Warp and CuPy share the green family
+ * (lime vs a darker, bluer green) and Numba and NumPy the blue family; they are separated by lightness. ---- */
+:root, html[data-theme="light"] {
+  --tool-raptor: #7d53dc; --tool-warp: #6d9f09; --tool-jax: #0e9d9b; --tool-pytorch: #df5345;
+  --tool-cupy: #157b21; --tool-numba: #0f7da7; --tool-numpy: #1e47b5;
+}
+html[data-theme="dark"] {
+  --tool-raptor: #9269f5; --tool-warp: #b6fd13; --tool-jax: #36fcd8; --tool-pytorch: #eb7e61;
+  --tool-cupy: #22d434; --tool-numba: #7fcdf0; --tool-numpy: #8aa3f2;
 }
 
 /* ---- Typography: applies site-wide (every page, new type + tokens, not a
@@ -106,6 +117,19 @@ code, pre, kbd,
 .rpt-hero { padding: 8px 0 0; text-align: left; }
 .rpt-hero h1 { font-size: var(--s5); line-height: 1.05; margin: 0; max-width: 26ch; color: var(--rpt-ink); }
 .rpt-hero h1 span { display: block; text-wrap: balance; }
+.rpt-lead-dense { font-size: 15px; line-height: 1.5; max-width: 54ch; margin: 8px 0 0; color: var(--rpt-ink-secondary); }
+.rpt-sub { font-size: 15px; max-width: 54ch; margin: 10px 0 0; color: var(--rpt-ink-secondary); }
+.rpt-actions .rpt-cpu { display: block; flex-basis: 100%; font-size: 13px; color: var(--rpt-ink-secondary); }
+.rpt-actions .rpt-cpu code { margin-right: 6px; }
+.rpt-docs { position: relative; }
+.rpt-docs summary { list-style: none; cursor: pointer; color: var(--rpt-ink); font-size: 15px; }
+.rpt-docs summary::-webkit-details-marker { display: none; }
+.rpt-docs summary::after { content: " \25BE"; font-size: 12px; }
+.rpt-docs summary:hover { text-decoration: underline; }
+.rpt-docs summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.rpt-docs-list { position: absolute; right: 0; z-index: 10; margin-top: 8px; padding: 8px 0; min-width: 220px; background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 6px; }
+.rpt-docs-list a { display: block; padding: 6px 14px; white-space: nowrap; }
+.rpt-docs-list small { display: block; font-size: 12px; color: var(--rpt-ink-secondary); }
 .rpt-lead { font-size: var(--s1); line-height: 1.5; max-width: 54ch; margin: 24px 0 0; color: var(--rpt-ink-secondary); }
 .rpt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin: 28px 0 0; }
 .rpt-actions .btn { display: inline-block; background: var(--raptor); color: var(--on-raptor); text-decoration: none;
@@ -209,6 +233,20 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
   .perf-switch { padding-inline: 12px; }
 }
 
+/* "How it compares": the bars' two views, "Wall time" | "Uneven-batch efficiency". The buttons
+ * only show once the script runs (they would do nothing without it); the script sets
+ * data-bars on .perf-switch, and without it the wall-time view shows. */
+.bars-toggle { display: none; margin: 16px 0 0; border: 1px solid var(--rpt-border); border-radius: 999px; padding: 3px; background: var(--rpt-panel); }
+.bars-js .bars-toggle { display: inline-flex; flex-wrap: wrap; }
+.bars-opt { cursor: pointer; font: inherit; font-size: 14px; font-weight: var(--w-strong); padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--rpt-ink-secondary); }
+.bars-opt:hover { color: var(--rpt-ink); }
+.bars-opt[aria-pressed="true"] { background: var(--raptor-wash); color: var(--rpt-ink); box-shadow: inset 0 0 0 1px var(--raptor-soft); }
+.bars-opt:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.perf-switch .bars-view { display: none; }
+.perf-switch:not([data-bars]) .bars-wall, .perf-switch[data-bars="wall"] .bars-wall, .perf-switch[data-bars="eff"] .bars-eff,
+.perf-switch[data-bars="early"] .bars-early { display: block; }
+@media (max-width: 720px) { .bars-opt { padding: 6px 12px; } }
+
 /* "Four libraries": a plain list (no cards --
  * cards are a SaaS-kit tell). */
 .rpt-lib-list { list-style: none; margin: 20px 0 0; padding: 0; max-width: 68ch; }
@@ -234,8 +272,265 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
   .rpt-pair { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .chart .row { grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 5px 0 7px; }
   .axis-note { margin-left: 0; }
-  .chart, .axis-note { padding-inline: 12px; }  /* the chart sits in a grid row with -12px gutters */
+  .chart, .axis-note { padding-inline: 16px; }  /* the chart sits in a grid row with -12px gutters */
+  .chart .track { margin-right: 0; width: calc(100% - 84px); }  /* a fixed label column: the longest value ("1.54 ms", "100%") always fits */
+  .chart .row { min-width: 0; }
   .rpt-lib-list li { flex-wrap: wrap; }
   .rpt-lib-list a { margin-left: 0; }
 }
+
+/* "How it compares": hover and focus on a runtime bar. The row grows by transform only
+ * (no layout shift), takes its tool's colour, and the other rows dim a little; the info
+ * line is a popover on hover/focus and sits under the row once pinned (.open). */
+.chart .row[tabindex] { position: relative; outline: none; }
+.chart .row[tabindex] .fill { transform-origin: left center; transition: transform 0.12s, background-color 0.12s; }
+.chart .row[tabindex] { transition: opacity 0.12s; }
+.chart .row[tabindex]:hover .fill, .chart .row[tabindex]:focus-visible .fill { background: var(--tool); transform: scaleY(1.31); }
+.chart:has(.row[tabindex]:hover) .row[tabindex]:not(:hover),
+.chart:has(.row[tabindex]:focus-visible) .row[tabindex]:not(:focus-visible) { opacity: 0.55; }
+.chart .row[tabindex]:focus-visible { box-shadow: 0 0 0 2px var(--raptor); border-radius: 6px; }
+.chart .rinfo { display: none; position: absolute; left: 0; top: 100%; z-index: 6; max-width: 460px; margin-top: 2px;
+  padding: 8px 10px; font-size: 13px; line-height: 1.45; color: var(--rpt-ink); background: var(--rpt-panel);
+  border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
+.chart .row:hover .rinfo, .chart .row:focus-visible .rinfo { display: block; }
+.chart .row.open .rinfo { display: block; position: static; grid-column: 1 / -1; max-width: none; margin: 2px 0 4px;
+  padding: 0; border: 0; box-shadow: none; background: none; pointer-events: auto; color: var(--rpt-ink-secondary); }
+
+/* The landing radar (radar_gpu.md / radar_cpu.md) and its detailed mode (radar_detailed.md), drawn by
+ * js/radar.js. Tool colours are the palette tokens above. Type hierarchy on the chart: axis name >
+ * direction > ring units. On a column narrower than 720px the names are replaced by numbers and a list. */
+.radar { margin: 36px 0 0; max-width: 100%; container-type: inline-size; }
+.radar-detailed { max-width: 1100px; }
+.radar-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.radar-leg { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; font-size: 15px;
+  color: var(--rpt-ink); background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 999px; padding: 4px 13px; }
+.radar-leg .chip { width: 10px; height: 10px; border-radius: 50%; background: var(--c); border: 2px solid var(--c); box-sizing: border-box; }
+.radar-leg:hover, .radar-leg.is-hl { border-color: var(--c); }
+.radar-leg.is-hl { font-weight: var(--w-strong); }
+.radar-leg[aria-pressed="false"] { opacity: 0.5; }
+.radar-leg[aria-pressed="false"] .chip { background: transparent; }
+.radar-leg:focus-visible, .radar-axis:focus-visible, .radar-axlist li:focus-visible, .radar-data summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.radar-stage { position: relative; max-width: 780px; margin-inline: auto; }
+.radar-detailed .radar-stage { max-width: 780px; }
+.radar-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--rpt-border); stroke-width: 1; opacity: 0.7; }
+.radar-spoke { stroke: var(--rpt-muted); stroke-width: 1; }
+.radar-tick { stroke: var(--rpt-ink); stroke-width: 2; }
+.radar-axis { cursor: pointer; fill: var(--rpt-ink); }
+.radar-axis .radar-name { font-size: 16px; font-weight: var(--w-strong); }
+.radar-axis.q .radar-name { font-style: italic; }
+.radar-axis .radar-dir { font-size: 13px; fill: var(--rpt-ink-secondary); }
+.radar-hring { font-size: 13px; fill: var(--rpt-ink); pointer-events: none; paint-order: stroke; stroke: var(--rpt-surface); stroke-width: 4px; stroke-linejoin: round; }
+.radar-band { fill: none; stroke: var(--rpt-muted); stroke-width: 2; opacity: 0.55; pointer-events: none; }
+.radar-pill { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1; opacity: 0.95; pointer-events: none; }
+.radar-bandlabel { font-size: 12px; fill: var(--rpt-ink-secondary); }
+.radar-detailed .radar-pill { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1; opacity: 0.95; pointer-events: none; }
+.radar-bandlabel { font-size: 14px; }
+.radar-axis:hover .radar-name { text-decoration: underline; }
+/* Axis icons: 24-grid line icons from the sprite at the top of each radar block, one stroke width, the text colour. */
+.radar-icon { color: var(--rpt-ink); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.radar-icon.disc { display: none; cursor: pointer; }
+.radar-icon .hit { fill: transparent; stroke: none; }
+.radar-icon.disc:focus-visible { outline: none; }
+.radar-icon.disc:focus-visible .hit { stroke: var(--raptor); stroke-width: 2; }
+.radar-icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.radar-axlist .ic { display: none; vertical-align: -4px; margin-right: 6px; }
+.radar-area { fill: var(--c); fill-opacity: 0.09; stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; transition: fill-opacity 0.15s; }
+.radar-vertex { display: none; fill: var(--c); stroke: var(--rpt-panel); stroke-width: 1.5; }
+.radar-vertex.q { fill: var(--rpt-panel); stroke: var(--c); stroke-width: 2.5; }
+.radar-tool.is-hl .radar-vertex, .radar-tool:focus-within .radar-vertex { display: block; }
+.radar.has-hl .radar-tool:not(.is-hl) .radar-area { fill-opacity: 0.03; stroke-opacity: 0.35; }
+.radar-tool.is-hl .radar-area { fill-opacity: 0.45; }
+.radar-tool.is-off { display: none; }
+.radar-tip { position: absolute; z-index: 6; max-width: 280px; padding: 8px 10px; font-size: 13px; line-height: 1.45; color: var(--rpt-ink);
+  background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
+.radar-tip.wide { left: 0; max-width: 100%; width: max-content; }
+.radar-tip.wide.inflow { position: static; width: auto; margin: 8px 0 0; }
+.radar-mlist .mtool { margin: 6px 0 0; }
+.radar-mlist .mhead { font-size: 13px; }
+.radar-mlist .mhead .chip { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--c); }
+.radar-mlist .mrow { margin-left: 14px; font-size: 12.5px; line-height: 1.35; }
+.radar-mlist .mn { color: var(--rpt-ink-secondary); }
+.radar-tip[hidden], .radar-dev[hidden] { display: none; }
+/* a major's tooltip: its minors as a table (tools down, minors across) and the minors' radii as ticks on its spoke */
+.radar-mwrap { margin: 6px 0 4px; max-width: 100%; }
+.radar-mtable { border-collapse: collapse; font-size: 12px; line-height: 1.3; }
+.radar-mtable th, .radar-mtable td { padding: 3px 8px 3px 0; text-align: left; vertical-align: top; border-top: 1px solid var(--rpt-border); }
+.radar-mtable tr:first-child th { border-top: 0; color: var(--rpt-ink-secondary); font-weight: var(--w-regular, 400); vertical-align: bottom; }
+.radar-mtable th.q { font-style: italic; }
+.radar-mtable tbody th, .radar-mtable tr th[scope="row"] { white-space: nowrap; font-weight: var(--w-strong); }
+.radar-mtable .chip { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--c); }
+.radar-mtable .v { font-weight: var(--w-strong); white-space: nowrap; }
+.radar-mtable .r, .radar-mtable .a { color: var(--rpt-ink-secondary); max-width: 12em; overflow-wrap: anywhere; }
+.radar-mtable .miss { color: var(--rpt-ink-secondary); font-style: italic; }
+.radar-mtick { fill: var(--c); stroke: var(--rpt-panel); stroke-width: 1.2; pointer-events: none; }
+.radar-mtick.q { fill: var(--rpt-panel); stroke: var(--c); stroke-width: 1.8; }
+.radar-table tr.minor th { padding-left: 1.2em; font-weight: normal; color: var(--rpt-ink-secondary); }
+.radar-table tr.major th { font-weight: var(--w-strong); }
+.radar .axis-note.radar-note-lead { max-width: none; }
+@container (max-width: 719px) { .radar-mtable { font-size: 11px; } .radar-mtable th, .radar-mtable td { padding-right: 5px; } .radar-mtable .r, .radar-mtable .a { max-width: 7em; } }
+.radar-tip-h { font-weight: var(--w-strong); }
+.radar-tip-s { color: var(--rpt-ink-secondary); }
+.radar .axis-note { margin-left: 0; max-width: 68ch; }
+.radar-data { margin: 6px 0 0; overflow-x: auto; }
+.radar-data summary { cursor: pointer; font-size: 14px; color: var(--rpt-ink-secondary); }
+.radar-howto { margin-top: 10px; }
+.radar-howto .radar-note { max-width: 70ch; }
+.radar-howto-list { margin: 8px 0 8px; padding-left: 18px; max-width: 70ch; font-size: 14px; color: var(--rpt-ink-secondary); }
+.radar-howto-list li { margin: 3px 0; }
+.radar-table { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.radar-table th, .radar-table td { border-top: 1px solid var(--rpt-border); padding: 4px 10px 4px 0; text-align: left; vertical-align: top; }
+.radar-axlist { display: none; margin: 10px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 20px; font-size: 14px; }
+.radar-axlist li { break-inside: avoid; padding: 3px 0; cursor: pointer; }
+.radar-defs { margin: 12px 0 0; font-size: 14px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+.radar-defs dt { font-weight: var(--w-strong); }
+.radar-defs dd { margin: 0; color: var(--rpt-ink-secondary); }
+@media (max-width: 700px) { .radar-defs { grid-template-columns: 1fr; gap: 0; } .radar-defs dd { margin-bottom: 8px; } }
+.radar-axlist .n { display: inline-block; min-width: 1.6em; font-weight: var(--w-strong); }
+.radar-axlist .d { display: block; margin-left: 1.6em; font-size: 13px; color: var(--rpt-ink-secondary); }
+/* the explanation panel sits under the chart; it stays in view while the chart is */
+.radar-panel { position: sticky; bottom: 8px; z-index: 3; max-height: 45vh; overflow: auto; margin-top: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.5;
+  color: var(--rpt-ink); background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 10px; overflow-wrap: anywhere; }
+.radar-panel > * { margin: 0 0 8px; }
+.radar-panel-h { font-weight: var(--w-strong); font-size: 16px; }
+.radar-panel-hint { color: var(--rpt-ink-secondary); }
+.radar-panel-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.radar-panel-row.is-off { opacity: 0.45; }
+.radar-panel-row .chip { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.radar-panel-why { margin-left: 17px; font-size: 13px; }
+.radar-panel a { font-size: 14px; }
+@container (max-width: 719px) {
+  .radar:not(.radar-detailed) .radar-axis, .radar:not(.radar-detailed) .radar-axis .radar-name, .radar:not(.radar-detailed) .radar-icon.wide { display: none; }
+  /* an icon stands in for each name (no ring numbers are drawn); the list under the chart gives icon -> name once */
+  .radar:not(.radar-detailed) .radar-icon.disc { display: block; }
+  .radar:not(.radar-detailed) .radar-axlist { display: block; }
+  .radar:not(.radar-detailed) .radar-axlist .n { display: none; }
+  .radar:not(.radar-detailed) .radar-axlist .ic { display: inline-block; }
+  .radar:not(.radar-detailed) .radar-axlist .d { margin-left: 26px; }
+}
+/* the detailed radar has 16 axes: its names stay down to a phone-width column */
+@container (max-width: 559px) {
+  .radar-detailed .radar-axis, .radar-detailed .radar-axis .radar-name, .radar-detailed .radar-icon.wide { display: none; }
+  .radar-detailed .radar-icon.disc { display: block; }
+  .radar-detailed .radar-axlist { display: block; }
+  .radar-detailed .radar-axlist .n { display: none; }
+  .radar-detailed .radar-axlist .ic { display: inline-block; }
+  .radar-detailed .radar-axlist .d { margin-left: 26px; }
+}
+@container (max-width: 460px) { .radar-axlist { columns: 1; } }
+
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* The two-worlds chart (.worlds) and the rosette (.rosette), drawn on the server and shown by js/visuals.js. Tool colours are the
+ * palette tokens above; the world tints are local. Below 640 px of column the labels give way to icons and a key list. */
+.worlds, .rosette { --world-sim: #8d8da8; --region: #f3f3f8; --region2: #e9e9f1; margin: 36px 0 0; max-width: 100%; container-type: inline-size; position: relative; }
+html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim: #9a9ac4; --region: #1e1e26; --region2: #26262f; }
+.worlds-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.worlds-leg { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; font-size: 15px; color: var(--rpt-ink); background: var(--rpt-panel);
+  border: 1px solid var(--rpt-border); border-radius: 999px; padding: 4px 13px; }
+.worlds-leg .chip { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
+.worlds-leg .mono { display: none; font-size: 11px; font-weight: 700; color: #fff; }
+.worlds-leg:hover, .worlds-leg.is-hl { border-color: var(--c); }
+.worlds-leg.is-hl { font-weight: var(--w-strong); }
+.worlds-leg:focus-visible, .wnode:focus-visible, .rnode:focus-visible, .rsector:focus-visible, .pick:focus-visible, .worlds-key li:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.worlds-status { display: none; min-height: 1.4em; margin: 0 0 4px; font-size: 14px; color: var(--rpt-ink-secondary); }
+.worlds-stage { position: relative; max-width: 1000px; margin-inline: auto; }
+.worlds-dev[hidden], .worlds-pop[hidden], .rosette-sector[hidden] { display: none; }
+.worlds-narrow, .worlds-key { display: none; }
+.worlds-svg, .rosette-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.vis-icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.world-title { fill: var(--rpt-ink); font-weight: 700; }
+.world-sub { fill: var(--rpt-ink-secondary); font-weight: 400; }
+.blob { fill: var(--c); fill-opacity: 0.11; stroke: var(--c); stroke-opacity: 0.6; stroke-width: 1.3; stroke-linejoin: round; cursor: pointer; transition: fill-opacity 0.15s, stroke-opacity 0.15s; }
+.blob.band { fill-opacity: 0.1; stroke-opacity: 1; stroke-width: 1.4; }
+.has-hl .blob:not(.is-hl) { fill-opacity: 0.03; stroke-opacity: 0.15; }
+.blob.is-hl { fill-opacity: 0.22; stroke-opacity: 1; stroke-width: 2.4; }
+.has-hl .arc:not(.is-hl) { opacity: 0.2; }
+.bname { display: none; font-size: 16px; font-weight: 700; pointer-events: none; }
+.bname.is-hl { display: block; }
+.node { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1.3; }
+.wnode.none .node { stroke: var(--rpt-muted); stroke-dasharray: 3 2; }
+.arc { fill: none; stroke-width: 3.5; }
+.worlds .ic, .rosette .ic { color: var(--rpt-ink); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.hit { fill: transparent; stroke: none; }
+.wnode, .rnode, .rsector { cursor: pointer; outline: none; }
+.wnode:focus-visible .node, .rnode:focus-visible .node, .wnode.xh .node, .rnode.xh .node { stroke: var(--raptor); stroke-width: 2.5; }
+.nlabel { font-size: 11px; fill: var(--rpt-ink); }
+.leader { stroke: var(--rpt-muted); stroke-width: 1; pointer-events: none; }
+.nlabel.q, .slabel.q { font-style: italic; }
+.nlabel.xh { font-weight: var(--w-strong); }
+.slabel { font-size: 15px; font-weight: 600; fill: var(--rpt-ink); }
+.centre { font-size: 12px; fill: var(--rpt-ink-secondary); text-anchor: middle; }
+.centre.h { font-size: 14px; font-weight: 600; fill: var(--rpt-ink); }
+.wedge { fill: var(--region); stroke: var(--rpt-surface); stroke-width: 2; }
+.wedge.alt { fill: var(--region2); }
+.rosette.has-focus [data-sector]:not(.is-focus):not(.wedge) { opacity: 0.3; }
+.wedge.is-focus { stroke: var(--raptor); }
+.rosette-picker { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0 0; }
+.pick { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--rpt-border); background: var(--rpt-panel); align-items: center; justify-content: center; cursor: pointer; padding: 0; color: var(--rpt-ink); }
+.pick svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.pick.on { border-color: var(--raptor); box-shadow: inset 0 0 0 2px var(--raptor); }
+.worlds-pop { position: absolute; z-index: 6; max-width: 520px; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--rpt-ink); background: var(--rpt-panel);
+  border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
+.worlds-pop.inflow { position: static; max-width: none; margin: 8px 0 0; }
+.wp-h { font-weight: var(--w-strong); }
+.wp-s { color: var(--rpt-ink-secondary); margin-top: 4px; }
+.wp-t { border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.wp-t th, .wp-t td { padding: 2px 8px 2px 0; text-align: left; vertical-align: top; border-top: 1px solid var(--rpt-border); }
+.wp-t tr:first-child th { border-top: 0; color: var(--rpt-ink-secondary); font-weight: normal; }
+.wp-t td .v { display: block; font-weight: var(--w-strong); white-space: nowrap; }
+.wp-t td .r { display: block; color: var(--rpt-ink-secondary); }
+.wp-t td.no .v { font-weight: normal; }
+.wp-t .miss { color: var(--rpt-ink-secondary); font-style: italic; }
+.worlds .axis-note, .rosette .axis-note { margin-left: 0; max-width: 72ch; }
+.worlds-table { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.worlds-table caption { text-align: left; color: var(--rpt-ink-secondary); padding: 4px 0; }
+.worlds-table th, .worlds-table td { border-top: 1px solid var(--rpt-border); padding: 4px 10px 4px 0; text-align: left; vertical-align: top; }
+.worlds-table th.q { font-style: italic; }
+.worlds-table td.miss { color: var(--rpt-ink-secondary); font-style: italic; }
+.worlds-table tr.xh th { font-weight: var(--w-strong); }
+.worlds-key { margin: 10px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 20px; font-size: 14px; }
+.worlds-key li { break-inside: avoid; padding: 3px 0; cursor: pointer; }
+.worlds-key .ic { vertical-align: -4px; margin-right: 6px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; color: var(--rpt-ink); }
+.worlds-key .kw { color: var(--rpt-ink-secondary); margin-left: 6px; font-size: 12.5px; }
+@container (max-width: 639px) {
+  .worlds-wide, .worlds .worlds-wide, .rosette .worlds-wide { display: none; }
+  .worlds-narrow { display: block; }
+  .worlds-status { display: block; }
+  .worlds-key { display: block; }
+  .worlds-leg { padding: 3px; }
+  .worlds-leg .nm { display: none; }
+  .worlds-leg .chip { width: 24px; height: 24px; }
+  .worlds-leg .mono { display: inline; }
+}
+@container (max-width: 460px) { .worlds-key { columns: 1; } }
+/* the Radar | Rosette toggle of the detailed view; both stay visible without script */
+.view-toggle { display: none; margin: 16px 0 0; border: 1px solid var(--rpt-border); border-radius: 999px; padding: 3px; background: var(--rpt-panel); }
+.view-js .view-toggle { display: inline-flex; }
+.view-opt { cursor: pointer; font: inherit; font-size: 14px; font-weight: var(--w-strong); padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--rpt-ink-secondary); }
+.view-opt:hover { color: var(--rpt-ink); }
+.view-opt[aria-pressed="true"] { background: var(--raptor-wash); color: var(--rpt-ink); box-shadow: inset 0 0 0 1px var(--raptor-soft); }
+.view-opt:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.perf-detailed[data-view="rosette"] .vis-radar, .perf-detailed[data-view="radar"] .vis-rosette { display: none; }
+.radar-axis.xh .radar-name { text-decoration: underline; }
+
+/* The landing radar's fan (js/radar.js): a major opens into its minors; the rest chart hides while the fan layer shows. */
+.radar-svg.is-fan > .radar-ring, .radar-svg.is-fan > .radar-spoke, .radar-svg.is-fan > .radar-tick, .radar-svg.is-fan > .radar-axis,
+.radar-svg.is-fan > .radar-icon, .radar-svg.is-fan > .radar-tools, .radar-svg.is-fan > .radar-hover-rings { display: none; }
+.radar-stage { transition: max-width 0.3s ease; }
+.radar-fan-wash { fill: var(--rpt-ink); fill-opacity: 0.045; stroke: none; }
+.radar-spoke-mean { stroke-dasharray: 4 4; }
+.radar-fan .radar-vertex { display: block; }
+.radar-mean { fill: var(--rpt-panel); stroke: var(--c); stroke-width: 2; stroke-dasharray: 2 2; pointer-events: none; }
+.radar-fan-tool.is-off { display: none; }
+.radar-fan-label.minor .radar-name { font-size: 14px; }
+.radar-fan-axis:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.radar-fan-icon:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.radar-fan-icon { cursor: pointer; }
+@container (max-width: 719px) {
+  .radar:not(.radar-detailed) .radar-fan-axis { display: none; }
+  .radar:not(.radar-detailed) .radar-fan-icon { display: block; }
+}
+@media (prefers-reduced-motion: reduce) { .radar-stage { transition: none; } }
+.radar-mean-label { font-size: 13px; fill: var(--rpt-ink-secondary); pointer-events: none; }
