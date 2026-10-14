@@ -195,6 +195,8 @@ two results checked to agree — is
 | **Triton** | you are writing high-performance dense GPU operators, especially for machine learning | composing at the array level |
 | **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways; see {ref}`hawk-next-to-warp` for what each makes easier |
 
+We have not benchmarked against Triton yet. Triton is built for tiled operators over dense tensors, while raptor targets many independent samples that each stop at their own step, the job every tool on our performance cards also does. A measured comparison with Triton is planned and will land shortly.
+
 ## How they combine
 
 Arrays cross the boundary through **DLPack**, zero-copy, with explicit stream ordering: the producer's work is ordered
