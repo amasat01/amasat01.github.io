@@ -102,7 +102,7 @@ class GlanceTable(unittest.TestCase):
         glance = out["perf_glance.md"]
         # eagle_graph (1 ms) is the only eagle arm at N=10 -> its own ratio is 1x;
         # cupy_masked (10 ms) is 10x that.
-        self.assertIn("1×", glance)
+        self.assertIn("1.0×", glance)
         self.assertIn("10×", glance)
         # the fixture GPU card's device name must be named once per card
         self.assertIn("Fixture GPU", glance)
@@ -249,7 +249,7 @@ class CpuGlance(unittest.TestCase):
         text, _ = _render_cpu([("synthetic-cpu", _cpu_card())])
         self.assertIn('<div class="chart"', text)
         self.assertIn('class="row us"', text)              # eagle's bar
-        self.assertIn("var(--mark-eagle)", text)
+        self.assertIn("var(--tool-raptor)", text)
         self.assertIn("var(--tool-numba)", text)
         self.assertIn("Log scale", text)
 
@@ -264,7 +264,7 @@ class CpuGlance(unittest.TestCase):
         text, _ = _render_cpu([("synthetic-cpu", _cpu_card())])
         self.assertIn("eagle, 8 threads", text)
         self.assertIn(">Numba<", text)
-        self.assertNotIn("numba label", text)
+        self.assertNotIn("</span>numba label</div>", text)   # a bar names the tool (the info line may quote the card)
 
     def test_tab_label_drops_trademarks_and_clock(self):
         card = _cpu_card(model="Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz")
@@ -683,11 +683,11 @@ class LandingHeroFragments(unittest.TestCase):
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
     def test_lead_sentence_states_time_memory_and_named_speedup(self):
-        # hero_A's own wording, two named ratios: Warp's own ratio (4.0x), and the smaller/never-overstated
-        # of CuPy (9.0x) and PyTorch (10x) -- 9.0x.
+        # each compared tool has its OWN ratio, smallest first (never one number shared by two tools).
         text = self.out["lead_sentence.md"]
         self.assertIn("5.00 ms and 4 MiB on Fixture GPU, ", text)
-        self.assertIn("4.0× faster than NVIDIA Warp and 9.0× faster than PyTorch or CuPy", text)
+        self.assertIn("4.0× faster than NVIDIA Warp, 8.0× faster than JAX, 9.0× faster than CuPy "
+                      "and 10× faster than PyTorch", text)
         self.assertIn("runs on your CPU", text)
         # never the literal "2017" -- no card field sources that year, so the
         # lead sentence must never hand-type it.
@@ -701,8 +701,9 @@ class LandingHeroFragments(unittest.TestCase):
         self.assertIn("5.00 ms", text)
         self.assertIn("50.0 ms", text)
         self.assertLess(text.index("5.00 ms"), text.index("50.0 ms"))
-        # no SVG left behind for this chart
-        self.assertNotIn("<svg", text)
+        # no SVG inside the bar charts (the radar beside them is the only SVG)
+        bars_only = re.sub(r'<div class="worlds".*?<script type="application/json" class="worlds-json">.*?</script>\n</div>', "", text, flags=re.S)
+        self.assertNotIn("<svg", re.sub(r'<div class="radar".*?<script type="application/json".*?</div>\n?', "", bars_only, flags=re.S).split('class="radar"')[0])
 
     def test_memory_chart_lightest_first_same_row_form(self):
         text = self.out["compare_memory_chart.md"]
@@ -777,8 +778,8 @@ class ComparePage(unittest.TestCase):
         # fixture's spread/1000, N=10 memory rows, lightest first: eagle
         # graph (no compaction) 2 MiB/1x, eagle.simulate 4 MiB/2x, Warp
         # 3 MiB/1.5x, JAX 6 MiB/3x, CuPy 9 MiB/4.5x, PyTorch 11 MiB/5.5x.
-        self.assertIn("| hawk + eagle graph (no compaction) | 2 MiB | 1×", text)
-        self.assertIn("| eagle.simulate | 4 MiB | 2×", text)
+        self.assertIn("| hawk + eagle graph (no compaction) | 2 MiB | 1.0×", text)
+        self.assertIn("| eagle.simulate | 4 MiB | 2.0×", text)
         self.assertIn("| NVIDIA Warp | 3 MiB | 1.5×", text)
         self.assertIn("| PyTorch | 11 MiB | 5.5×", text)
         # within the table itself (not the rest of the page, which mentions
@@ -937,6 +938,70 @@ class DeviceReadingValidity(unittest.TestCase):
         sync_cards.borrow_withheld_readings([("l4", l4b), ("p2", card(128 * mib, "P2000")),
                                              ("x", card(256 * mib, "X"))])
         self.assertIsNone(l4b["memory"]["rows"][0]["device_peak_bytes"])
+
+
+class CpuMemoryNetOfHarnessCopies(unittest.TestCase):
+    """CPU peak memory is published net of the harness's copies (36 bytes per
+    sample on the RK4 CPU card's eagle arms); the rule mirrors eagle's."""
+
+    def test_eagle_arm_is_net_and_numba_is_raw(self):
+        n = 10**6
+        eagle = {"arm": "eagle_term8", "n": n, "peak_bytes": 100 * 2**20}
+        numba = {"arm": "numba_prange", "n": n, "peak_bytes": 100 * 2**20}
+        self.assertEqual(sync_cards.net_peak_bytes(eagle), 100 * 2**20 - 36 * n)
+        self.assertEqual(sync_cards.net_peak_bytes(numba), 100 * 2**20)
+
+    def test_a_negative_result_shows_the_measured_value(self):
+        row = {"arm": "eagle_compact1", "n": 10**6, "peak_bytes": 20 * 10**6}
+        self.assertEqual(sync_cards.net_peak_bytes(row), 20 * 10**6)
+
+    def test_only_resolved_rows_are_published(self):
+        mib = 2**20
+        def row(arm, n, peak, base):
+            return {"arm": arm, "n": n, "peak_bytes": peak, "rss_baseline_bytes": base}
+        rows = [row("eagle_term8", 1000, 40 * mib, 60 * mib), row("eagle_term8", 10**6, 42 * mib, 60 * mib),
+                row("numba_prange", 1000, 0, 220 * mib), row("numba_prange", 10**6, 70 * mib, 220 * mib),
+                row("eagle_compact8", 1000, 40 * mib, 60 * mib), row("eagle_compact8", 10**6, 96 * mib, 60 * mib)]
+        self.assertIsNone(sync_cards.published_peak_bytes(rows[0], rows))       # small-N floor row
+        self.assertIsNone(sync_cards.published_peak_bytes(rows[1], rows))       # 1e6 row near the floor
+        self.assertEqual(sync_cards.published_peak_bytes(rows[3], rows), 70 * mib)
+        self.assertEqual(sync_cards.published_peak_bytes(rows[5], rows), 96 * mib - 36 * 10**6)
+
+    def test_matches_eagles_function_on_every_cpu_card(self):
+        import importlib.util
+        import os
+        root = os.environ.get("RAPTOR_EAGLE_ROOT")
+        common = pathlib.Path(root or "/nonexistent") / "benchmarks" / "_card_common.py"
+        if not common.is_file():
+            self.skipTest("no eagle root (RAPTOR_EAGLE_ROOT)")
+        spec = importlib.util.spec_from_file_location("eagle_card_common", common)
+        cc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cc)
+        checked = 0
+        for path in sorted((pathlib.Path(root) / "benchmarks" / "perf_card").glob("cpu_card_*.json")):
+            rows = json.loads(path.read_text())["memory"]["rows"]
+            for row in rows:
+                self.assertEqual(sync_cards.net_peak_bytes(row), cc.net_peak_bytes(row, "rk4_cpu"), (path.name, row["arm"]))
+                self.assertEqual(sync_cards.published_peak_bytes(row, rows),
+                                 cc.published_peak_bytes(row, rows, "rk4_cpu"), (path.name, row["arm"], row["n"]))
+                checked += 1
+        self.assertGreater(checked, 0)
+
+
+class StartHereNotebookColabCell(unittest.TestCase):
+    """The first code cell of the trial notebook installs itself on Colab and never carries a commented-out pip line."""
+
+    def test_first_cell_has_colab_branch(self):
+        nb = json.loads((SITE_ROOT / "notebooks" / "raptor_start_here.ipynb").read_text())
+        cell = next(c for c in nb["cells"] if c["cell_type"] == "code")
+        text = "".join(cell["source"])
+        self.assertIn("google.colab", text)
+        self.assertIn('extra = "[cuda12]" if gpu else ""', text)                      # GPU extras only with a GPU
+        self.assertIn('f"raptor-hawk{extra}", f"raptor-eagle{extra}"', text)
+        self.assertIn("sys.version_info", text)                                        # the Python range is checked up front
+        self.assertIn("Runtime \u2192 Change runtime type \u2192 T4 GPU", text)
+        for line in text.splitlines():
+            self.assertFalse(line.lstrip().startswith(("# !pip", "#!pip", "# %pip")), line)
 
 
 if __name__ == "__main__":

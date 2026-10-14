@@ -10,8 +10,8 @@ isn't there. Four libraries split that problem cleanly: aether lays out the
 arrays, eagle launches and captures what runs on them, raptor is the
 dependency-free spine that lets a kernel producer and an executor agree
 without depending on each other, and hawk authors and compiles the kernels.
-Each works alone; adding a companion buys speed or a deployment option,
-never a capability class.
+Each works alone; a companion adds speed, derivatives or a deployment route
+(derivatives, for example, come from hawk).
 
 **Contact:** via GitHub — [github.com/amasat01](https://github.com/amasat01).
 If you want to build on this, or apply these ideas to a new problem, get in

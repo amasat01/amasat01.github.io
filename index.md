@@ -3,7 +3,7 @@
 ```{raw} html
 <header class="rpt-bar">
   <a class="rpt-brand" href="#"><img src="_static/brand/family_raptor.svg" alt=""><span>RAPTOR</span></a>
-  <nav aria-label="Main"><a href="start_here.html">Start here</a><a href="https://amasat01.github.io/eagle/">Docs</a><a href="compare.html">Compare</a><a href="https://github.com/amasat01">GitHub</a>
+  <nav aria-label="Main"><a href="start_here.html">Start here</a><details class="rpt-docs"><summary>Docs</summary><div class="rpt-docs-list"><a href="https://amasat01.github.io/eagle/">eagle<small>launch, graphs, compaction</small></a><a href="https://amasat01.github.io/hawk/">hawk<small>write the kernel</small></a><a href="https://amasat01.github.io/raptor/">raptor<small>the shared contracts</small></a><a href="https://amasat01.github.io/aether/">aether<small>the C++ underneath</small></a></div></details><a href="compare.html">Compare</a><a href="https://github.com/amasat01">GitHub</a>
   <script>
   document.write(`
     <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button rpt-theme-toggle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -17,6 +17,7 @@
 </header>
 <div class="rpt-hero">
   <h1><span>Write the code for one sample.</span> <span>Run a million of them.</span></h1>
+  <p class="rpt-sub">One sample is one independent simulation: you write its step once, in Python.</p>
 </div>
 ```
 
@@ -26,9 +27,10 @@
 ```{raw} html
 <div class="rpt-actions" id="start">
   <a class="btn" href="start_here.html">Start here</a>
-  <a class="quiet" href="https://amasat01.github.io/raptor_start_here.ipynb" download>Download the notebook</a>
+  <a class="quiet" href="https://github.com/amasat01/amasat01.github.io/raw/main/notebooks/raptor_start_here.ipynb">Download the notebook</a>
   <a class="quiet" href="https://colab.research.google.com/github/amasat01/amasat01.github.io/blob/main/notebooks/raptor_start_here.ipynb">Open in Colab</a>
   <code>pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"</code>
+  <span class="rpt-cpu"><code>pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU (the CPU route). Wheels are Linux x86_64; macOS and Windows <a href="build_from_source.html">build from source</a>.</span>
 </div>
 ```
 
@@ -92,7 +94,7 @@ result = eagle.simulate(
     max_steps=10_000,
 )
 print(result.status, result.steps, result.x[:3])
-# needs a GPU to run (1,000,000 cupy samples); the output is not shown here
+# needs a GPU to run (1,000,000 cupy samples); the CPU twin below shows its output
 ```
 :::
 
@@ -102,13 +104,18 @@ print(result.status, result.steps, result.x[:3])
 
 Pass the kernel's arguments as you would call it; give an array where each sample has its own value.
 
-eagle captured the step loop as a CUDA graph and replayed it on the GPU, so one call did all the launching.
+eagle ran the whole step loop on the GPU, choosing the launch for the batch size, so one call did all the launching.
 
 Samples that finished were dropped from the next launch, so the batch shrank as it ran.
 
 Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 :::
 ::::
+
+No GPU? The same kernel with NumPy arrays (a thousand samples), run with no GPU visible:
+
+```{include} _generated/what_you_write_cpu.md
+```
 
 ## Four libraries
 
@@ -120,7 +127,7 @@ Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 ````{dropdown} Install
 ```bash
 pip install raptor-core                                     # the protocol spine: Python 3.9+, no dependencies
-pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64, CPython 3.9-3.14, host g++ 11+)
+pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64, CPython versions per `pyproject.toml`, host g++; see Building from source for compiler versions)
 pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cuda13] on both for CUDA 13
 ```
 
@@ -132,7 +139,7 @@ pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cu
 toolkit is needed.
 ```
 
-**Platforms:** built and tested on Linux x86_64 only so far (CPython 3.9–3.14, including free-threaded 3.13t and 3.14t), on NVIDIA GPUs from Pascal (Quadro P2000) and Turing (Tesla T4). There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
+**Platforms:** the wheels are built for Linux x86_64 (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). What the wheel ships, what you need and what the cards measured are in the {ref}`compatibility table <compatibility>`. There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
 
 `raptor-hawk` pulls `aether-dsc` (the sealed C++ headers hawk compiles against) automatically. eagle alone:
 `pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for every NVIDIA

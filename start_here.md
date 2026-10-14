@@ -4,8 +4,9 @@ A ball thrown with air drag. Four short steps: write the physics for **one**
 sample, run it for a million, get its derivatives for free, then hand it to
 PyTorch to learn the drag coefficient from noisy landings.
 
-**Time:** about 10 minutes · **Runs on:** CPU (GPU: the device switch below
-flips to it automatically) · **You need:** nothing but a Python environment.
+**Time:** about 10 minutes (a 3-minute path: steps 1 and 2 only) · **Runs on:** CPU (GPU: the
+device switch below flips to it automatically) · **You need:** eagle, hawk, torch and
+matplotlib (see Install below).
 
 ```{image} _static/figures/start_here/fit.png
 :alt: Two small plots side by side. Left: training loss on a log scale, flat and low from the first LBFGS step. Right: the fitted drag coefficient per LBFGS step, a purple line sitting right on top of the dashed grey line marking the true value.
@@ -14,10 +15,16 @@ flips to it automatically) · **You need:** nothing but a Python environment.
 
 *What you will build: a kernel you wrote, trained end to end against noisy data, in about 10 minutes.*
 
-This is also a self-contained notebook: [download it](https://amasat01.github.io/raptor_start_here.ipynb)
-or [open it in Colab](https://colab.research.google.com/github/amasat01/amasat01.github.io/blob/main/notebooks/raptor_start_here.ipynb).
-Its first cell installs `raptor-eagle`/`raptor-hawk` for you if they aren't
-already there.
+This is also a self-contained notebook: [download it](https://github.com/amasat01/amasat01.github.io/raw/main/notebooks/raptor_start_here.ipynb)
+or [open it in Colab](https://colab.research.google.com/github/amasat01/amasat01.github.io/blob/main/notebooks/raptor_start_here.ipynb)
+(the same file, `notebooks/raptor_start_here.ipynb` in the site's repository). On Colab its first cell installs
+`raptor-eagle`/`raptor-hawk` for you, with the GPU extras only when the runtime has a GPU.
+
+## Install
+
+Without an NVIDIA GPU: `pip install raptor-hawk raptor-eagle torch matplotlib`.
+With one, use `"raptor-hawk[cuda12]" "raptor-eagle[cuda12]"` instead (`[cuda13]` for CUDA 13).
+Wheels are Linux x86_64; other systems [build from source](build_from_source.md).
 
 Every cell below assumes the same small device switch every RAPTOR tutorial
 starts with — numpy on CPU, cupy on GPU, nothing imported unconditionally:
@@ -35,8 +42,8 @@ xp = cp if DEVICE == "gpu" else np
 
 ## 1. Write one sample's kernel
 
-A hawk kernel is a plain Python function: it reads the planes it declares
-and writes the ones it owns. `r`/`v` are this ball's position and velocity —
+A hawk kernel is a plain Python function: it reads the arrays it declares
+(one value per sample) and writes the ones it owns. `r`/`v` are this ball's position and velocity —
 `Mutable`, because the kernel updates them. Read one like any local
 variable (you get the value from when this launch began, until the kernel
 itself assigns a new one); write the result back by assigning to the same
@@ -81,9 +88,10 @@ print(one.status, one.steps, one.r)
 **What just happened:**
 - `flight` is one sample's physics: gravity plus quadratic drag, a
   semi-implicit Euler step.
-- `terminated` marked this sample done at step 320, the step its
+- `terminated` marked this sample done at step 299, the step its
   height first went below zero — `eagle.simulate` stopped there instead of
-  running to `max_steps`.
+  running to `max_steps`. `one.steps` counts whole check intervals, so it
+  reads 320 on CPU threads and can differ on a GPU; `one.r` does not.
 - `one.r` is the landing position: about 53 m downrange.
 
 ## 2. Run a lot of them
@@ -102,8 +110,8 @@ many = eagle.simulate(
     max_steps=2000,
 )
 print(f"{many.finished.sum():,} / {n:,} finished, {many.report.launches} launches, "
-      f"{many.wall_s * 1e3:.1f} ms (on the machine that built this page)")
-# 100,000 / 100,000 finished, 8 launches, … ms (on the machine that built this page)
+      f"{many.wall_s * 1e3:.1f} ms")
+# 100,000 / 100,000 finished, 8 launches, … ms   (the time is your machine's)
 ```
 
 ```{image} _static/figures/start_here/landings.png
@@ -123,7 +131,7 @@ print(f"{many.finished.sum():,} / {n:,} finished, {many.report.launches} launche
 
 `eagle.frameworks.torch.function` wraps a kernel as a
 `torch.autograd.Function`: forward runs the kernel, backward runs the
-**derived** reverse-mode kernel — nothing is taped. This uses `flight_step`,
+**derived** reverse-mode kernel (a second kernel worked out from yours, not a recording of the run). This uses `flight_step`,
 the one-step kernel from eagle's own
 [torch training tutorial](https://amasat01.github.io/eagle/content/userguide/tutorials/03_torch_training.html)
 (separate in- and next-state planes, the shape `torch.autograd.Function`
@@ -160,12 +168,16 @@ print("gradcheck:", ok)
 # gradcheck: True
 ```
 
+With CUDA tensors the same `step` runs on the GPU, on torch's current stream, without copies.
+
 **What just happened:**
 - `step` is `flight_step`'s derived reverse- *and* forward-mode kernel,
   compiled the first time it ran.
 - `gradcheck` matches both against finite differences: `True`.
 - A terminated sample gets exactly zero gradient — it never corrects a
   later step.
+
+**Limits:** a `hawk.raw_device` block can't be differentiated, and `torch.func` transforms aren't supported on `step`.
 
 ## 4. Hand it to PyTorch
 
@@ -185,7 +197,7 @@ print("shares memory on this machine:", same_memory)
 ```
 
 A CUDA array crossing this way is raptor's certified `T-IN-CUDA-ALIAS` row
-— always zero-copy; a plain NumPy one isn't a certified crossing at all, so
+— zero-copy by contract for CUDA tensors; a plain NumPy one isn't a certified crossing at all, so
 the notebook *checks* rather than assumes it.
 
 **Build a tiny model around `step`.** `Ballistic` unrolls `step` from step 3
@@ -231,8 +243,7 @@ print(f"learned cd = {model.log_cd.exp().item():.6f} /m (true 0.004 /m)")
 `is_landed = r[2] < 0.0` by hand and uses `torch.where` to freeze a landed
 sample's state — the same idea as `terminated` from step 1, just worked out
 again here because `step()` hands back the next position and velocity but
-not its own stop decision. A later version of `step()` may return that
-decision directly, so the loop could reuse it instead of recomputing it.
+not its own stop decision.
 
 ## Where to next
 

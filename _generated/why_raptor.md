@@ -2,18 +2,18 @@
 
 | tool | wall (N = 1,000,000, spread stop steps, up to 1000) |
 |---|---:|
-| eagle.simulate (eagle picks the launch mode) | 30.5 ms |
-| Warp per-thread kernel | 105 ms |
-| JAX jit + vmap(while_loop) | 242 ms |
-| CuPy masked | 1.62 s |
-| PyTorch masked | 1.70 s |
+| eagle.simulate (eagle picks the launch mode) | 613 µs |
+| Warp per-thread kernel | 1.54 ms |
+| JAX jit + vmap(while_loop) | 47.0 ms |
+| PyTorch with torch.compile | 84.5 ms |
+| CuPy masked | 368 ms |
 
 - **Tensor libraries compute every sample, every step** -- a masked array keeps computing the samples that already finished.
 - **hawk + eagle skips finished samples** and packs the live ones into the next launch, so the batch keeps shrinking as samples finish.
-- **Warp is excellent at per-thread kernels**: it is the fastest arm in 1 of 12 cells, and on a fully dense batch hawk + eagle beats it: 114 ms against Warp's 119 ms -- complementary tools, not a hierarchy.
+- **Warp is excellent at per-thread kernels**: it is the fastest arm in 2 of 12 cells, and on a fully dense batch it ties hawk + eagle: 1.71 ms against hawk + eagle's 1.74 ms -- complementary tools, not a hierarchy.
 
 RAPTOR adds, from the same source: per-sample Python, device-side stopping, forward- and reverse-mode derivatives, and the identical kernel on the CPU.
 
-On the harder RK7(8) family (N = 1,000,000 adaptive Kepler orbits, every one inside its error bound): eagle graph + compaction + reorder 2.33 s, Warp per-thread kernel 4.27 s, JAX jit(vmap(while_loop)) 7.26 s, CuPy masked 52.9 s, PyTorch masked 55.1 s.
+On the harder RK7(8) family (N = 1,000,000 adaptive Kepler orbits, every one inside its error bound): hawk + eagle persistent 43.7 ms, Warp per-thread kernel 101 ms, JAX jit(vmap(while_loop)) 1.11 s, CuPy masked 9.06 s, PyTorch + CUDA graph 7.17 s.
 
-*Measured on NVIDIA L4. [Every number, every arm](https://amasat01.github.io/eagle/content/performance.html).*
+*Measured on NVIDIA H100 80GB HBM3. [Every number, every arm](https://amasat01.github.io/eagle/content/performance.html).*
