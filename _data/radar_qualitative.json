@@ -1,0 +1,365 @@
+{
+  "axes": {
+    "tensor": {
+      "label": "Tensor workloads",
+      "rubric": "Tensor workloads (qualitative): how naturally a tool expresses dense array maths (batched linear algebra, convolutions, broadcasting) and how much of it its tuned libraries cover. 5 = this is its home ground.",
+      "anchor": "5 = dense array maths, batched linear algebra and convolutions are its home ground.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "PyTorch": {
+          "score": 5,
+          "reason": "Dense array maths is its home ground, with tuned libraries behind batched linear algebra, convolutions and broadcasting."
+        },
+        "JAX": {
+          "score": 5,
+          "reason": "Array programs written once and compiled by XLA; batched linear algebra, convolutions and broadcasting are first-class."
+        },
+        "CuPy": {
+          "score": 4,
+          "reason": "A NumPy-shaped API over the CUDA math libraries; it covers most dense array work."
+        },
+        "NumPy": {
+          "score": 4,
+          "reason": "The reference API for dense array maths and broadcasting on the CPU, with tuned BLAS and LAPACK underneath."
+        },
+        "NVIDIA Warp": {
+          "score": 3,
+          "reason": "Per-thread kernels are its home ground; it also offers matrix and tile types for dense blocks."
+        },
+        "raptor": {
+          "score": 2,
+          "reason": "Built for per-sample kernels and ensembles; for dense tensor work it hands arrays to PyTorch or JAX zero-copy."
+        },
+        "Numba": {
+          "score": 2,
+          "reason": "Compiles loops and NumPy-style code; dense linear algebra comes from the libraries it calls."
+        }
+      }
+    },
+    "array_style": {
+      "label": "Array-style programming",
+      "rubric": "Array-style programming (qualitative): how naturally you write whole-array expressions eagerly, the NumPy way. 5 = the array expression is the programming model. Scores are the author's judgement.",
+      "anchor": "5 = the whole-array expression is the programming model.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "NumPy": {
+          "score": 5,
+          "reason": "The whole-array expression is the programming model, evaluated eagerly; the right choice for array code on the CPU."
+        },
+        "CuPy": {
+          "score": 5,
+          "reason": "The NumPy way on the GPU: whole-array expressions, run eagerly."
+        },
+        "PyTorch": {
+          "score": 5,
+          "reason": "Eager tensor expressions are the programming model."
+        },
+        "JAX": {
+          "score": 4,
+          "reason": "NumPy-style array expressions, but functional and traced rather than eager."
+        },
+        "Numba": {
+          "score": 2,
+          "reason": "You mostly write loops over arrays; array expressions are secondary."
+        },
+        "NVIDIA Warp": {
+          "score": 2,
+          "reason": "You write per-thread kernels; whole-array expressions are not the model."
+        },
+        "raptor": {
+          "score": 2,
+          "reason": "A per-sample kernel language by design: you write one step of one sample, and whole-array code is left to array libraries, with which raptor exchanges arrays zero-copy."
+        }
+      }
+    },
+    "half_precision": {
+      "label": "Half precision and below",
+      "rubric": "Half precision and below (qualitative): FP16, BF16, FP8 and FP4 arithmetic and tensor cores (FP32 and FP64 are measured on the other axes). 5 = these formats and tensor cores are first-class paths. Scores are the author's judgement.",
+      "anchor": "5 = FP16, BF16, FP8, FP4 and tensor cores are first-class paths.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "PyTorch": {
+          "score": 5,
+          "reason": "FP16, BF16 and FP8 types with tensor-core paths, including autocast."
+        },
+        "JAX": {
+          "score": 5,
+          "reason": "FP16, BF16 and FP8 types, with XLA targeting tensor cores."
+        },
+        "CuPy": {
+          "score": 3,
+          "reason": "float16 arrays and half-precision BLAS calls; tensor-core use comes through the libraries."
+        },
+        "NVIDIA Warp": {
+          "score": 3,
+          "reason": "float16 support and tile operations that can use tensor cores."
+        },
+        "NumPy": {
+          "score": 2,
+          "reason": "float16 storage and arithmetic, but slow on the CPU and nothing below it."
+        },
+        "Numba": {
+          "score": 2,
+          "reason": "float16 arithmetic intrinsics in numba.cuda; no BF16/FP8 or tensor-core path."
+        },
+        "raptor": {
+          "score": 1,
+          "reason": "Not supported. raptor is scoped to FP32 and FP64 numerics; half-precision and tensor-core work belongs with PyTorch or JAX."
+        }
+      }
+    },
+    "control": {
+      "label": "Low-level control",
+      "rubric": "Low-level control (qualitative): how much of the GPU's execution you control from the tool's own language: thread indexing, shared memory, atomics, launch shape, synchronisation (raw CUDA/C++ not counted). 5 = you write what each thread does and how it is launched. On a CPU the same question is asked of threads, SIMD and memory layout. Scores are the author's judgement.",
+      "anchor": "5 = you write what each thread does and how it is launched.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "NVIDIA Warp": {
+          "score": 5,
+          "reason": "You write the per-thread kernel and choose its launch: near-total control short of raw CUDA, the right choice for hand-tuned kernels."
+        },
+        "Numba": {
+          "score": 5,
+          "reason": "numba.cuda gives thread indexing, shared memory, atomics and explicit launch shapes, the right choice when you want to manage the GPU by hand."
+        },
+        "JAX": {
+          "score": 3,
+          "reason": "Pallas exposes kernel-level control; plain JAX leaves scheduling to XLA."
+        },
+        "CuPy": {
+          "score": 3,
+          "reason": "Element-wise and reduction kernels; full control only through raw CUDA."
+        },
+        "PyTorch": {
+          "score": 2,
+          "reason": "Operators and a few custom-kernel hooks; launches are left to the framework."
+        },
+        "raptor": {
+          "score": 2,
+          "reason": "By design hawk and eagle decide threads, launches and scheduling, so compaction can adapt to uneven batches; for hand-tuned thread-level kernels, Warp or Numba is the right choice."
+        },
+        "NumPy": {
+          "score": 1,
+          "reason": "No GPU kernels."
+        }
+      },
+      "scores_cpu": {
+        "JAX": {
+          "score": 2,
+          "reason": "Plain JAX leaves threads, vectorisation and layout to XLA; Pallas control is aimed at the GPU."
+        },
+        "NumPy": {
+          "score": 2,
+          "reason": "Strides and memory layout are yours to choose; threads and SIMD are left to the libraries underneath."
+        }
+      }
+    },
+    "single_thread": {
+      "label": "Single-thread abstraction",
+      "rubric": "Single-thread abstraction (qualitative): how fully you can write the code for one sample, one step, and let the tool run it over the batch: threads, launches, early stopping and scheduling included. 5 = you write one sample and nothing else. Scores are the author's judgement.",
+      "anchor": "5 = you write one sample and nothing else.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "raptor": {
+          "score": 5,
+          "reason": "You write one step of one sample; hawk and eagle handle threads, launches, stopping and compaction."
+        },
+        "JAX": {
+          "score": 4,
+          "reason": "A per-sample function under vmap; early stopping becomes masking you write."
+        },
+        "NVIDIA Warp": {
+          "score": 3,
+          "reason": "A per-thread kernel: you index and loop yourself, and choose the launch."
+        },
+        "PyTorch": {
+          "score": 3,
+          "reason": "torch.func.vmap over a per-sample function; stopping and batching stay with you."
+        },
+        "Numba": {
+          "score": 3,
+          "reason": "A per-index body under prange or cuda.jit; indexing and launch are yours."
+        },
+        "CuPy": {
+          "score": 2,
+          "reason": "Element-wise kernels run per element; the batching logic is yours."
+        },
+        "NumPy": {
+          "score": 1,
+          "reason": "Whole-array code; there is no per-sample model."
+        }
+      }
+    },
+    "differentiable": {
+      "label": "Differentiable kernels",
+      "rubric": "Differentiable kernels (qualitative): how directly you get forward- and reverse-mode derivatives of your own kernels, on GPU and on CPU. 5 = built in for every kernel written in the tool's own vocabulary.",
+      "anchor": "5 = derivatives are built in for every kernel written in the tool.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "PyTorch": {
+          "score": 4,
+          "reason": "Autograd differentiates tensor programs; a custom kernel needs its backward written by hand."
+        },
+        "JAX": {
+          "score": 5,
+          "reason": "Forward and reverse mode through grad, jvp and vjp, on GPU and CPU."
+        },
+        "NVIDIA Warp": {
+          "score": 4,
+          "reason": "Reverse mode through wp.Tape over its kernels, with its emphasis on reverse mode over the tape."
+        },
+        "CuPy": {
+          "score": 1,
+          "reason": "No automatic differentiation; it is usually paired with a framework that has one."
+        },
+        "raptor": {
+          "score": 5,
+          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives, on GPU and CPU."
+        },
+        "NumPy": {
+          "score": 1,
+          "reason": "No automatic differentiation of its own."
+        },
+        "Numba": {
+          "score": 1,
+          "reason": "No automatic differentiation of its own."
+        }
+      }
+    },
+    "arrays": {
+      "label": "Works with your arrays",
+      "rubric": "Works with your arrays (qualitative): how freely arrays move to and from other frameworks without copies. 5 = zero-copy exchange is the norm.",
+      "anchor": "5 = zero-copy exchange with other frameworks is the norm.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "PyTorch": {
+          "score": 4,
+          "reason": "DLPack and the array interface exchange tensors with other libraries, mostly without copies."
+        },
+        "JAX": {
+          "score": 4,
+          "reason": "DLPack exchange with other frameworks, mostly without copies."
+        },
+        "NVIDIA Warp": {
+          "score": 4,
+          "reason": "Zero-copy views of PyTorch, JAX and NumPy arrays."
+        },
+        "CuPy": {
+          "score": 5,
+          "reason": "Its arrays are the common currency of the CUDA array world, with DLPack and the CUDA array interface."
+        },
+        "raptor": {
+          "score": 5,
+          "reason": "Arrays cross zero-copy through DLPack, to and from the frameworks you already use."
+        },
+        "NumPy": {
+          "score": 4,
+          "reason": "The array protocols everyone reads, on the host; device memory is out of its scope."
+        },
+        "Numba": {
+          "score": 3,
+          "reason": "Reads NumPy arrays directly and exposes the CUDA array interface; wider exchange takes some glue."
+        }
+      }
+    },
+    "deploy": {
+      "label": "Deploy outside Python",
+      "rubric": "Deploy outside Python (qualitative): whether a compiled kernel can run from programs that are not Python. 5 = a compiled artefact any program can load.",
+      "anchor": "5 = a compiled artefact any program can load.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "PyTorch": {
+          "score": 4,
+          "reason": "TorchScript, AOT export and a C++ runtime take models into non-Python programs."
+        },
+        "JAX": {
+          "score": 4,
+          "reason": "Compiled XLA programs can be exported and run from other runtimes."
+        },
+        "NVIDIA Warp": {
+          "score": 2,
+          "reason": "Kernels run inside Python; modules can be compiled ahead of time but need the Warp runtime."
+        },
+        "CuPy": {
+          "score": 1,
+          "reason": "Lives in Python; its kernels are not packaged for other programs."
+        },
+        "raptor": {
+          "score": 4,
+          "reason": "A compiled kernel runs from any program that can load its manifest; today eagle is the loader."
+        },
+        "NumPy": {
+          "score": 1,
+          "reason": "A Python library; nothing is compiled into a separate artefact."
+        },
+        "Numba": {
+          "score": 2,
+          "reason": "Ahead-of-time compilation exists in a limited form; most use stays inside Python."
+        }
+      }
+    },
+    "extensible": {
+      "label": "Extensibility",
+      "rubric": "Extensibility (qualitative): how readily new hardware, backends and features can be added without losing speed. 5 = a documented plugin path across many targets. Scores are the author's judgement.",
+      "anchor": "5 = a documented plugin path across many targets.",
+      "scale": [
+        1,
+        5
+      ],
+      "scores": {
+        "JAX": {
+          "score": 4,
+          "reason": "XLA and PJRT plugins add new hardware backends."
+        },
+        "PyTorch": {
+          "score": 4,
+          "reason": "Out-of-tree backends and custom operators are supported."
+        },
+        "raptor": {
+          "score": 4,
+          "reason": "A protocol spine and a plugin registry for new backends."
+        },
+        "Numba": {
+          "score": 3,
+          "reason": "An extension API for new types and targets, at a low level."
+        },
+        "NumPy": {
+          "score": 3,
+          "reason": "Array-API dispatch lets other array libraries stand in."
+        },
+        "NVIDIA Warp": {
+          "score": 2,
+          "reason": "Targets NVIDIA GPUs and the CPU."
+        },
+        "CuPy": {
+          "score": 2,
+          "reason": "Runs on CUDA and ROCm GPUs; the score is the author's judgement of its extension path."
+        }
+      }
+    }
+  }
+}

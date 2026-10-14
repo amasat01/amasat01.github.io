@@ -43,10 +43,6 @@
   --mark-eagle: #cf416b;
   --mark-hawk: #c18711;
   --mark-neutral: rgba(127, 126, 120, 0.5);
-  /* other tools in comparison figures: chip dots and regions only. */
-  --tool-pytorch: #ee4c2c;
-  --tool-jax: #1a9a8c;
-  --tool-numba: #00a3e0;
 }
 :root, html[data-theme="light"] {
   --raptor: #7245ce; --raptor-soft: #c9b8f2; --raptor-wash: #eee8fb;
@@ -57,8 +53,6 @@
   --rpt-surface: #fcfcfb; --rpt-panel: #ffffff;
   --rpt-ink: #0b0b0b; --rpt-ink-secondary: #52514e;
   --on-raptor: #ffffff;
-  --tool-cupy: #518d05; --tool-warp: #306101;
-  --tool-numpy: #4d77cf;
 }
 html[data-theme="dark"] {
   --raptor: #9269f5; --raptor-soft: #5a46a0; --raptor-wash: #2a2240;
@@ -69,8 +63,25 @@ html[data-theme="dark"] {
   --rpt-surface: #1a1a19; --rpt-panel: #242422;
   --rpt-ink: #ffffff; --rpt-ink-secondary: #c3c2b7;
   --on-raptor: #1a1a19;
-  --tool-cupy: #76b900; --tool-warp: #88e97e;
-  --tool-numpy: #7ea3f2;
+}
+
+/* ---- The tool palette: ONE categorical set for every chip, bar, radar and figure; tools/palette.py reads
+ * this block, so nothing else spells a tool colour. Each tool keeps the hue family of its own brand; only
+ * lightness and saturation move per theme. Chosen by search so that, within each set shown together (GPU:
+ * raptor, Warp, JAX, PyTorch, CuPy; CPU: raptor, Numba, JAX, PyTorch, NumPy), every pair stays distinct
+ * under normal vision, deuteranopia, protanopia and tritanopia (Machado simulation, floor 10 in CIE Lab) and
+ * every stroke is >= 3:1 on the light and the dark page. Brand sources (logo colours quoted from memory,
+ * not verified offline): raptor = the family purple; PyTorch = brand orange-red #EE4C2C; NVIDIA Warp =
+ * NVIDIA green #76B900; JAX = the teal-green of its logo; CuPy = the green of its logo; Numba = the
+ * blue-cyan of its logo; NumPy = the blue of its logo (#4D77CF family). Warp and CuPy share the green family
+ * (lime vs a darker, bluer green) and Numba and NumPy the blue family; they are separated by lightness. ---- */
+:root, html[data-theme="light"] {
+  --tool-raptor: #7d53dc; --tool-warp: #6d9f09; --tool-jax: #0e9d9b; --tool-pytorch: #df5345;
+  --tool-cupy: #157b21; --tool-numba: #0f7da7; --tool-numpy: #1e47b5;
+}
+html[data-theme="dark"] {
+  --tool-raptor: #9269f5; --tool-warp: #b6fd13; --tool-jax: #36fcd8; --tool-pytorch: #eb7e61;
+  --tool-cupy: #22d434; --tool-numba: #7fcdf0; --tool-numpy: #8aa3f2;
 }
 
 /* ---- Typography: applies site-wide (every page, new type + tokens, not a
@@ -209,6 +220,18 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
   .perf-switch { padding-inline: 12px; }
 }
 
+/* "How it compares": the bars' two views, "Wall time" | "Uneven-batch efficiency". The buttons
+ * only show once the script runs (they would do nothing without it); the script sets
+ * data-bars on .perf-switch, and without it the wall-time view shows. */
+.bars-toggle { display: none; margin: 16px 0 0; border: 1px solid var(--rpt-border); border-radius: 999px; padding: 3px; background: var(--rpt-panel); }
+.bars-js .bars-toggle { display: inline-flex; flex-wrap: wrap; }
+.bars-opt { cursor: pointer; font: inherit; font-size: 14px; font-weight: var(--w-strong); padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--rpt-ink-secondary); }
+.bars-opt:hover { color: var(--rpt-ink); }
+.bars-opt[aria-pressed="true"] { background: var(--raptor-wash); color: var(--rpt-ink); box-shadow: inset 0 0 0 1px var(--raptor-soft); }
+.bars-opt:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.perf-switch:not([data-bars="eff"]) .bars-eff, .perf-switch[data-bars="eff"] .bars-wall { display: none; }
+@media (max-width: 720px) { .bars-opt { padding: 6px 12px; } }
+
 /* "Four libraries": a plain list (no cards --
  * cards are a SaaS-kit tell). */
 .rpt-lib-list { list-style: none; margin: 20px 0 0; padding: 0; max-width: 68ch; }
@@ -234,8 +257,124 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
   .rpt-pair { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .chart .row { grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 5px 0 7px; }
   .axis-note { margin-left: 0; }
-  .chart, .axis-note { padding-inline: 12px; }  /* the chart sits in a grid row with -12px gutters */
+  .chart, .axis-note { padding-inline: 16px; }  /* the chart sits in a grid row with -12px gutters */
+  .chart .track { margin-right: 0; width: calc(100% - 84px); }  /* a fixed label column: the longest value ("1.54 ms", "100%") always fits */
+  .chart .row { min-width: 0; }
   .rpt-lib-list li { flex-wrap: wrap; }
   .rpt-lib-list a { margin-left: 0; }
 }
+
+/* "How it compares": hover and focus on a runtime bar. The row grows by transform only
+ * (no layout shift), takes its tool's colour, and the other rows dim a little; the info
+ * line is a popover on hover/focus and sits under the row once pinned (.open). */
+.chart .row[tabindex] { position: relative; outline: none; }
+.chart .row[tabindex] .fill { transform-origin: left center; transition: transform 0.12s, background-color 0.12s; }
+.chart .row[tabindex] { transition: opacity 0.12s; }
+.chart .row[tabindex]:hover .fill, .chart .row[tabindex]:focus-visible .fill { background: var(--tool); transform: scaleY(1.31); }
+.chart:has(.row[tabindex]:hover) .row[tabindex]:not(:hover),
+.chart:has(.row[tabindex]:focus-visible) .row[tabindex]:not(:focus-visible) { opacity: 0.55; }
+.chart .row[tabindex]:focus-visible { box-shadow: 0 0 0 2px var(--raptor); border-radius: 6px; }
+.chart .rinfo { display: none; position: absolute; left: 0; top: 100%; z-index: 6; max-width: 460px; margin-top: 2px;
+  padding: 8px 10px; font-size: 13px; line-height: 1.45; color: var(--rpt-ink); background: var(--rpt-panel);
+  border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
+.chart .row:hover .rinfo, .chart .row:focus-visible .rinfo { display: block; }
+.chart .row.open .rinfo { display: block; position: static; grid-column: 1 / -1; max-width: none; margin: 2px 0 4px;
+  padding: 0; border: 0; box-shadow: none; background: none; pointer-events: auto; color: var(--rpt-ink-secondary); }
+
+/* The landing radar (radar_gpu.md / radar_cpu.md) and its detailed mode (radar_detailed.md), drawn by
+ * js/radar.js. Tool colours are the palette tokens above. Type hierarchy on the chart: axis name >
+ * direction > ring units. On a column narrower than 720px the names are replaced by numbers and a list. */
+.radar { margin: 36px 0 0; max-width: 100%; container-type: inline-size; }
+.radar-detailed { max-width: 1100px; }
+.radar-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.radar-leg { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; font-size: 15px;
+  color: var(--rpt-ink); background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 999px; padding: 4px 13px; }
+.radar-leg .chip { width: 10px; height: 10px; border-radius: 50%; background: var(--c); border: 2px solid var(--c); box-sizing: border-box; }
+.radar-leg:hover, .radar-leg.is-hl { border-color: var(--c); }
+.radar-leg.is-hl { font-weight: var(--w-strong); }
+.radar-leg[aria-pressed="false"] { opacity: 0.5; }
+.radar-leg[aria-pressed="false"] .chip { background: transparent; }
+.radar-leg:focus-visible, .radar-axis:focus-visible, .radar-axlist li:focus-visible, .radar-data summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.radar-stage { position: relative; max-width: 780px; margin-inline: auto; }
+.radar-detailed .radar-stage { max-width: 780px; }
+.radar-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--rpt-border); stroke-width: 1; opacity: 0.7; }
+.radar-spoke { stroke: var(--rpt-muted); stroke-width: 1; }
+.radar-tick { stroke: var(--rpt-ink); stroke-width: 2; }
+.radar-axis { cursor: pointer; fill: var(--rpt-ink); }
+.radar-axis .radar-name { font-size: 16px; font-weight: var(--w-strong); }
+.radar-axis.q .radar-name { font-style: italic; }
+.radar-axis .radar-dir { font-size: 13px; fill: var(--rpt-ink-secondary); }
+.radar-hring { font-size: 13px; fill: var(--rpt-ink); pointer-events: none; paint-order: stroke; stroke: var(--rpt-surface); stroke-width: 4px; stroke-linejoin: round; }
+.radar-band { fill: none; stroke: var(--rpt-muted); stroke-width: 2; opacity: 0.55; pointer-events: none; }
+.radar-pill { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1; opacity: 0.95; pointer-events: none; }
+.radar-bandlabel { font-size: 12px; fill: var(--rpt-ink-secondary); }
+.radar-detailed .radar-pill { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1; opacity: 0.95; pointer-events: none; }
+.radar-bandlabel { font-size: 14px; }
+.radar-axis:hover .radar-name { text-decoration: underline; }
+/* Axis icons: 24-grid line icons from the sprite at the top of each radar block, one stroke width, the text colour. */
+.radar-icon { color: var(--rpt-ink); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.radar-icon.disc { display: none; cursor: pointer; }
+.radar-icon .hit { fill: transparent; stroke: none; }
+.radar-icon.disc:focus-visible { outline: none; }
+.radar-icon.disc:focus-visible .hit { stroke: var(--raptor); stroke-width: 2; }
+.radar-icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.radar-axlist .ic { display: none; vertical-align: -4px; margin-right: 6px; }
+.radar-area { fill: var(--c); fill-opacity: 0.09; stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; transition: fill-opacity 0.15s; }
+.radar-vertex { display: none; fill: var(--c); stroke: var(--rpt-panel); stroke-width: 1.5; }
+.radar-vertex.q { fill: var(--rpt-panel); stroke: var(--c); stroke-width: 2.5; }
+.radar-tool.is-hl .radar-vertex, .radar-tool:focus-within .radar-vertex { display: block; }
+.radar.has-hl .radar-tool:not(.is-hl) .radar-area { fill-opacity: 0.03; stroke-opacity: 0.35; }
+.radar-tool.is-hl .radar-area { fill-opacity: 0.45; }
+.radar-tool.is-off { display: none; }
+.radar-tip { position: absolute; z-index: 6; max-width: 280px; padding: 8px 10px; font-size: 13px; line-height: 1.45; color: var(--rpt-ink);
+  background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
+.radar-tip[hidden], .radar-dev[hidden] { display: none; }
+.radar-tip-h { font-weight: var(--w-strong); }
+.radar-tip-s { color: var(--rpt-ink-secondary); }
+.radar .axis-note { margin-left: 0; max-width: 68ch; }
+.radar-data { margin: 6px 0 0; overflow-x: auto; }
+.radar-data summary { cursor: pointer; font-size: 14px; color: var(--rpt-ink-secondary); }
+.radar-howto { margin-top: 10px; }
+.radar-howto .radar-note { max-width: 70ch; }
+.radar-howto-list { margin: 8px 0 8px; padding-left: 18px; max-width: 70ch; font-size: 14px; color: var(--rpt-ink-secondary); }
+.radar-howto-list li { margin: 3px 0; }
+.radar-table { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.radar-table th, .radar-table td { border-top: 1px solid var(--rpt-border); padding: 4px 10px 4px 0; text-align: left; vertical-align: top; }
+.radar-axlist { display: none; margin: 10px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 20px; font-size: 14px; }
+.radar-axlist li { break-inside: avoid; padding: 3px 0; cursor: pointer; }
+.radar-axlist .n { display: inline-block; min-width: 1.6em; font-weight: var(--w-strong); }
+.radar-axlist .d { display: block; margin-left: 1.6em; font-size: 13px; color: var(--rpt-ink-secondary); }
+/* the explanation panel sits under the chart; it stays in view while the chart is */
+.radar-panel { position: sticky; bottom: 8px; z-index: 3; max-height: 45vh; overflow: auto; margin-top: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.5;
+  color: var(--rpt-ink); background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 10px; overflow-wrap: anywhere; }
+.radar-panel > * { margin: 0 0 8px; }
+.radar-panel-h { font-weight: var(--w-strong); font-size: 16px; }
+.radar-panel-hint { color: var(--rpt-ink-secondary); }
+.radar-panel-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.radar-panel-row.is-off { opacity: 0.45; }
+.radar-panel-row .chip { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.radar-panel-why { margin-left: 17px; font-size: 13px; }
+.radar-panel a { font-size: 14px; }
+@container (max-width: 719px) {
+  .radar:not(.radar-detailed) .radar-axis, .radar:not(.radar-detailed) .radar-axis .radar-name, .radar:not(.radar-detailed) .radar-icon.wide { display: none; }
+  /* an icon stands in for each name (no ring numbers are drawn); the list under the chart gives icon -> name once */
+  .radar:not(.radar-detailed) .radar-icon.disc { display: block; }
+  .radar:not(.radar-detailed) .radar-axlist { display: block; }
+  .radar:not(.radar-detailed) .radar-axlist .n { display: none; }
+  .radar:not(.radar-detailed) .radar-axlist .ic { display: inline-block; }
+  .radar:not(.radar-detailed) .radar-axlist .d { margin-left: 26px; }
+}
+/* the detailed radar has 17 axes: its names stay down to a phone-width column */
+@container (max-width: 559px) {
+  .radar-detailed .radar-axis, .radar-detailed .radar-axis .radar-name, .radar-detailed .radar-icon.wide { display: none; }
+  .radar-detailed .radar-icon.disc { display: block; }
+  .radar-detailed .radar-axlist { display: block; }
+  .radar-detailed .radar-axlist .n { display: none; }
+  .radar-detailed .radar-axlist .ic { display: inline-block; }
+  .radar-detailed .radar-axlist .d { margin-left: 26px; }
+}
+@container (max-width: 460px) { .radar-axlist { columns: 1; } }
+
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

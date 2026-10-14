@@ -5,7 +5,7 @@ sample, run it for a million, get its derivatives for free, then hand it to
 PyTorch to learn the drag coefficient from noisy landings.
 
 **Time:** about 10 minutes · **Runs on:** CPU (GPU: the device switch below
-flips to it automatically) · **You need:** nothing but a Python environment.
+flips to it automatically) · **You need:** eagle, hawk, torch and matplotlib (see Install below).
 
 ```{image} _static/figures/start_here/fit.png
 :alt: Two small plots side by side. Left: training loss on a log scale, flat and low from the first LBFGS step. Right: the fitted drag coefficient per LBFGS step, a purple line sitting right on top of the dashed grey line marking the true value.
@@ -185,7 +185,7 @@ print("shares memory on this machine:", same_memory)
 ```
 
 A CUDA array crossing this way is raptor's certified `T-IN-CUDA-ALIAS` row
-— always zero-copy; a plain NumPy one isn't a certified crossing at all, so
+— zero-copy by contract for CUDA tensors; a plain NumPy one isn't a certified crossing at all, so
 the notebook *checks* rather than assumes it.
 
 **Build a tiny model around `step`.** `Ballistic` unrolls `step` from step 3
@@ -231,8 +231,7 @@ print(f"learned cd = {model.log_cd.exp().item():.6f} /m (true 0.004 /m)")
 `is_landed = r[2] < 0.0` by hand and uses `torch.where` to freeze a landed
 sample's state — the same idea as `terminated` from step 1, just worked out
 again here because `step()` hands back the next position and velocity but
-not its own stop decision. A later version of `step()` may return that
-decision directly, so the loop could reuse it instead of recomputing it.
+not its own stop decision.
 
 ## Where to next
 

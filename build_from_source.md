@@ -13,9 +13,9 @@ Every command below installs into one prefix, `${CONDA_PREFIX}` if you use conda
 |---|---|---|
 | CMake | ≥ 3.20 | aether, eagle |
 | C++ compiler | C++23 — GCC ≥ 12 or Clang ≥ 16 | aether, eagle; stated identically by both |
-| CUDA toolkit | CUDA 12.6 or newer (tested with 12.6 and 13.0) | Optional — build with `AETHER_CPP_MODE=ON` / `EAGLE_CPP_MODE=ON` and the libraries run on GPUs or on CPU threads (OpenMP) from the same source. eagle's Python package is always a CUDA build (see Pitfalls). |
-| nvcc host-compiler ceiling | GCC 13 for CUDA 12.6 | nvcc accepts a host compiler only up to its own ceiling; pass `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` if your default compiler is newer |
-| Python | ≥ 3.9 for all four packages | hawk and eagle are tested on CPython 3.9–3.14, including free-threaded 3.13t and 3.14t |
+| CUDA toolkit | CUDA 12.6 or newer (the toolkit versions the cards were built with are recorded on each card) | Optional — build with `AETHER_CPP_MODE=ON` / `EAGLE_CPP_MODE=ON` and the libraries run on GPUs or on CPU threads (OpenMP) from the same source. eagle's Python package is always a CUDA build (see Pitfalls). |
+| nvcc host-compiler ceiling | depends on the toolkit release (see NVIDIA's host-compiler table) | nvcc accepts a host compiler only up to its own ceiling; pass `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` if your default compiler is newer |
+| Python | ≥ 3.9 for all four packages | hawk and eagle are tested on the CPython versions in their `pyproject.toml`, including the free-threaded builds (on those, eagle has no CuPy wheel, so it takes the CPU route) |
 
 ## Install, in dependency order
 
@@ -149,8 +149,7 @@ aether/tests/check_gate.sh cpp aether/build/tests/aether_tests   # or: cuda, for
 
 ## Pitfalls
 
-- **nvcc rejects your host compiler.** nvcc accepts host compilers only up to its own ceiling (GCC 13 for CUDA
-  12.6). Fix: `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` on the CMake configure line (or appended to
+- **nvcc rejects your host compiler.** nvcc accepts host compilers only up to a ceiling that depends on the toolkit release (for example GCC 13 for CUDA 12.6; later toolkits differ). Fix: `-DCMAKE_CUDA_HOST_COMPILER=<g++-13>` on the CMake configure line (or appended to
   `SKBUILD_CMAKE_ARGS` for eagle's Python package).
 - **Edited a source file, forgot to rebuild.** `import hawk` refuses a `hawk._core` whose build digest disagrees
   with the sources beside it, naming both digests and the loaded binding's path. Fix: `pip install -e .

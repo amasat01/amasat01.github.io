@@ -102,7 +102,7 @@ print(result.status, result.steps, result.x[:3])
 
 Pass the kernel's arguments as you would call it; give an array where each sample has its own value.
 
-eagle captured the step loop as a CUDA graph and replayed it on the GPU, so one call did all the launching.
+eagle ran the whole step loop on the GPU, choosing the launch for the batch size, so one call did all the launching.
 
 Samples that finished were dropped from the next launch, so the batch shrank as it ran.
 
@@ -120,7 +120,7 @@ Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 ````{dropdown} Install
 ```bash
 pip install raptor-core                                     # the protocol spine: Python 3.9+, no dependencies
-pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64, CPython 3.9-3.14, host g++ 11+)
+pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64, CPython versions per `pyproject.toml`, host g++; see Building from source for compiler versions)
 pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cuda13] on both for CUDA 13
 ```
 
@@ -132,7 +132,7 @@ pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cu
 toolkit is needed.
 ```
 
-**Platforms:** built and tested on Linux x86_64 only so far (CPython 3.9–3.14, including free-threaded 3.13t and 3.14t), on NVIDIA GPUs from Pascal (Quadro P2000) and Turing (Tesla T4). There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
+**Platforms:** the wheels are built for Linux x86_64 (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). The family is tested on NVIDIA GPUs from Pascal to Hopper and on x86-64 and aarch64 CPUs; every device measured is listed in the [performance cards](compare.md). There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
 
 `raptor-hawk` pulls `aether-dsc` (the sealed C++ headers hawk compiles against) automatically. eagle alone:
 `pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for every NVIDIA
