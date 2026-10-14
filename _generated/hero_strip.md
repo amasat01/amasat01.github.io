@@ -4,13 +4,13 @@
 :class-container: strip
 :gutter: 2
 
-:::{grid-item-card} 30.5 ms
+:::{grid-item-card} 613 µs
 1,000,000 samples (RK4), each stopping at its own step, up to 1000 steps
 :::
-:::{grid-item-card} 3.4×–55× faster
-than NVIDIA Warp (3.4×), JAX (7.9×), CuPy (53×), PyTorch (55×) — 1,000,000 samples finishing at different times, up to 1000 steps
+:::{grid-item-card} 2.5×–600× faster
+than NVIDIA Warp (2.5×), JAX (76×), CuPy (600×), PyTorch (540×) — 1,000,000 samples finishing at different times, up to 1000 steps
 :::
-:::{grid-item-card} 2.9×–3.9× less GPU memory
-than CuPy and PyTorch — a million samples in 66 MiB, 1.7× the bare minimum state (CuPy 5.1×, PyTorch 6.9×)
+:::{grid-item-card} 4.8×–8.7× less GPU memory
+than CuPy and PyTorch — a million samples in 40 MiB, 1.1× the bare minimum state (CuPy 5.5×, PyTorch 10×)
 :::
 ::::

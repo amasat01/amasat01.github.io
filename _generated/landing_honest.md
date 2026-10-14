@@ -2,8 +2,8 @@
 
 ```{raw} html
 <div class="honest">
-<p>NVIDIA Warp is an excellent per-thread kernel compiler: it is the fastest arm in 1 of the 12 RK4 cells this card runs, and when every sample runs all 1000 steps hawk + eagle beats it: 114 ms against Warp's 119 ms.</p>
-<p>On memory, hawk + eagle's lower-level building blocks go lighter than Warp: 1.3× the minimum against Warp's 1.7×. eagle.simulate keeps room to compact the batch and uses 1.7×.</p>
-<p class="fine">Measured on NVIDIA L4. <a href="https://amasat01.github.io/eagle/content/performance.html">Every number, every arm</a>.</p>
+<p>NVIDIA Warp is an excellent per-thread kernel compiler: it is the fastest arm in 2 of the 12 RK4 cells this card runs, and when every sample runs all 1000 steps it ties hawk + eagle: 1.71 ms against hawk + eagle's 1.74 ms.</p>
+<p>On memory, hawk + eagle's lower-level building blocks go lighter than Warp: 1.2× the minimum against Warp's 1.8×. eagle.simulate keeps room to compact the batch and uses 1.1×.</p>
+<p class="fine">Measured on NVIDIA H100 80GB HBM3. <a href="https://amasat01.github.io/eagle/content/performance.html">Every number, every arm</a>.</p>
 </div>
 ```

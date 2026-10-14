@@ -7,14 +7,14 @@ Same task, five ways, measured by the RK7(8) card: two-body Kepler orbits (mu = 
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 22 |
-| what it brings here | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 3.9 s. |
+| what it brings here | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 95.4 ms. |
 | free from the same source | a CPU build from the same hawk kernel, with no second implementation to maintain, and the kernel's own reverse- and forward-mode derivatives. |
 
 ```python
 @hawk.kernel
 def rkf78_attempt(t_final: Param, terminated: Terminated, s: Mutable[Vector[6]],
                   t: Mutable[Scalar], h: Mutable[Scalar],
-                  n_acc: Mutable[Scalar], n_rej: Mutable[Scalar]):
+                  n_acc: Mutable[UInt32], n_rej: Mutable[UInt32]):
     # One adaptive RKF7(8) attempt of this sample, with its step-size controller.
     s0 = s
     t0 = t
@@ -28,8 +28,8 @@ def rkf78_attempt(t_final: Param, terminated: Terminated, s: Mutable[Vector[6]],
     s = m.where(accept, m.vec(s8), s0)
     t1 = m.where(accept, m.where(last, t_final, t0 + step), t0)
     t = t1
-    n_acc = n_acc + m.where(accept, 1.0, 0.0)
-    n_rej = n_rej + m.where(accept, 0.0, 1.0)
+    n_acc = n_acc + m.uint32(m.where(accept, 1.0, 0.0))
+    n_rej = n_rej + m.uint32(m.where(accept, 0.0, 1.0))
     terminated = t1 >= t_final  # the sample finishes itself
 
 st.runner = eagle.until_done(eagle.deploy(rkf78_attempt), max_steps=MAX_ATTEMPTS,
@@ -41,7 +41,7 @@ st.runner = eagle.until_done(eagle.deploy(rkf78_attempt), max_steps=MAX_ATTEMPTS
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 25 |
-| what it brings here | array code in the NumPy style (25 lines), the control flow as masks over the batch: 52.9 s. |
+| what it brings here | array code in the NumPy style (25 lines), the control flow as masks over the batch: 9.06 s. |
 | free from the same source | no second build and no gradient in this comparison; CuPy itself targets the GPU. |
 
 ```python
@@ -79,7 +79,7 @@ def cupy_run(st):
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 27 |
-| what it brings here | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 55.1 s. |
+| what it brings here | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 8.61 s. |
 | free from the same source | gradients through `torch.autograd`, and the tensors run on CPU too (untested on this card). |
 
 ```python
@@ -120,7 +120,7 @@ def torch_run(st):
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 25 |
-| what it brings here | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 7.26 s. |
+| what it brings here | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 1.11 s. |
 | free from the same source | gradients through `jax.grad`, and the same code runs on a CPU backend (untested on this card). |
 
 ```python
@@ -160,7 +160,7 @@ def jax_integrate_fn():
 | fact | |
 |---|---|
 | lines (non-blank, non-comment) | 74 |
-| what it brings here | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 4.27 s. |
+| what it brings here | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 101 ms. |
 | free from the same source | reverse-mode gradients through `wp.Tape`, and a CPU device (untested on this card). |
 
 ```python

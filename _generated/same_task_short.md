@@ -4,10 +4,10 @@ Same task, five ways, measured by the RK7(8) card: two-body Kepler orbits (mu = 
 
 | tool | lines | what it brings here |
 |---|---:|---|
-| hawk + eagle | 22 | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 3.9 s. |
-| CuPy | 25 | array code in the NumPy style (25 lines), the control flow as masks over the batch: 52.9 s. |
-| PyTorch | 27 | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 55.1 s. |
-| JAX | 25 | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 7.26 s. |
-| Warp | 74 | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 4.27 s. |
+| hawk + eagle | 22 | the attempt is per-sample scalar code (22 lines with its launch; the kernel finishes its own samples), one kernel per attempt looped on the device: 95.4 ms. |
+| CuPy | 25 | array code in the NumPy style (25 lines), the control flow as masks over the batch: 9.06 s. |
+| PyTorch | 27 | the same array formulation in PyTorch (27 lines), running where a PyTorch model already runs: 8.61 s. |
+| JAX | 25 | writes the per-sample loop directly (25 lines) and compiles the whole batch into one executable: 1.11 s. |
+| Warp | 74 | an explicit per-thread loop in a Python-embedded kernel language (74 lines, its own stages): 101 ms. |
 
 Full code for all five, side by side: [where RAPTOR fits](where_raptor_fits.md).
