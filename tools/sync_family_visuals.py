@@ -162,7 +162,7 @@ def _unit(kind, pages):
     sw = _raw_html(pages["switch"])
     head, sides = _split_sides(sw)
     head = head.replace('<span id="on-your-cpu"></span>\n', "")
-    capmap = _block(sides["gpu"], r'<div class="worlds capmap" data-side="gpu">')
+    capmap = _block(sides["gpu"], r'<div class="capmap" data-side="gpu"')
     if kind == "map":
         html = f'<div class="perf-switch" data-fv="{kind}">\n' + capmap + "</div>"
         html = re.sub(r"<details\b(?![^>]*\bopen\b)", "<details open data-nojs", html)

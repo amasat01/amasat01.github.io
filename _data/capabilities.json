@@ -382,9 +382,8 @@
      "judgement": true
     },
     "gpu": {
-     "covered": true,
-     "source": "https://nvidia.github.io/warp/stable/user_guide/programming_model/cpp_cuda_workflows.html",
-     "note": "Kernels compiled ahead of time, and captured work replayed from C++ without Python."
+     "covered": false,
+     "note": "Compiled kernels and C++ replay exist, but it is not a standalone deploy path."
     }
    },
    "diffsim": {
@@ -1171,9 +1170,8 @@
    },
    "divergent": {
     "cpu": {
-     "covered": true,
-     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
-     "note": "A chunk-size setting balances uneven iterations across threads.",
+     "covered": false,
+     "note": "A chunk-size setting helps, but there is no designed way to keep diverging samples busy.",
      "judgement": true
     },
     "gpu": {
@@ -1183,9 +1181,8 @@
    },
    "events": {
     "cpu": {
-     "covered": true,
-     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
-     "note": "A sample's loop breaks on its own condition and the thread moves on.",
+     "covered": false,
+     "note": "A loop can break out, but there is no designed per-sample stop.",
      "judgement": true
     },
     "gpu": {

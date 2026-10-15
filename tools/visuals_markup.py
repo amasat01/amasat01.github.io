@@ -57,141 +57,122 @@ def cached_rosette(table, tools, mode, sector="ensemble"):
     return _CACHE[key]
 
 
-def node_aria(M, nid):
-    device, block = V.split_node(nid)
-    who = M.who(nid)
-    return f"{V.BLOCK[block][1]}, {V.DEVICE_NAME[device]}: " + (f"{', '.join(who)}" if who else "no tool")
-
-
 # --------------------------------------------------------------------------- the capability map
-def capmap_svg(M, ids, uid, aria):
-    """The capability map of one `V.CapMap`: soft column regions (Simulation | AI), the CPU and GPU rows, each tool's
-    rounded convex hull(s), the blocks (a node with one arc per covering tool, its icon and, on the wide map, its label)."""
-    wide = bool(M.lay["fs"])
-    w, h = M.lay["size"]
-    isz = M.lay["icon"]
-    cx, ry = M.lay["cols"], M.lay["rows"]
-    out = [f'<svg class="worlds-svg {"worlds-svg-wide" if wide else "worlds-svg-narrow"}" viewBox="0 0 {w} {h}" role="group" aria-label="{ESC(aria, quote=True)}">']
-    out.append(f'<defs><radialGradient id="gsim-{uid}"><stop offset="45%" stop-color="var(--world-sim)" stop-opacity=".5"/>'
-               f'<stop offset="80%" stop-color="var(--world-sim)" stop-opacity=".2"/><stop offset="100%" stop-color="var(--world-sim)" stop-opacity="0"/></radialGradient>'
-               f'<radialGradient id="gai-{uid}"><stop offset="40%" stop-color="var(--tool-pytorch)" stop-opacity=".22"/>'
-               f'<stop offset="78%" stop-color="var(--tool-pytorch)" stop-opacity=".09"/><stop offset="100%" stop-color="var(--tool-pytorch)" stop-opacity="0"/></radialGradient></defs>')
-    # the two columns as soft regions that blend at the column boundary
-    out.append(f'<ellipse class="world world-sim" cx="{cx * 0.5:.0f}" cy="{h / 2:.0f}" rx="{cx * 0.62:.0f}" ry="{h * 0.62:.0f}" fill="url(#gsim-{uid})"/>'
-               f'<ellipse class="world world-ai" cx="{cx + (w - cx) * 0.55:.0f}" cy="{h / 2:.0f}" rx="{(w - cx) * 0.75:.0f}" ry="{h * 0.62:.0f}" fill="url(#gai-{uid})"/>')
-    # the row boundary and the row names on the side
-    out.append(f'<line class="row-rule" x1="{4 if not wide else 8}" y1="{ry:.0f}" x2="{w - 4}" y2="{ry:.0f}"/>')
-    for dev, name in V.DEVICES:
-        yy = [M.pos[n][1] for n in M.nodes if n.startswith(dev + ":")]
-        ym = (min(yy) + max(yy)) / 2
-        x = 15 if wide else 8
-        out.append(f'<text class="row-title" data-device="{dev}" text-anchor="middle" transform="translate({x} {ym:.0f}) rotate(-90)" '
-                   f'style="font-size:{13 if wide else 11}px">{name}</text>')
-    for key, tt in M.titles().items():
-        fs1, fs2 = tt["fs"]
-        name = "Simulation" if key == "sim" else "AI"
-        sub = tt["lines"][1:] if len(tt["lines"]) > 1 else ()
-        out.append(f'<text class="world-title" data-world="{key}" text-anchor="{tt["anchor"]}" x="{tt["x"]:.1f}" y="{tt["y"]:.1f}" style="font-size:{fs1}px">{name}'
-                   + "".join(f'<tspan class="world-sub" x="{tt["x"]:.1f}" dy="{tt["lh"]}" style="font-size:{fs2}px">{ESC(s_)}</tspan>' for s_ in sub) + "</text>")
-    for t in M.tools:
-        for i, (blob, members) in enumerate(M.pieces[t]):
-            out.append(f'<path class="blob" data-tool="{ESC(t, quote=True)}" data-piece="{i}" data-blocks="{" ".join(members)}" '
-                       f'style="--c:var({M.vars[t]})" d="{blob.path()}"/>')
-    names = M.name_boxes() if wide else {}
-    for t, nb in names.items():
-        out.append(f'<text class="bname" data-tool="{ESC(t, quote=True)}" text-anchor="middle" x="{nb["x"]:.1f}" y="{nb["y"]:.1f}" style="fill:var({M.vars[t]})">{ESC(t)}</text>')
-    for nid in M.nodes:
-        device, block = V.split_node(nid)
-        b = V.BLOCK[block]
-        x, y = M.pos[nid]
-        who = M.who(nid)
-        out.append(f'<g class="wnode" data-node="{nid}" data-block="{block}" data-device="{device}" tabindex="0" role="button" '
-                   f'aria-label="{ESC(node_aria(M, nid), quote=True)}">'
-                   f'<circle class="hit" cx="{x:.1f}" cy="{y:.1f}" r="{M.node + 6}"/>'
-                   f'<circle class="node" cx="{x:.1f}" cy="{y:.1f}" r="{M.node}"/>' + _arcs(x, y, M.node + 1.5, who, M.tools, M.vars)
-                   + icon_g(ids, b[3], x, y, isz))
-        if wide:
-            lab = M.labels[nid]
-            if lab["disp"] > 30:        # a label moved well away from its node is tied to it by a thin leader
-                l_, t_, r_, b_ = lab["box"][:4]
-                px, py = min(max(x, l_), r_), min(max(y, t_), b_)
-                d = math.hypot(px - x, py - y) or 1.0
-                ux, uy = (px - x) / d, (py - y) / d
-                out.append(f'<line class="leader" x1="{x + ux * (M.node + 4):.1f}" y1="{y + uy * (M.node + 4):.1f}" x2="{px - ux * 2:.1f}" y2="{py - uy * 2:.1f}"/>')
-            out.append(f'<text class="nlabel" data-n="{nid}" text-anchor="{lab["box"][4]}" x="{lab["box"][5]:.1f}" y="{lab["box"][6]:.1f}">'
-                       + _tspans(lab["box"][5], lab["lines"], M.lay["fs"] + 1) + "</text>")
-        out.append("</g>")
-    out.append("</svg>")
+#: The summary line when no tool is selected (the chart shows every capability as a neutral dot on the centre line).
+NONE_SENTENCE = "Pick a tool to see where each capability runs."
+
+
+def _link(href, text, cls=""):
+    return f'<a{f" class={chr(34)}{cls}{chr(34)}" if cls else ""} href="{ESC(href, quote=True)}">{ESC(text)}</a>'
+
+
+def cm_rows(caps, tool, tools):
+    """The chart: two groups (Simulation, then AI), a row per capability with a three-stop track. The dot sits at the
+    selected tool's stop; ``data-stops`` carries every tool's stop in the legend's order for the script."""
+    out = []
+    for world in ("sim", "ai"):
+        out.append(f'<section class="cm-group cm-{world}"><h4 class="cm-gh">{V.WORLD_NAME[world]}</h4><ul class="cm-rows">')
+        for key in V.BLOCKS_KEYS:
+            b = V.BLOCK[key]
+            if b[4] != world:
+                continue
+            stop = caps.stop(tool, key)
+            stops = ",".join(caps.stop(t, key) or "none" for t, _v in tools)
+            out.append(f'<li class="cm-row{"" if stop else " is-off"}" data-block="{key}" data-stop="{stop or "none"}" data-stops="{stops}" '
+                       f'title="{ESC(caps.needs[key], quote=True)}">'
+                       f'<span class="cm-name">{ESC(b[1])}</span>'
+                       f'<span class="cm-track" aria-hidden="true"><span class="cm-dot"></span></span>'
+                       f'<span class="cm-sr">{ESC(b[1])}: {ESC(_stop_words(stop))}</span></li>')
+        out.append("</ul></section>")
     return "".join(out)
 
 
-def capmap_json(caps):
-    """What the popover shows for each node, in the table's own words: the block, what counts, and per tool the note and
-    the source of a covered cell (or the note of one that is not)."""
-    blocks = {k: {"l": V.BLOCK[k][1], "n": caps.needs[k]} for k in V.BLOCKS_KEYS}
-    nodes = {}
-    for nid in caps.nodes():
-        device, block = V.split_node(nid)
-        yes, no = [], []
-        for t in caps.tools:
-            c = caps.cell(t, block, device)
-            (yes if c["covered"] else no).append([t, c.get("note", "")] + ([c["source"]] if c["covered"] else []))
-        nodes[nid] = {"w": yes, "x": no}
-    return {"blocks": blocks, "nodes": nodes, "devices": dict(V.DEVICES)}
+def _stop_words(stop):
+    return {"cpu": "CPU only", "both": "CPU and GPU", "gpu": "GPU only", None: "not first-class"}[stop]
 
 
-def capmap_table(caps):
-    """Every covered cell with its note and its source link, one row each, grouped by block and device."""
-    rows = []
-    for block, device, tool, c in caps.covered_cells():
-        rows.append(f'<tr data-block="{block}" data-device="{device}" data-tool="{ESC(tool, quote=True)}"><th scope="row">{ESC(V.BLOCK[block][1])}</th>'
-                    f'<td>{V.DEVICE_NAME[device]}</td><td>{ESC(tool)}</td><td>{ESC(c["note"])}</td>'
-                    f'<td><a href="{ESC(c["source"], quote=True)}">source</a></td></tr>')
-    return ('<table class="worlds-table capmap-cells"><caption>Every covered cell: the block, the device, the tool, how the tool does '
-            'it, and the page of the tool\'s own documentation that shows it</caption>'
-            '<thead><tr><th scope="col">Block</th><th scope="col">Device</th><th scope="col">Tool</th><th scope="col">How</th>'
-            f'<th scope="col">Source</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
-
-
-def key_list(M, ids):
-    """The icon -> block list under the phone-width map: every block named once, with who covers it on each row."""
-    items = []
+def cm_list(caps, tool):
+    """The selected tool's own list: each covered capability with its CPU and GPU ticks (each a link to its source) and
+    the one-line note, then one greyed line naming what the tool does not cover first-class."""
+    items, none = [], []
     for key in V.BLOCKS_KEYS:
-        b = V.BLOCK[key]
-        per = []
+        if not caps.stop(tool, key):
+            none.append(V.BLOCK[key][1])
+            continue
+        ticks, notes = [], []
         for dev, name in V.DEVICES:
-            nid = V.node_id(dev, key)
-            if nid in M.pos:
-                per.append(f"{name}: " + " ".join(V.MONO.get(t, t) for t in M.who(nid)))
-        items.append(f'<li data-block="{key}"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#{ids}-{b[3]}"/></svg>'
-                     f'<span class="kn">{ESC(b[1])}</span><span class="kw">{ESC(" · ".join(per))}</span></li>')
-    return '<ol class="worlds-key" aria-label="Blocks of work">' + "".join(items) + "</ol>"
+            c = caps.cell(tool, key, dev)
+            if c["covered"]:
+                ticks.append(_link(c["source"], f"{name} \u2713", "cm-tick"))
+                if c["note"] not in notes:
+                    notes.append(c["note"])
+            else:
+                ticks.append(f'<span class="cm-tick is-no">{name} \u2013</span>')
+        items.append(f'<li data-block="{key}"><span class="cm-ln">{ESC(V.BLOCK[key][1])}</span> <span class="cm-ticks">{" ".join(ticks)}</span> '
+                     f'<span class="cm-note">{ESC(" ".join(notes))}</span></li>')
+    grey = f'<p class="cm-grey">Not first-class: {ESC(", ".join(none))}.</p>' if none else ""
+    return f'<ul class="cm-list">{"".join(items)}</ul>{grey}'
 
 
-def capmap_block(side, caps, tools, intro, caption):
-    """The capability map, the same on every device: wide and phone-width SVG, the key list, the table of every covered
-    cell and the JSON the popover reads. ``side`` only namespaces the ids (the landing page carries one copy per hardware
-    panel). ``tools`` = [(name, css var)]."""
-    ids = f"wic-{side}"
-    keys = sorted(set(b[3] for b in V.BLOCKS))
-    out = [f'<div class="worlds capmap" data-side="{side}">', sprite(ids, keys)]
-    out.append('<div class="worlds-legend" role="group" aria-label="Tools">')
-    for t, var in tools:
-        out.append(f'<button type="button" class="worlds-leg" data-tool="{ESC(t, quote=True)}" aria-pressed="false" aria-label="{ESC(t, quote=True)}" style="--c:var({var})">'
-                   f'<span class="chip"><span class="mono">{ESC(V.MONO.get(t, t))}</span></span><span class="nm">{ESC(t)}</span></button>')
+def cm_compare(caps, tools):
+    """Every tool side by side: capabilities as rows, tools as columns; each cell CPU, GPU, both or empty, with its sources."""
+    head = "".join(f'<th scope="col">{ESC(t)}</th>' for t, _v in tools)
+    rows = []
+    for key in V.BLOCKS_KEYS:
+        cells = []
+        for t, _v in tools:
+            st = caps.stop(t, key)
+            if not st:
+                cells.append('<td data-stop="none"></td>')
+                continue
+            devs = [d for d, _n in V.DEVICES if caps.covered(t, key, d)]
+            srcs = [caps.cell(t, key, d)["source"] for d in devs]
+            if len(set(srcs)) == 1:
+                inner = _link(srcs[0], V.STOP_NAME[st])
+            else:
+                inner = ESC(V.STOP_NAME[st]) + " " + " ".join(_link(s_, V.DEVICE_NAME[d], "cm-also") for d, s_ in zip(devs, srcs))
+            cells.append(f'<td data-stop="{st}">{inner}</td>')
+        rows.append(f'<tr data-block="{key}"><th scope="row">{ESC(V.BLOCK[key][1])}</th>{"".join(cells)}</tr>')
+    return ('<details class="cm-compare"><summary>Compare all tools</summary><div class="cm-scroll" tabindex="0" role="region" aria-label="All tools, side by side">'
+            '<table class="cm-table"><caption>Where each tool has a documented, first-class way to do each capability: CPU, GPU or both. '
+            'An empty cell is not first-class. Every filled cell links to its source.</caption>'
+            f'<thead><tr><th scope="col">Capability</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div></details>')
+
+
+def capmap_json(caps, tools):
+    """What the script reads: the tools in legend order and every capability's stop for each tool."""
+    return {"tools": [t for t, _v in tools],
+            "stops": {k: {t: caps.stop(t, k) or "none" for t, _v in tools} for k in V.BLOCKS_KEYS}}
+
+
+def capmap_block(side, caps, tools, intro, caption, default="raptor"):
+    """The capability map, the same on every device: a tool picker, the chart with one dot per row, the selected tool's
+    sentence and list, the comparison table and the JSON the script reads. Everything the default tool shows is in the
+    page; the script only switches tools. ``side`` namespaces the ids (one copy per hardware panel). ``tools`` =
+    [(name, css var)]."""
+    var = dict(tools)
+    out = [f'<div class="capmap" data-side="{side}" data-tool="{ESC(default, quote=True)}" style="--c:var({var[default]})">']
+    out.append('<div class="cm-chips" role="group" aria-label="Tool">')
+    for t, v in tools:
+        on = t == default
+        out.append(f'<button type="button" class="cm-chip{" is-on" if on else ""}" data-tool="{ESC(t, quote=True)}" '
+                   f'aria-pressed="{"true" if on else "false"}" style="--c:var({v})">'
+                   f'<span class="chip"></span><span class="nm">{ESC(t)}</span></button>')
     out.append("</div>")
-    out.append('<p class="worlds-status" aria-live="polite"></p>')
-    out.append('<div class="worlds-stage">')
-    wide = V.CapMap(caps, tools, V.CAPMAP_LAYOUT["wide"])
-    narrow = V.CapMap(caps, tools, V.CAPMAP_LAYOUT["narrow"])
-    aria = "Capability map: " + "; ".join(f"{t} covers {len(wide.cov[t])} of {len(wide.nodes)} blocks" for t, _v in tools)
-    out.append(f'<div class="worlds-wide">{capmap_svg(wide, ids, side + "w", aria)}</div>')
-    out.append(f'<div class="worlds-narrow">{capmap_svg(narrow, ids, side + "n", aria)}{key_list(narrow, ids)}</div>')
-    out.append(f'<p class="axis-note worlds-caption">{caption}</p>')
-    out.append('<details class="radar-data worlds-data"><summary>Show every covered cell and its source</summary>' + capmap_table(caps) + "</details>")
-    out.append('<div class="worlds-pop" role="tooltip" hidden></div></div>')
-    out.append(f'<p class="axis-note worlds-note">{intro}</p>')
-    out.append('<script type="application/json" class="worlds-json">' + json.dumps({"side": side, "map": capmap_json(caps)}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")
+    out.append('<div class="cm-chart">')
+    out.append('<div class="cm-axis" aria-hidden="true"><span class="cm-ax-l"></span><span class="cm-ax-t"><span>CPU</span><span>both</span><span>GPU</span></span></div>')
+    out.append(cm_rows(caps, default, tools))
+    out.append("</div>")
+    out.append('<p class="cm-legend"><span class="cm-key"><span class="cm-dot-on"></span>first-class</span> '
+               '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a hollow dot at the centre, a greyed label</span></p>')
+    out.append(f'<p class="cm-summary" aria-live="polite" data-none="{ESC(NONE_SENTENCE, quote=True)}">{ESC(caps.summary(default))}</p>')
+    for t, _v in tools:
+        out.append(f'<div class="cm-tool" data-tool="{ESC(t, quote=True)}"{"" if t == default else " hidden"}>{cm_list(caps, t)}</div>')
+    out.append(cm_compare(caps, tools))
+    out.append(f'<p class="axis-note cm-caption">{caption}</p>')
+    out.append(f'<p class="axis-note cm-note-text">{intro}</p>')
+    j = dict(capmap_json(caps, tools), side=side, summaries={t: caps.summary(t) for t, _v in tools}, none=NONE_SENTENCE)
+    out.append('<script type="application/json" class="cm-json">' + json.dumps(j, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")
     out.append("</div>")
     return "\n".join(out)
 

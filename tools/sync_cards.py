@@ -3429,15 +3429,13 @@ def build_radar(pool, side, devices, qualitative, mode="landing"):
 
 #: The capability map's source table: tool x block x device -> covered or not, with a source and a note per covered cell.
 CAPABILITIES = pathlib.Path("_data") / "capabilities.json"
-#: The tools the map draws, in its legend order.
+#: The tools the map offers, in its chip order.
 CAPMAP_TOOLS = (("raptor", "--tool-raptor"), ("NVIDIA Warp", "--tool-warp"), ("JAX", "--tool-jax"), ("PyTorch", "--tool-pytorch"),
                 ("CuPy", "--tool-cupy"), ("Numba", "--tool-numba"), ("NumPy", "--tool-numpy"))
-CAPMAP_CAPTION = ("What each tool has a documented, first-class way to do, on the CPU and on the GPU. Speed is not part of it: "
-                  "that is what the bars above and the radar below show.")
-CAPMAP_NOTE = ("Columns: Simulation on the left, AI on the right, blending where they meet. Rows: the CPU on top, the GPU below. "
-               "A tool's shape encloses the blocks its own documentation shows a designed feature or API for, and never a block "
-               "it does not; a workaround (masking every lane, raw CUDA strings, running the slowest sample to the end) does "
-               "not count. Every covered cell links to its source in the table. The tools are complementary; overlap is not a ranking.")
+CAPMAP_CAPTION = ("What each tool has a documented, first-class way to do, on CPU and on GPU; speed is in the bars and the radar.")
+CAPMAP_NOTE = ("A dot sits on a row only when the tool's own documentation shows a designed feature or API for it; a workaround "
+               "(masking every lane, raw CUDA strings, running the slowest sample to the end) does not count. Every covered cell "
+               "links to its source. The tools are complementary; overlap is not a ranking.")
 ROSETTE_NOTE = ("Every radar major fanned open at once, in the radar's order, plus the batches that thin out. A tool's band encloses the "
                 "features it covers in a sector: within 2\u00d7 of the best tool on this device (measured, upright) or 4 of 5 in the rubric "
                 "(judgement, italic); the arcs on each feature say which tools cover it. Same rule for every tool; overlap is not a ranking.")

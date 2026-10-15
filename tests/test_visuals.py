@@ -1,8 +1,8 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""The two coverage visuals (the capability map, the rosette) and their data. The map is static and sourced: its geometry
-is rebuilt from ``_data/capabilities.json`` with the same code that drew it and compared with what was drawn; the rosette
-is rebuilt from the page's own JSON (coverage verdicts) on every device the generated pages carry."""
+"""The two coverage visuals (the capability map, the rosette) and their data. The map is static and sourced: what it shows
+for every tool (each row's dot stop, the sentence, the list, the table) is compared with ``_data/capabilities.json``; the
+rosette is rebuilt from the page's own JSON (coverage verdicts) on every device the generated pages carry."""
 import functools
 import html
 import json
@@ -52,7 +52,20 @@ def _devices(block):
 @functools.lru_cache(maxsize=None)
 def _map_page():
     text = (GENERATED / "perf_switch.md").read_text()
-    return {side: b for side, b in _blocks(text, "worlds capmap")}
+    out = {}
+    for m in re.finditer(r'<div class="capmap" data-side="(gpu|cpu)"', text):
+        end = text.index("</script>\n</div>", m.start()) + len("</script>\n</div>")
+        out[m.group(1)] = text[m.start():end]
+    return out
+
+
+def _cm_json(block):
+    return json.loads(re.search(r'<script type="application/json" class="cm-json">(.*?)</script>', block, re.S).group(1).replace("<\\/", "</"))
+
+
+def _row_stops(block):
+    """{block key: (data-stop, data-stops list)} of the rows as rendered."""
+    return {k: (st, ss.split(",")) for k, st, ss in re.findall(r'<li class="cm-row[^"]*" data-block="([^"]+)" data-stop="([^"]+)" data-stops="([^"]+)"', block)}
 
 
 @functools.lru_cache(maxsize=None)
@@ -73,19 +86,8 @@ def _table(dev_json):
     return t
 
 
-@functools.lru_cache(maxsize=None)
-def _map(mode):
-    return V.CapMap(_caps(), list(sc.CAPMAP_TOOLS), V.CAPMAP_LAYOUT[mode])
-
-
 def _paths(part, cls="blob"):
     return re.findall(rf'<path class="{cls}[^"]*" data-tool="([^"]+)"[^>]*? d="([^"]+)"', part)
-
-
-def _parts():
-    """(wide html, narrow html) of the map as drawn under the GPU panel."""
-    b = _map_page()["gpu"]
-    return b.split('<div class="worlds-narrow">')[0], b.split('<div class="worlds-narrow">')[1]
 
 
 class TestCoverageRule(unittest.TestCase):
@@ -151,64 +153,160 @@ class TestCapabilityData(unittest.TestCase):
         block = _map_page()["gpu"]
         self.assertNotIn("2×", block)
         self.assertNotIn("of 5", block)
-        self.assertIn("Speed is not part of it", block)
+        self.assertIn("speed is in the bars and the radar", block)
 
-    def test_the_table_lists_every_covered_cell_once_with_its_source(self):
+    def test_the_rulings_hold(self):
+        caps = _caps()
+        for b in ("divergent", "events"):
+            self.assertIsNone(caps.stop("Numba", b), b)
+        self.assertIsNone(caps.stop("NVIDIA Warp", "deploy"))
+
+
+def _tool_pane(block, tool):
+    m = re.search(rf'<div class="cm-tool" data-tool="{re.escape(html.escape(tool, quote=True))}"[^>]*>(.*?)</ul>(.*?)</div>', block, re.S)
+    return m.group(0)
+
+
+class TestOneToolAtATime(unittest.TestCase):
+    """Rows are the capabilities; the dot of each row sits where the selected tool's coverage says, for every tool."""
+
+    def test_rows_are_the_capabilities_in_two_groups(self):
         caps = _caps()
         for side, block in _map_page().items():
-            rows = re.findall(r'<tr data-block="([^"]+)" data-device="([^"]+)" data-tool="([^"]+)">(.*?)</tr>', block, re.S)
-            want = [(b, d, t) for b, d, t, _c in caps.covered_cells()]
-            self.assertEqual([(b, d, html.unescape(t)) for b, d, t, _r in rows], want, side)
-            for (b, d, t, row), (_b, _d, _t, c) in zip(rows, caps.covered_cells()):
-                self.assertIn(f'<a href="{html.escape(c["source"], quote=True)}">source</a>', row)
-                self.assertIn(html.escape(c["note"]), row)
+            rows = _row_stops(block)
+            self.assertEqual(sorted(rows), sorted(V.BLOCKS_KEYS), side)
+            self.assertEqual(len(rows), len(caps.needs))
+            groups = re.findall(r'<h4 class="cm-gh">([^<]+)</h4>', block)
+            self.assertEqual(groups, ["Simulation", "AI"])
+            sim, ai = block.split('<section class="cm-group cm-ai">')
+            for k in V.BLOCKS_KEYS:
+                self.assertEqual(f'data-block="{k}" data-stop' in sim.split('<section class="cm-group cm-sim">')[1], V.BLOCK[k][4] == "sim", k)
 
-    def test_table_cell_count_equals_the_map_coverage(self):
-        wide_html, narrow_html = _parts()
-        drawn = len(re.findall(r'<path class="arc" data-tool=', wide_html))
-        rows = len(re.findall(r'<tr data-block="[^"]+" data-device=', _map_page()["gpu"]))
-        cov = sum(len(_map("wide").cov[t]) for t in _map("wide").tools)
-        self.assertEqual(rows, cov)
-        self.assertEqual(drawn, cov)
-        self.assertEqual(len(re.findall(r'<path class="arc" data-tool=', narrow_html.split("</svg>")[0])), cov)
+    def test_every_dot_stop_matches_the_data_for_every_tool(self):
+        caps = _caps()
+        tools = [t for t, _v in sc.CAPMAP_TOOLS]
+        for side, block in _map_page().items():
+            rows = _row_stops(block)
+            j = _cm_json(block)
+            self.assertEqual(j["tools"], tools)
+            default = re.search(r'class="capmap" data-side="\w+" data-tool="([^"]+)"', block).group(1)
+            self.assertEqual(default, "raptor")
+            for k in V.BLOCKS_KEYS:
+                st, per = rows[k]
+                self.assertEqual(st, caps.stop(default, k) or "none", (k, "default"))
+                for t, shown in zip(tools, per):
+                    want = caps.stop(t, k) or "none"
+                    self.assertEqual(shown, want, (t, k))
+                    self.assertEqual(j["stops"][k][t], want, (t, k))
 
-    def test_popover_json_mirrors_the_data(self):
+    def test_rendered_default_is_raptor_and_the_picker_is_one_choice(self):
+        for block in _map_page().values():
+            self.assertEqual(len(re.findall(r'<button type="button" class="cm-chip', block)), len(sc.CAPMAP_TOOLS))
+            self.assertEqual(len(re.findall(r'aria-pressed="true"', block)), 1)
+            self.assertRegex(block, r'class="cm-chip is-on" data-tool="raptor"')
+
+    def test_summary_counts_match_the_data(self):
+        caps = _caps()
+        for block in _map_page().values():
+            j = _cm_json(block)
+            first = re.search(r'<p class="cm-summary"[^>]*>([^<]*)</p>', block).group(1)
+            self.assertEqual(html.unescape(first), j["summaries"]["raptor"])
+            for t in caps.tools:
+                s_ = j["summaries"][t]
+                blocks = caps.covered_blocks(t)
+                self.assertTrue(s_.startswith(f"{t}: {len(blocks)} "), s_)
+                n_both = sum(1 for b in blocks if caps.stop(t, b) == "both")
+                if n_both == len(blocks):
+                    self.assertIn("on both CPU and GPU", s_)
+                n_ai = sum(1 for b in blocks if V.BLOCK[b][4] == "ai")
+                if n_ai == 0:
+                    self.assertIn("all on the Simulation side", s_)
+                elif n_ai == len(blocks):
+                    self.assertIn("all on the AI side", s_)
+                else:
+                    self.assertIn(f"{len(blocks) - n_ai} on the Simulation side and {n_ai} on the AI side", s_)
+        self.assertEqual(caps.summary("CuPy").split(",")[1].strip(), "GPU only")
+
+    def test_every_covered_cell_has_a_source_in_the_list_and_the_table(self):
         caps = _caps()
         for side, block in _map_page().items():
-            j = _json(block)
-            self.assertEqual(j["side"], side)
-            for nid, n in j["map"]["nodes"].items():
-                d, b = V.split_node(nid)
-                self.assertEqual([w[0] for w in n["w"]], caps.who(b, d))
-                for t, note, src in n["w"]:
-                    self.assertEqual((note, src), (caps.cell(t, b, d)["note"], caps.cell(t, b, d)["source"]))
-            self.assertEqual(set(j["map"]["nodes"]), set(caps.nodes()))
+            table = block[block.index('<table class="cm-table"'):]
+            for t in caps.tools:
+                pane = _tool_pane(block, t)
+                for b, d, tool, c in caps.covered_cells():
+                    if tool != t:
+                        continue
+                    src = html.escape(c["source"], quote=True)
+                    self.assertIn(f'href="{src}"', pane, (t, b, d, "list"))
+                    row = re.search(rf'<tr data-block="{b}">(.*?)</tr>', table, re.S).group(1)
+                    self.assertIn(f'href="{src}"', row, (t, b, d, "table"))
 
+    def test_lists_name_what_is_not_covered(self):
+        caps = _caps()
+        for block in _map_page().values():
+            for t in caps.tools:
+                pane = _tool_pane(block, t)
+                lis = re.findall(r'<li data-block="([^"]+)">', pane)
+                self.assertEqual(lis, caps.covered_blocks(t), t)
+                none = [V.BLOCK[b][1] for b in V.BLOCKS_KEYS if not caps.stop(t, b)]
+                if none:
+                    self.assertIn(html.escape("Not first-class: " + ", ".join(none) + "."), pane, t)
+                else:
+                    self.assertNotIn("Not first-class", pane)
 
-class TestOneMap(unittest.TestCase):
-    """The map is the same on every device: no device switch, no per-card variant."""
+    def test_compare_table_cells(self):
+        caps = _caps()
+        block = _map_page()["gpu"]
+        table = block[block.index('<table class="cm-table"'):]
+        self.assertIn("<details class=\"cm-compare\"><summary>Compare all tools", block)
+        self.assertNotIn("<details open", block.split("</script>")[0])
+        self.assertEqual(len(re.findall(r'<tr data-block="', table)), len(V.BLOCKS))
+        for b in V.BLOCKS_KEYS:
+            row = re.search(rf'<tr data-block="{b}">(.*?)</tr>', table, re.S).group(1)
+            cells = re.findall(r'<td data-stop="([^"]+)">(.*?)</td>', row, re.S)
+            self.assertEqual([c[0] for c in cells], [caps.stop(t, b) or "none" for t in caps.tools], b)
+            for (st, inner), t in zip(cells, caps.tools):
+                text = re.sub(r"<[^>]+>", "", inner).split()
+                if st == "none":
+                    self.assertEqual(inner, "")
+                else:
+                    self.assertEqual(text[0], V.STOP_NAME[st], (b, t))
+
+    def test_neutral_state_and_deselect_sentence_exist(self):
+        css = (SITE_ROOT / "_static" / "custom.css").read_text()
+        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
+        self.assertIn(".capmap.is-neutral .cm-row .cm-dot", css)
+        self.assertIn("IntersectionObserver", js)
+        self.assertIn("is-neutral", js)
+        for block in _map_page().values():
+            self.assertIn("Pick a tool to see where each capability runs.", block)
+            self.assertEqual(_cm_json(block)["none"], "Pick a tool to see where each capability runs.")
+            self.assertNotIn("is-neutral", block)      # at rest the page shows raptor's final positions
 
     def test_both_panels_carry_the_same_map(self):
         pages = _map_page()
         self.assertEqual(set(pages), {"gpu", "cpu"})
-        norm = {side: b.replace(f'data-side="{side}"', "").replace(f"wic-{side}", "wic").replace(f'"side":"{side}"', "")
-                .replace(f"-{side}w", "-w").replace(f"-{side}n", "-n") for side, b in pages.items()}
+        norm = {side: b.replace(f'data-side="{side}"', "").replace(f'"side":"{side}"', "") for side, b in pages.items()}
         self.assertEqual(norm["gpu"], norm["cpu"])
         self.assertNotIn("data-slug", pages["gpu"])
-        self.assertNotIn("worlds-dev", pages["gpu"])
 
-    def test_every_block_appears_on_each_row_where_a_tool_does_it(self):
-        caps = _caps()
-        for d, _n in V.DEVICES:
-            for b in V.BLOCKS_KEYS:
-                self.assertEqual(V.node_id(d, b) in caps.nodes(), bool(caps.who(b, d)), (d, b))
-        for mode in ("wide", "narrow"):
-            lay = V.CAPMAP_LAYOUT[mode]
-            for nid in caps.nodes():
-                d, b = V.split_node(nid)
-                x, y = lay["pos"][nid]
-                self.assertEqual(y < lay["rows"], d == "cpu", (mode, nid, "row"))
-                self.assertEqual(x > lay["cols"], V.BLOCK[b][4] == "ai", (mode, nid, "column"))
+    def test_no_hover_only_content(self):
+        block = _map_page()["gpu"]
+        self.assertNotIn("popover", block)
+        self.assertNotIn("role=\"tooltip\"", block)
+        css = (SITE_ROOT / "_static" / "custom.css").read_text()
+        cm = css[css.index("The capability map (.capmap"):]
+        self.assertNotIn(":hover ~", cm)
+        self.assertNotIn(".cm-note { display: none", cm)
+
+    def test_motion_and_focus(self):
+        css = (SITE_ROOT / "_static" / "custom.css").read_text()
+        self.assertIn("transition: left 0.3s", css)
+        self.assertIn("prefers-reduced-motion: reduce) { * { transition: none", css)
+        self.assertIn(".cm-chip:focus-visible", css)
+        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
+        self.assertIn("ArrowRight", js)
+        self.assertIn("aria-pressed", js)
 
 
 class TestIcons(unittest.TestCase):
@@ -223,123 +321,19 @@ class TestIcons(unittest.TestCase):
             self.assertIn(f, radar_icons.ICONS, f)
 
     def test_every_node_has_a_name_and_a_symbol(self):
-        for side, b in list(_map_page().items()) + list(_rosette_page().items()):
+        for side, b in _rosette_page().items():
             ids = set(re.findall(r'<symbol id="([^"]+)"', b))
             self.assertTrue(ids)
             for href in set(re.findall(r'<use href="#([^"]+)"', b)):
                 self.assertIn(href, ids)
-            for g in re.findall(r'<g class="(?:wnode|rnode|rsector)[^"]*"[^>]*>', b):
+            for g in re.findall(r'<g class="(?:rnode|rsector)[^"]*"[^>]*>', b):
                 self.assertRegex(g, r'aria-label="[^"]+"')
                 self.assertIn('tabindex="0"', g)
             self.assertNotRegex(b, r'<(?:link|img)[^>]+(?:\.svg|\.png)')
 
 
-class TestConvexityAndClearance(unittest.TestCase):
-    """Every drawn blob is the rounded convex hull of its covered blocks, and every uncovered block clears it."""
-
-    def test_drawn_shapes_are_the_hulls(self):
-        for mode, part in zip(("wide", "narrow"), _parts()):
-            w = _map(mode)
-            want = [(t, blob.path()) for t in w.tools for blob, _m in w.pieces[t]]
-            self.assertEqual([(html.unescape(t), d) for t, d in _paths(part)], want, mode)
-            for t in w.tools:
-                for blob, members in w.pieces[t]:
-                    self.assertEqual(sorted(blob.hull), sorted(V.convex_hull([w.pos[k] for k in members])))
-                    c = blob.core
-                    if len(c) >= 3:
-                        signs = {math.copysign(1, (c[(i + 1) % len(c)][0] - c[i][0]) * (c[(i + 2) % len(c)][1] - c[(i + 1) % len(c)][1])
-                                               - (c[(i + 1) % len(c)][1] - c[i][1]) * (c[(i + 2) % len(c)][0] - c[(i + 1) % len(c)][0])) for i in range(len(c))}
-                        self.assertEqual(len(signs), 1, (mode, t, "core is not convex"))
-
-    def test_uncovered_blocks_clear_every_outline(self):
-        for mode in ("wide", "narrow"):
-            w = _map(mode)
-            self.assertEqual(w.violations, [], mode)
-            for t in w.tools:
-                for blob, members in w.pieces[t]:
-                    for k in w.nodes:
-                        d = blob.distance(w.pos[k])
-                        if k in members:
-                            self.assertLessEqual(d, -(w.node + V.CLEAR), (mode, t, k, "not enclosed"))
-                        elif k not in w.cov[t]:
-                            self.assertGreaterEqual(d, w.node + V.CLEAR, (mode, t, k, "enclosed or too close"))
-        self.assertEqual(V.NODE_R + V.CLEAR, 23)
-
-    def test_drawn_arcs_bulge_outwards(self):
-        """The drawn SVG outline, not only the geometry: the midpoint of every arc in a blob's path lies on that blob's
-        outline. An arc swept the wrong way (an inward cap) puts it deep inside and leaves blocks outside."""
-        def arc_mid(p, q, r, large, sweep):
-            # SVG arc centre parameterisation (SVG 1.1 F.6.5), circle case
-            mx, my = (p[0] - q[0]) / 2, (p[1] - q[1]) / 2
-            h2 = max(r * r - mx * mx - my * my, 0.0)
-            k = math.sqrt(h2 / (mx * mx + my * my)) * (-1 if large == sweep else 1)
-            cx, cy = k * my + (p[0] + q[0]) / 2, -k * mx + (p[1] + q[1]) / 2
-            a0 = math.atan2(p[1] - cy, p[0] - cx)
-            d = (math.atan2(q[1] - cy, q[0] - cx) - a0) % (2 * math.pi)
-            if not sweep:
-                d -= 2 * math.pi
-            return cx + r * math.cos(a0 + d / 2), cy + r * math.sin(a0 + d / 2)
-
-        tok = re.compile(r"([MLAZ])([^MLAZ]*)")
-        for mode in ("wide", "narrow"):
-            w = _map(mode)
-            for t in w.tools:
-                for blob, _m in w.pieces[t]:
-                    cur = None
-                    for cmd, args in tok.findall(blob.path()):
-                        v = [float(x) for x in args.split()]
-                        if cmd in "ML":
-                            cur = (v[0], v[1])
-                        elif cmd == "A":
-                            nxt = (v[5], v[6])
-                            mid = arc_mid(cur, nxt, v[0], int(v[3]), int(v[4]))
-                            self.assertLess(abs(blob.distance(mid)), 1.0, (mode, t, "arc swept inwards"))
-                            cur = nxt
-
-    def test_path_snapshot(self):
-        """Two-decimal coordinates and a per-corner sweep (a mirror-image arc would be a different string)."""
-        self.assertEqual(V.rounded_hull_path([(0, 0), (100, 0), (0, 100)], 10),
-                         "M0.00 -10.00L100.00 -10.00A10.00 10.00 0 0 1 107.07 7.07L7.07 107.07A10.00 10.00 0 0 1 -10.00 100.00"
-                         "L-10.00 0.00A10.00 10.00 0 0 1 0.00 -10.00Z")
-
-    def test_raptor_is_never_split(self):
-        for mode in ("wide", "narrow"):
-            self.assertEqual(len(_map(mode).pieces["raptor"]), 1)
-            self.assertNotIn("raptor", V.FALLBACK)
-
-    def test_the_fallback_cases_are_named(self):
-        """Pieces beyond one hull are the ruled fallback, allowed only for the tools `V.FALLBACK` names; today none needs it,
-        so a change that adds one is a visible edit here."""
-        self.assertEqual(V.FALLBACK, {})
-        for mode in ("wide", "narrow"):
-            w = _map(mode)
-            self.assertEqual(w.split, [], mode)
-            for t in w.tools:
-                self.assertEqual(len(w.pieces[t]), 1 if w.cov[t] else 0, (mode, t))
-
-
 class TestLabels(unittest.TestCase):
     """Label non-intersection, both visuals, wide and phone width, every rosette sector."""
-
-    def test_map_labels_clear_everything(self):
-        w = _map("wide")
-        self.assertGreaterEqual(min(v["gap"] for v in w.labels.values()), MIN_GAP)
-        for k, tt in w.titles().items():
-            self.assertGreaterEqual(tt["gap"], MIN_GAP, k)
-        for t, nb in w.name_boxes().items():
-            self.assertGreaterEqual(nb["gap"], MIN_GAP, ("name", t))
-        boxes = [v["box"][:4] for v in w.labels.values()]
-        circles, pts = w._obstacles()
-        width, height = w.lay["size"]
-        for i, a in enumerate(boxes):
-            self.assertTrue(0 <= a[0] and a[2] <= width and 0 <= a[1] and a[3] <= height, a)
-            for b in boxes[i + 1:]:
-                self.assertGreaterEqual(V._box_gap(a, b), MIN_GAP)
-            for c, r in circles:
-                self.assertGreaterEqual(V._box_node_gap(a, c, r), MIN_GAP)
-            self.assertGreaterEqual(min(V._gap(a, p) for p in pts), MIN_GAP)
-        for k, tt in _map("narrow").titles().items():
-            self.assertGreaterEqual(tt["gap"], MIN_GAP, (k, "narrow"))
 
     def test_rosette_labels_clear_everything(self):
         for side, slug in LABEL_CARDS:
@@ -351,24 +345,8 @@ class TestLabels(unittest.TestCase):
                 for kind, v in g.items():
                     self.assertGreaterEqual(v, MIN_GAP, (side, slug, mode, sector, kind))
 
-    def test_nothing_leaves_the_phone_column(self):
-        w = _map("narrow")
-        width, height = w.lay["size"]
-        for t in w.tools:
-            for blob, _m in w.pieces[t]:
-                xs = [p[0] for p in blob.outline(6)]
-                ys = [p[1] for p in blob.outline(6)]
-                self.assertGreaterEqual(min(xs), 0, t)
-                self.assertLessEqual(max(xs), width, t)
-                self.assertGreaterEqual(min(ys), 0, t)
-                self.assertLessEqual(max(ys), height, t)
-        for k, tt in w.titles().items():
-            self.assertGreaterEqual(tt["box"][0], 0)
-            self.assertLessEqual(tt["box"][2], width)
-
-
 class TestHoverPolicy(unittest.TestCase):
-    """A tool's blob and its chip are one handler; the drawn name is the chip's name; nothing is hover-only."""
+    """A tool's band and its chip are one handler; nothing is hover-only."""
 
     def test_blob_and_chip_share_one_handler(self):
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
@@ -377,29 +355,21 @@ class TestHoverPolicy(unittest.TestCase):
             self.assertIn(f'el.addEventListener("{el}"', js)
 
     def test_names_equal_chip_names(self):
-        for side, b in list(_map_page().items()) + list(_rosette_page().items()):
+        for side, b in _rosette_page().items():
             chips = _tools(b)
             for t, d in _paths(b):
                 self.assertIn(html.unescape(t), [html.unescape(c) for c in chips])
-            for name in re.findall(r'<text class="bname" data-tool="([^"]+)"[^>]*>([^<]*)</text>', b):
-                self.assertEqual(name[0], name[1])
-                self.assertIn(name[0], chips)
 
     def test_every_chip_names_its_tool_for_a_screen_reader(self):
         for side, b in _map_page().items():
-            self.assertEqual([html.unescape(t) for t in _tools(b)], [t for t, _v in sc.CAPMAP_TOOLS])
-            for t in _tools(b):
-                self.assertIn(f'aria-label="{t}"', b)
-
-    def test_the_popover_carries_the_sources(self):
-        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
-        self.assertIn('link(w[2], "source")', js)
-        self.assertIn("closeSoon", js)          # the popover stays while the pointer moves into it to follow a link
+            chips = re.findall(r'<button type="button" class="cm-chip[^"]*" data-tool="([^"]+)"', b)
+            self.assertEqual([html.unescape(t) for t in chips], [t for t, _v in sc.CAPMAP_TOOLS])
+            for t in chips:
+                self.assertRegex(b, rf'data-tool="{re.escape(t)}"[^>]*>(?:<span class="chip"></span>)<span class="nm">{re.escape(t)}</span>')
 
 
 class TestCrossHighlight(unittest.TestCase):
-    """One feature key links the rosette, the radar, the popover rows and the tables; one block key links a map block's
-    two rows, its key-list entry and its table rows."""
+    """One feature key links the rosette, the radar, the popover rows and the tables."""
 
     def test_every_feature_key_is_known_and_has_a_table_row(self):
         for side, b in _rosette_page().items():
@@ -421,15 +391,6 @@ class TestCrossHighlight(unittest.TestCase):
         self.assertIn('"xh"', js)
         self.assertIn("mouseover", js)
         self.assertIn("focusin", js)
-        self.assertIn('"block:"', js)
-
-    def test_every_map_block_key_links_its_rows(self):
-        caps = _caps()
-        b = _map_page()["gpu"]
-        for nid in caps.nodes():
-            d, k = V.split_node(nid)
-            self.assertIn(f'data-node="{nid}" data-block="{k}" data-device="{d}"', b)
-            self.assertIn(f'<li data-block="{k}">', b)
 
 
 class TestPageComposition(unittest.TestCase):
@@ -440,8 +401,8 @@ class TestPageComposition(unittest.TestCase):
         for side in ("gpu", "cpu"):
             i = text.index(f'<div class="perf-side perf-side-{side}">')
             seg = text[i:]
-            self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="worlds capmap"'))
-            self.assertLess(seg.index('<div class="worlds capmap"'), seg.index('<div class="radar"'))
+            self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="capmap"'))
+            self.assertLess(seg.index('<div class="capmap"'), seg.index('<div class="radar"'))
 
     def test_detail_toggle(self):
         text = (GENERATED / "radar_detailed.md").read_text()
@@ -461,19 +422,13 @@ class TestNoEarlyFinishView(unittest.TestCase):
 
 
 class TestPhoneLayout(unittest.TestCase):
-    """At phone width the icons stand in for the labels, each reachable and named, with the key listed once; CPU over GPU."""
+    """The rosette keeps its sector picker at phone width; the capability map is one column of rows that never needs a sideways page scroll."""
 
-    def test_narrow_charts_have_no_label_text_and_a_key(self):
-        _wide, narrow = _parts()
-        svg = narrow.split("</svg>")[0]
-        self.assertNotIn('class="nlabel', svg)
-        self.assertEqual(len(re.findall(r'<li data-block="', narrow)), len(V.BLOCKS))
-        self.assertEqual(len(re.findall(r'class="wnode', svg)), len(_caps().nodes()))
-
-    def test_the_legend_is_letters_on_a_phone(self):
+    def test_the_map_scrolls_only_inside_its_own_box(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
-        self.assertIn(".worlds-leg .nm { display: none; }", css)
-        self.assertIn(".worlds-leg .mono { display: inline; }", css)
+        self.assertIn(".cm-scroll { overflow-x: auto; max-width: 100%;", css)
+        self.assertIn("@container (max-width: 520px)", css)
+        self.assertIn("minmax(0, 46%)", css)
 
     def test_rosette_has_a_sector_picker(self):
         for side, b in _rosette_page().items():
