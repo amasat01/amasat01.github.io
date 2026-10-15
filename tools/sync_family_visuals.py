@@ -34,15 +34,15 @@ FILES = [
     ("visuals.css", "_static/custom.css", "css"),
     ("icons.svg", "tools/radar_icons.py", "icons"),
 ]
-#: The site pages the fragments are cut from (one row each): the landing page's device switch, with the two-worlds chart,
-#: the landing radar and the early-finish bars of every device; and the detailed page's rosette + radar toggle.
+#: The site pages the fragments are cut from (one row each): the landing page's device switch, with the capability map
+#: and the landing radar of every device; and the detailed page's radar.
 PAGES = {"switch": "_generated/perf_switch.md", "detailed": "_generated/radar_detailed.md"}
-#: Fragment kinds: what each device side of a "unit" (the device switch plus its panels) shows.
-#:   map = two-worlds chart; map_radar = + the landing radar; map_detailed = + the rosette/radar toggle;
-#:   early = the early-finish bars only.
+#: Fragment kinds. map = the capability map alone (it is the same on every device, so it has no switch);
+#:   map_radar = the map, then the device switch with the landing radar of each device;
+#:   map_detailed = the map, then the device switch with the detailed radar of each device.
 #: Profiles: the docs repo -> {fragment file: kind} and the bundle files it loads.
 PROFILES = {
-    "eagle": {"fragments": {"map.html": "map", "performance.html": "map_detailed", "early_bars.html": "early"},
+    "eagle": {"fragments": {"map.html": "map", "performance.html": "map_detailed"},
               "files": ["perf-state.js", "radar.js", "visuals.js", "visuals.css", "icons.svg"]},
     "hawk": {"fragments": {"map_radar.html": "map_radar"},
              "files": ["perf-state.js", "radar.js", "visuals.js", "visuals.css", "icons.svg"]},
@@ -62,7 +62,7 @@ BUDGET_GZIP = 300_000
 
 CSS = "_static/custom.css"
 #: Stylesheet slices: (start marker, end marker or None) of custom.css. Tokens are scoped to the unit; the switch and bars
-#: rules lose their id-based lines (the generator writes id-free ones); the radar/worlds/rosette block runs to the end.
+#: rules lose their id-based lines (the generator writes id-free ones); the radar/map block runs to the end.
 CSS_TOKENS = ('/* ---- The tool palette', "/* ---- Typography")
 CSS_SLICES = [('/* "How it compares": plain HTML bar charts', '/* "Four libraries"'),
               ('/* "How it compares": hover and focus on a runtime bar', '/* The landing radar (radar_gpu.md'),
@@ -162,28 +162,28 @@ def _unit(kind, pages):
     sw = _raw_html(pages["switch"])
     head, sides = _split_sides(sw)
     head = head.replace('<span id="on-your-cpu"></span>\n', "")
+    capmap = _block(sides["gpu"], r'<div class="capmap" data-side="gpu"')
+    if kind == "map":
+        html = f'<div class="perf-switch" data-fv="{kind}">\n' + capmap + "</div>"
+        html = re.sub(r"<details\b(?![^>]*\bopen\b)", "<details open data-nojs", html)
+        return html.encode() + b"\n"
     cls = "perf-switch perf-detailed" if kind == "map_detailed" else "perf-switch"
-    head = head.replace('<div class="perf-switch">', f'<div class="{cls}" data-fv="{kind}"' + (' data-bars="early"' if kind == "early" else "") + ">", 1)
+    # the map once, first: it is the same on every device, and the switch under it picks the radar's device
+    head = head.replace('<div class="perf-switch">', f'<div class="{cls}" data-fv="{kind}"' + ">\n" + capmap.rstrip("\n"), 1)
     det_sides = _split_sides(_raw_html(pages["detailed"]))[1] if kind == "map_detailed" else None
     out = [head]
     for side, seg in sides.items():
         opening = _side_open(seg)
         out.append(opening)
         secs = re.findall(r'<section class="perf-dev">.*?</section>\n', seg, re.S)
-        if kind == "early":
-            for s in secs:
-                i = s.index('<div class="bars-view bars-early">')
-                out.append('<section class="perf-dev">\n' + s[i:])
-        else:
-            out.append('<section class="perf-dev">\n</section>\n' * len(secs))
-            out.append(_block(seg, rf'<div class="worlds" data-side="{side}">'))
-            if kind == "map_radar":
-                out.append(_block(seg, rf'<div class="radar" data-side="{side}" data-mode="landing">'))
-            elif kind == "map_detailed":
-                d = det_sides[side]
-                i = d.index('<div class="view-toggle"')
-                j = d.rindex("</script>\n</div>\n</div>") + len("</script>\n</div>\n</div>") + 1
-                out.append(d[i:j])
+        out.append('<section class="perf-dev">\n</section>\n' * len(secs))
+        if kind == "map_radar":
+            out.append(_block(seg, rf'<div class="radar" data-side="{side}" data-mode="landing">'))
+        elif kind == "map_detailed":
+            d = det_sides[side]
+            i = d.index('<div class="radar radar-detailed"')
+            j = d.rindex("</script>\n</div>\n</div>") + len("</script>\n</div>\n</div>") + 1
+            out.append(d[i:j])
         out.append("</div>\n")
     out.append("</div>")
     html = "".join(out)

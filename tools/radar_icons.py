@@ -84,7 +84,7 @@ ICONS.update({
     "reach": ICONS["deploy"],
 })
 
-#: The two features behind "Batches that thin out", and one icon per block of work in the two-worlds chart: the same
+#: The two features behind "Batches that thin out", and one icon per capability in the capability chart: the same
 #: family (24 grid, ``ICON_STROKE``, current colour). Blocks that are a feature reuse its icon above.
 ICONS.update({
     "thinning": '<path d="M4 6h16M4 12h10M4 18h4"/><path d="M17 12h3M11 18h9" stroke-dasharray="1.5 2.5"/>',

@@ -88,26 +88,16 @@ class OneValuePerCell(unittest.TestCase):
         switch = (GENERATED / "perf_switch.md").read_text()
         return re.split(r'<section class="perf-dev">', switch)[1:]
 
-    def test_every_view_of_a_device_quotes_the_same_eagle_simulate_wall(self):
-        checked = 0
-        for panel in self._panels():
-            wall = re.search(r'<div class="row us"[^>]*aria-label="eagle\.simulate: ([^".]+(?:\.\d+)? \S+)\.', panel)
-            if not wall:
-                continue
-            early = re.findall(r'aria-label="eagle\.simulate: \d+%\. [^"]*wall [^,]+ uniform, ([^ ]+ \S+) spread', panel)
-            self.assertTrue(early, "the early-finish view has no eagle.simulate row")
-            for value in early:
-                self.assertEqual(value, wall.group(1))
-            checked += 1
-        self.assertGreater(checked, 3)
-
     def test_the_lead_and_the_radar_quote_the_first_panels_eagle_simulate_wall(self):
         lead = re.search(r"each stopping at its own step: (\S+ \S+) and", (GENERATED / "lead_sentence.md").read_text())
         panel = self._panels()[0]
         wall = re.search(r'<div class="row us"[^>]*aria-label="eagle\.simulate: ([^".]+(?:\.\d+)? \S+)\.', panel)
         self.assertEqual(lead.group(1), wall.group(1))
-        radar = re.search(r'"uneven":\{"raptor":\["([^"]+)"', (GENERATED / "perf_switch.md").read_text())
-        self.assertEqual(radar.group(1), wall.group(1))
+        # the landing radar of the first device: raptor's reading on the uneven-ensemble minor
+        blob = re.search(r'<script type="application/json" class="radar-json">(.*?)</script>', (GENERATED / "perf_switch.md").read_text(), re.S)
+        radar = json.loads(blob.group(1).replace("<\\/", "</"))
+        first = next(iter(radar["devices"].values()))
+        self.assertEqual(first["mn"]["raptor"]["ensemble"]["uneven"][0], wall.group(1))
 
     def test_the_compare_page_names_each_eagle_arm_beside_its_value(self):
         text = (GENERATED / "compare.md").read_text()

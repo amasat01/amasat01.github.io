@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
-import itertools
 import json
 import math
 import pathlib
@@ -633,7 +632,6 @@ def cpu_glance_block(pool, w, slug, card):
     hi = max(b[2] for b in bars) * 1.6
     aria = ", ".join(f"{label} {_fmt_sig_time(wall)}" for _arm, label, wall in bars)
     eff_html, _kept = eff_chart_html(pool, "cpu", card, n, CPU_CHIP_VAR)
-    early_html, _early = early_chart_html(pool, "cpu", card, n, CPU_CHIP_VAR)
     w.add("```{raw} html")
     if eff_html:
         w.add(BARS_TOGGLE)
@@ -663,10 +661,6 @@ def cpu_glance_block(pool, w, slug, card):
         w.add('<div class="bars-view bars-eff">')
         w.add(eff_html)
         w.add("</div>")
-        if early_html:
-            w.add('<div class="bars-view bars-early">')
-            w.add(early_html)
-            w.add("</div>")
     w.add("```")
     w.add("")
     return True
@@ -1193,13 +1187,13 @@ def eff_info(pool, card, arm, n, v, entry):
         _tab_device(card),
         f"N = {n:,}, up to {WHY_CONFIG['max_steps']:,} steps, samples stopping at different steps",
         f"measured: {_fmt_rate(v['spread'])} sample-steps per second",
-        f"FP64 speed of light: {_fmt_rate(v['sol'])} sample-steps per second ({entry.get('source')} reference)",
+        f"Top FP64 speed of this device: {_fmt_rate(v['sol'])} sample-steps per second ({entry.get('source')} reference)",
         f"{_fmt_eff(v['fraction'])} of it",
         _card_stamp(card)) if x]
 
 
-EFF_NOTE = ("Share of this device's FP64 speed of light a tool reaches when samples stop at different times. "
-            "100% = every FP64 unit busy with useful work.")
+EFF_NOTE = ("Share of this device's top FP64 speed a tool reaches when samples stop at different times. "
+            "100% = every FP64 unit doing useful work all the time.")
 EFF_PENDING = "Reference measurement pending for this device."
 EAGLE_MECHANISM_EFF = "https://amasat01.github.io/eagle/content/performance/mechanism.html#efficiency-on-uneven-batches"
 
@@ -1230,48 +1224,10 @@ def eff_chart_html(pool, kind, card, n, chip_vars):
     return "\n".join(out), vals
 
 
-EARLY_NOTE = ("Of the work the early finishers save (fewer sample-steps on this batch than on one where every sample runs "
-              "to the end), the share that shows up as wall time saved: (1 - spread wall / uniform wall) / "
-              "(1 - spread steps / uniform steps), each tool's fastest arm, the same arm on both batches. "
-              "100% = every saved step became saved time.")
-
-
-def early_chart_html(pool, kind, card, n, chip_vars):
-    """The "Early-finish saving" view of one device: ``(html, tools)``. One bar per tool the card ran, the share of the
-    work the early finishers save that became wall time saved (`early_saving_by_tool`), best first; '' when the card
-    has no sample-step counts for a spread and a uniform batch."""
-    sav = early_saving_by_tool(card, kind, prefer={"raptor": eagle_bar_arm(kind)})
-    rows = []
-    for arm, label, bar_arm in eff_arms(kind, card):
-        tool = radar_tool(arm, kind)
-        if tool in sav:
-            rows.append((sav[tool], label, bar_arm))
-    if not rows:
-        return "", []
-    rows.sort(key=lambda r: -r[0][0])
-    aria = ", ".join(f"{label} {_fmt_saving(v[0])}" for v, label, _b in rows)
-    out = [f'<div class="chart" role="img" aria-label="Early-finish saving on '
-           f'{html.escape(_tab_device(card), quote=True)}: {aria}.">']
-    for (saving, arm, wu, ws, work), label, bar_arm in rows:
-        info = [pool.track(x) for x in (
-            arm_label(card, arm), _tab_device(card),
-            f"N = {n:,}, up to {WHY_CONFIG['max_steps']:,} steps, spread against uniform stop steps",
-            f"wall {_fmt_sig_time(wu)} uniform, {_fmt_sig_time(ws)} spread",
-            f"{100 * (1 - work):.0f}% fewer sample-steps on the spread batch",
-            f"{_fmt_saving(saving)} of the saved steps became saved time", _card_stamp(card)) if x]
-        out.append(_bar_row_html(pool.track(label), chip_vars.get(bar_arm), max(100.0 * saving, 0.0),
-                                 pool.track(_fmt_saving(saving)), arm.startswith("eagle"), info=info))
-    out.append("</div>")
-    out.append(f'<p class="axis-note">{EARLY_NOTE}</p>')
-    return "\n".join(out), rows
-
-
 BARS_TOGGLE = ('<div class="bars-toggle" role="group" aria-label="What the bars show">'
                '<button type="button" class="bars-opt" data-view="wall" aria-pressed="true">Wall time</button>'
                '<button type="button" class="bars-opt" data-view="eff" aria-pressed="false">'
-               'Uneven-batch efficiency</button>'
-               '<button type="button" class="bars-opt" data-view="early" aria-pressed="false">'
-               'Early-finish saving</button></div>')
+               'Uneven-batch efficiency</button></div>')
 
 
 def fastest_of_cell(card, n, config):
@@ -1991,7 +1947,6 @@ def gpu_chart_block(pool, w, slug, card):
     hi = max(b[2] for b in bars) * 1.6
     aria = ", ".join(f"{_chart_label(card, arm)} {_fmt_sig_time(wall)}" for arm, _label, wall in bars)
     eff_html, _kept = eff_chart_html(pool, "gpu", card, n, ARM_CHIP_VAR)
-    early_html, _early = early_chart_html(pool, "gpu", card, n, ARM_CHIP_VAR)
     w.add("```{raw} html")
     if eff_html:
         w.add(BARS_TOGGLE)
@@ -2019,10 +1974,6 @@ def gpu_chart_block(pool, w, slug, card):
         w.add('<div class="bars-view bars-eff">')
         w.add(eff_html)
         w.add("</div>")
-        if early_html:
-            w.add('<div class="bars-view bars-early">')
-            w.add(early_html)
-            w.add("</div>")
     w.add("```")
     w.add("")
     return True
@@ -3030,82 +2981,6 @@ def radar_minor_axes(side, perf, rk78, qualitative):
     return axes
 
 
-#: The two measured features behind the "Batches that thin out" sector and the two-worlds blocks that need them.
-DIVERGENCE_KEYS = ("thinning", "uneven_eff")
-
-
-def early_saving_by_tool(card, kind, prefer=None):
-    """{tool: (saving, arm, uniform wall s, spread wall s, work ratio)}: of the work the early finishers
-    save (fewer sample-steps on the spread batch than on the uniform one), the share that shows up as wall
-    time saved, (1 - wall spread / wall uniform) / (1 - work spread / work uniform), for the tool's fastest
-    arm on the spread cell at the largest N and the same arm on the uniform cell. 1 = every saved step
-    became saved time; at or under 0 the spread batch took as long as the uniform one. ``prefer``
-    ({tool: arm}) pins a tool to that arm when the card ran it on both batches."""
-    if not card or not card.get("ns"):
-        return {}
-    n = max(card["ns"])
-    uniform = _by_arm(_cell(card, n, DENSE_CONFIG))
-    spread_rows = _cell(card, n, WHY_CONFIG)
-    pinned = {t: a for t, a in (prefer or {}).items()
-              if any(r["arm"] == a and r.get("sample_steps") for r in spread_rows)
-              and (uniform.get(a) or {}).get("sample_steps")}
-    best = {}
-    for r in spread_rows:
-        if pinned.get(radar_tool(r["arm"], kind), r["arm"]) != r["arm"]:
-            continue
-        tool, u = radar_tool(r["arm"], kind), uniform.get(r["arm"])
-        if tool is None or u is None or not r.get("sample_steps") or not u.get("sample_steps"):
-            continue
-        wall = _center(r["wall_s"])
-        if tool not in best or wall < best[tool][0]:
-            best[tool] = (wall, r, u)
-    out = {}
-    for tool, (ws, r, u) in best.items():
-        wu = _center(u["wall_s"])
-        work = r["sample_steps"] / u["sample_steps"]
-        if not work < 1.0:
-            continue
-        out[tool] = ((1.0 - ws / wu) / (1.0 - work), r["arm"], wu, ws, work)
-    return out
-
-
-def _fmt_saving(saving):
-    """A saving as a whole percent, floored; at or under 0.5 % it reads ``none``."""
-    whole = math.floor(100.0 * saving + 1e-9)
-    return "none" if saving < 0.005 else f"{max(whole, 0)}%" if whole >= 1 else "<1%"
-
-
-def divergence_features(pool, side, card):
-    """``{feature: {"tools": {tool: entry}}}`` for the early-finish saving and the uneven-batch efficiency of one
-    card, in the shape of a minor axis (``value``, ``ratio``, ``arm``, ``detail``, ``x`` = the ratio to the best,
-    inf when the tool has no saving). A feature with no reading on the card (no reference measurement yet) has
-    no tools."""
-    out = {k: {"tools": {}} for k in DIVERGENCE_KEYS}
-    if not card or not card.get("ns"):
-        return out
-    sav = early_saving_by_tool(card, side, prefer={"raptor": eagle_bar_arm(side)})
-    top = max((v[0] for v in sav.values()), default=0.0)
-    for tool, (saving, arm, wu, ws, work) in sav.items():
-        gone = saving < 0.005
-        out["thinning"]["tools"][tool] = {
-            "value": _fmt_saving(saving), "arm": arm_label(card, arm), "x": math.inf if gone else top / saving,
-            "ratio": "no saving" if gone else ("1.0\u00d7 the best" if saving == top else f"{_fmt_ratio(top / saving)} the best"),
-            "detail": (f"uniform {_fmt_sig_time(wu)}, spread {_fmt_sig_time(ws)}, "
-                       f"{100 * (1 - work):.0f}% fewer sample-steps on the spread batch")}
-    got = eff_values(pool, side, card)
-    vals = got[2] if got else []
-    top = max((v["fraction"] for _a, _l, v in vals), default=0.0)
-    for arm, _label, v in vals:
-        tool = radar_tool(arm, side)
-        if tool is None:
-            continue
-        out["uneven_eff"]["tools"][tool] = {
-            "value": _fmt_eff(v["fraction"]), "arm": arm_label(card, arm), "x": top / v["fraction"],
-            "ratio": ("1.0\u00d7 the best" if v["fraction"] == top else f"{_fmt_ratio(top / v['fraction'])} the best"),
-            "detail": f"{_fmt_rate(v['spread'])} of {_fmt_rate(v['sol'])} sample-steps per second"}
-    return out
-
-
 def radar_major_entry(minors):
     """One tool's entry on a major, from its minors' entries (``minors``: {minor key: entry}, in the
     major's order; a minor the tool has no reading on is simply absent). The radius is the plain
@@ -3525,58 +3400,26 @@ def build_radar(pool, side, devices, qualitative, mode="landing"):
     return "\n".join(out)
 
 
-WORLDS_NOTE = ("Two worlds, drawn as soft regions that blend where they meet; the blend is the boundary. A block of work is covered by a tool "
-               "when the tool covers every feature the block needs: within 2\u00d7 of the best tool on this device for a measured feature, "
-               "4 of 5 for a rubric one (italic: the author's judgement). Same rule for every tool; a dashed block is one no tool covers on "
-               "this device. A tool's shape is the rounded convex hull of the blocks it covers and never encloses a block it does not cover "
-               "(where one hull would, the tool is drawn in two or more pieces). Arrays cross zero-copy between raptor and CuPy, PyTorch, "
-               "NVIDIA Warp and NumPy today, not JAX. The tools are complementary; overlap is not a ranking.")
-ROSETTE_NOTE = ("Every radar major fanned open at once, in the radar's order, plus the batches that thin out. A tool's band encloses the "
-                "features it covers in a sector: within 2\u00d7 of the best tool on this device (measured, upright) or 4 of 5 in the rubric "
-                "(judgement, italic); the arcs on each feature say which tools cover it. Same rule for every tool; overlap is not a ranking.")
+#: The capability map's source table: tool x block x device -> covered or not, with a source and a note per covered cell.
+CAPABILITIES = pathlib.Path("_data") / "capabilities.json"
+#: The tools the map offers, in its chip order.
+CAPMAP_TOOLS = (("raptor", "--tool-raptor"), ("NVIDIA Warp", "--tool-warp"), ("JAX", "--tool-jax"), ("PyTorch", "--tool-pytorch"),
+                ("CuPy", "--tool-cupy"), ("Numba", "--tool-numba"), ("NumPy", "--tool-numpy"))
+CAPMAP_CAPTION = ("What each tool has a documented, first-class way to do, on CPU and on GPU; speed is in the bars and the radar.")
+CAPMAP_NOTE = ("An icon lights up only when the tool's own documentation shows a designed feature or API for it; a workaround "
+               "(masking every lane, raw CUDA strings, running the slowest sample to the end) does not count. Every covered cell "
+               "links to its source. The tools are complementary; overlap is not a ranking.")
+def load_capabilities(pool, path=None):
+    """The capability map's table (`CAPABILITIES`), recorded in SOURCES.json by md5."""
+    p = pool.site_source(CAPABILITIES) if path is None else pathlib.Path(path)
+    return visuals.Capabilities(json.loads(p.read_text()))
 
 
-def _feat_entry(pool, e):
-    return {"v": pool.track(str(e["value"])), "r": pool.track(str(e["ratio"])), "a": e.get("arm", ""), "x": e.get("x"), "pts": e.get("pts")}
-
-
-def feature_table(pool, dev, divergence):
-    """{feature: {tool: entry}} of one radar device for the coverage visuals: the sixteen radar minors plus the two
-    divergence features, readings as the radar shows them (value, ratio or reason) and the numbers the coverage rule reads
-    (``x`` = ratio to the best, ``pts`` = rubric score)."""
-    table = {k: {t: _feat_entry(pool, e) for t, e in ax["tools"].items()} for k, ax in dev["minor_axes"].items()}
-    for k, ax in divergence.items():
-        table[k] = {t: _feat_entry(pool, e) for t, e in ax["tools"].items()}
-    return table
-
-
-def visual_devices(pool, side, entries, rk78_entries, qualitative):
-    """[(slug, name, card line, feature table, date stamp)] for the side's devices in tab order."""
-    cards = dict(entries)
-    out = []
-    for slug, dev in radar_devices(side, entries, rk78_entries, qualitative, "landing"):
-        stamp = re.search(r"card of \d{4}-\d{2}-\d{2}", dev["card"])
-        out.append((slug, dev["name"], pool.track(dev["card"]), feature_table(pool, dev, divergence_features(pool, side, cards[slug])),
-                    stamp.group(0) if stamp else ""))
-    return out
-
-
-def build_worlds(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entries, qualitative):
-    """{side: html block}: the two-worlds chart of each side (all devices), for the landing page under the bars."""
-    out = {}
-    for side, entries, rk in (("gpu", gpu_entries, rk78_gpu_entries), ("cpu", cpu_entries, rk78_cpu_entries)):
-        devs = visual_devices(pool, side, entries, rk, qualitative)
-        out[side] = visuals_markup.worlds_block(side, RADAR_TOOLS[side], [d[:4] for d in devs], WORLDS_NOTE) if devs else ""
-    return out
-
-
-def build_rosettes(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entries, qualitative):
-    """{side: html block}: the rosette of each side (all devices), the detailed view of where_raptor_fits."""
-    out = {}
-    for side, entries, rk in (("gpu", gpu_entries, rk78_gpu_entries), ("cpu", cpu_entries, rk78_cpu_entries)):
-        devs = visual_devices(pool, side, entries, rk, qualitative)
-        out[side] = visuals_markup.rosette_block(side, RADAR_TOOLS[side], devs, ROSETTE_NOTE) if devs else ""
-    return out
+def build_capmap(pool, sides=("gpu", "cpu")):
+    """{side: html block}: the capability map, the same on every device; one copy per hardware panel of the landing
+    page (between the bars and the radar), with its ids namespaced by the side."""
+    caps = load_capabilities(pool)
+    return {side: visuals_markup.capmap_block(side, caps, CAPMAP_TOOLS, CAPMAP_NOTE, CAPMAP_CAPTION) for side in sides}
 
 
 def build_radar_page(pool, name, html_block):
@@ -3605,7 +3448,7 @@ def build_radars(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entr
     return blocks
 
 
-def build_detailed_radar(pool, blocks, rosettes=None):
+def build_detailed_radar(pool, blocks):
     """``_generated/radar_detailed.md``: the detailed radar of both sides under
     the same hardware pill and device chips as the landing's switch (the URL
     hash is shared), for where_raptor_fits.md."""
@@ -3625,10 +3468,7 @@ def build_detailed_radar(pool, blocks, rosettes=None):
     for side in sides:
         chips = re.findall(r'<div class="radar-dev" data-slug="([^"]+)"[^>]*>\n<p class="axis-note radar-caption">Radar for '
                            r'([^,<]+),', blocks[side])
-        view = ('<div class="view-toggle" role="group" aria-label="Which view">'
-                '<button type="button" class="view-opt" data-view="rosette" aria-pressed="true">Rosette</button>'
-                '<button type="button" class="view-opt" data-view="radar" aria-pressed="false">Radar</button></div>')
-        both = view + '\n<div class="vis-rosette">\n' + (rosettes or {}).get(side, "") + '\n</div>\n<div class="vis-radar">\n' + blocks[side] + "\n</div>"
+        both = blocks[side]
         lines += _side_html(side, names[side][1] + " model", [(html.escape(name), "") for _s, name in chips],
                             [slug for slug, _n in chips], both)
     lines.append("</div>")
@@ -3736,13 +3576,10 @@ def main(argv=None):
                           all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative)
     detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
                             all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative, "detailed")
-    worlds = build_worlds(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
-                          all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative)
-    rosettes = build_rosettes(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
-                              all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative)
-    radar_detailed, have_detailed = build_detailed_radar(pool, detailed, rosettes)
-    # landing: under the bars of each side, the two worlds, then the radar
-    landing = {side: (worlds[side] + "\n" + radars[side]) if radars.get(side) else "" for side in radars}
+    capmap = build_capmap(pool)
+    radar_detailed, have_detailed = build_detailed_radar(pool, detailed)
+    # landing: under the bars of each side, the capability map (the same on both), then the radar
+    landing = {side: (capmap[side] + "\n" + radars[side]) if radars.get(side) else "" for side in radars}
     perf_switch, have_switch = build_perf_switch(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], landing)
     radar_pages = {side: build_radar_page(pool, f"radar_{side}", block) for side, block in radars.items()}
 
