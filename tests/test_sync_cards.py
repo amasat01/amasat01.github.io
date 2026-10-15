@@ -702,7 +702,7 @@ class LandingHeroFragments(unittest.TestCase):
         self.assertIn("50.0 ms", text)
         self.assertLess(text.index("5.00 ms"), text.index("50.0 ms"))
         # no SVG inside the bar charts (the radar beside them is the only SVG)
-        bars_only = re.sub(r'<div class="worlds".*?<script type="application/json" class="worlds-json">.*?</script>\n</div>', "", text, flags=re.S)
+        bars_only = re.sub(r'<div class="(?:worlds|capmap)[^"]*".*?<script type="application/json" class="(?:worlds|cm)-json">.*?</script>\n</div>', "", text, flags=re.S)
         self.assertNotIn("<svg", re.sub(r'<div class="radar".*?<script type="application/json".*?</div>\n?', "", bars_only, flags=re.S).split('class="radar"')[0])
 
     def test_memory_chart_lightest_first_same_row_form(self):
@@ -996,7 +996,8 @@ class StartHereNotebookColabCell(unittest.TestCase):
         cell = next(c for c in nb["cells"] if c["cell_type"] == "code")
         text = "".join(cell["source"])
         self.assertIn("google.colab", text)
-        self.assertIn('extra = "[cuda12]" if gpu else ""', text)                      # GPU extras only with a GPU
+        self.assertIn('extra = ""', text)                                             # GPU extras only with a GPU
+        self.assertIn('extra = f"[cuda{major}]"', text)
         self.assertIn('f"raptor-hawk{extra}", f"raptor-eagle{extra}"', text)
         self.assertIn("sys.version_info", text)                                        # the Python range is checked up front
         self.assertIn("Runtime \u2192 Change runtime type \u2192 T4 GPU", text)

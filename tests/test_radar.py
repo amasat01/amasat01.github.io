@@ -128,7 +128,7 @@ class Qualitative(unittest.TestCase):
         self.assertIn("5 = this is its home ground.", axes["tensor"]["rubric"])
         scores = lambda k: {t: v["score"] for t, v in axes[k]["scores"].items()}  # noqa: E731
         self.assertEqual(scores("tensor"), {"PyTorch": 5, "JAX": 5, "CuPy": 4, "NumPy": 4,
-                                            "NVIDIA Warp": 3, "raptor": 2, "Numba": 2})
+                                            "NVIDIA Warp": 3, "raptor": 2, "Numba": 3})
         self.assertEqual(scores("differentiable"), {"PyTorch": 4, "JAX": 5, "NVIDIA Warp": 4, "CuPy": 1,
                                                     "raptor": 5, "NumPy": 1, "Numba": 1})
         self.assertEqual(scores("arrays"), {"PyTorch": 4, "JAX": 4, "NVIDIA Warp": 4, "CuPy": 5,
@@ -141,7 +141,7 @@ class Qualitative(unittest.TestCase):
         self.assertEqual(scores("array_style"), {"NumPy": 5, "CuPy": 5, "PyTorch": 5, "JAX": 4,
                                                  "Numba": 2, "NVIDIA Warp": 2, "raptor": 2})
         self.assertEqual(scores("half_precision"), {"PyTorch": 5, "JAX": 5, "CuPy": 3, "NVIDIA Warp": 3,
-                                                    "NumPy": 2, "Numba": 2, "raptor": 1})
+                                                    "NumPy": 3, "Numba": 3, "raptor": 1})
         self.assertIn("no BF16/FP8 or tensor-core path", axes["half_precision"]["scores"]["Numba"]["reason"])
         self.assertEqual(scores("single_thread"), {"raptor": 5, "JAX": 4, "NVIDIA Warp": 3, "PyTorch": 3,
                                                    "Numba": 3, "CuPy": 2, "NumPy": 1})
