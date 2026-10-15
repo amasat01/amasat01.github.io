@@ -1670,5 +1670,62 @@
    "why": "Low-precision inference is the AI side."
   }
  },
- "y_about": "Per tool and capability: -1 = CPU only (top band), 0 = CPU and GPU (middle band), +1 = GPU only (bottom band), null = not first-class. Graded values in between may be stored later."
+ "y_about": "Per tool and capability: -1 = CPU only (top band), 0 = CPU and GPU (middle band), +1 = GPU only (bottom band), null = not first-class. Graded values in between may be stored later.",
+ "radar_axes": {
+  "about": "Each judged (qualitative) radar axis and the capability row that shows the same claim. A score of 4 or more needs the capability covered on at least one device; a covered capability must not score 2 or less.",
+  "map": {
+   "tensor": {
+    "blocks": [
+     "linalg"
+    ],
+    "why": "Dense tensor work is the dense linear algebra and large-solver row."
+   },
+   "array_style": {
+    "blocks": [
+     "arraystyle"
+    ],
+    "why": "Whole-array expressions are the array-style row."
+   },
+   "half_precision": {
+    "blocks": [
+     "half"
+    ],
+    "why": "Half precision and below is the half-precision row."
+   },
+   "control": {
+    "blocks": [
+     "handtuned"
+    ],
+    "why": "Writing what each thread does is the hand-tuned kernels row."
+   },
+   "single_thread": {
+    "blocks": [
+     "models"
+    ],
+    "why": "Writing one sample is the per-sample models row."
+   },
+   "differentiable": {
+    "blocks": [
+     "deriv"
+    ],
+    "why": "Built-in derivatives are the differentiable sensitivities row."
+   },
+   "arrays": {
+    "blocks": [
+     "zerocopy"
+    ],
+    "why": "Zero-copy exchange with other frameworks is the zero-copy hand-over row."
+   },
+   "deploy": {
+    "blocks": [
+     "deploy"
+    ],
+    "why": "A compiled program that runs without Python is the deployment row."
+   },
+   "extensible": {
+    "blocks": [],
+    "why": "A plugin path across targets has no capability row, so it is judged on the rubric alone."
+   }
+  }
+ }
 }

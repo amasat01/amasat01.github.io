@@ -421,85 +421,8 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-/* The rosette (.rosette), drawn on the server and shown by js/visuals.js; the capability map (.capmap) follows it. Tool colours are
- * the palette tokens above; the column tints are local. Below 640 px of column the labels give way to icons and a key list. */
-.worlds, .rosette { --world-sim: #8d8da8; --region: #f3f3f8; --region2: #e9e9f1; margin: 36px 0 0; max-width: 100%; container-type: inline-size; position: relative; }
-html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim: #9a9ac4; --region: #1e1e26; --region2: #26262f; }
-.worlds-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
-.worlds-leg { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; font-size: 15px; color: var(--rpt-ink); background: var(--rpt-panel);
-  border: 1px solid var(--rpt-border); border-radius: 999px; padding: 4px 13px; }
-.worlds-leg .chip { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
-.worlds-leg .mono { display: none; font-size: 11px; font-weight: 700; color: #fff; }
-.worlds-leg:hover, .worlds-leg.is-hl { border-color: var(--c); }
-.worlds-leg.is-hl { font-weight: var(--w-strong); }
-.worlds-leg:focus-visible, .rnode:focus-visible, .rsector:focus-visible, .pick:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
-.worlds-status { display: none; min-height: 1.4em; margin: 0 0 4px; font-size: 14px; color: var(--rpt-ink-secondary); }
-.worlds-stage { position: relative; max-width: 1000px; margin-inline: auto; }
-.worlds-dev[hidden], .worlds-pop[hidden], .rosette-sector[hidden] { display: none; }
-.worlds-narrow { display: none; }
-.worlds-svg, .rosette-svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* The capability chart's icon sheet is inline and hidden. */
 .vis-icons { position: absolute; width: 0; height: 0; overflow: hidden; }
-.blob { fill: var(--c); fill-opacity: 0.11; stroke: var(--c); stroke-opacity: 0.6; stroke-width: 1.3; stroke-linejoin: round; cursor: pointer; transition: fill-opacity 0.15s, stroke-opacity 0.15s; }
-.blob.band { fill-opacity: 0.1; stroke-opacity: 1; stroke-width: 1.4; }
-.has-hl .blob:not(.is-hl) { fill-opacity: 0.03; stroke-opacity: 0.15; }
-.blob.is-hl { fill-opacity: 0.22; stroke-opacity: 1; stroke-width: 2.4; }
-.has-hl .arc:not(.is-hl) { opacity: 0.2; }
-.node { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1.3; }
-.arc { fill: none; stroke-width: 3.5; }
-.worlds .ic, .rosette .ic { color: var(--rpt-ink); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-.hit { fill: transparent; stroke: none; }
-.rnode, .rsector { cursor: pointer; outline: none; }
-.rnode:focus-visible .node, .rnode.xh .node { stroke: var(--raptor); stroke-width: 2.5; }
-.nlabel { font-size: 11px; fill: var(--rpt-ink); }
-.nlabel.q, .slabel.q { font-style: italic; }
-.nlabel.xh { font-weight: var(--w-strong); }
-.slabel { font-size: 15px; font-weight: 600; fill: var(--rpt-ink); }
-.centre { font-size: 12px; fill: var(--rpt-ink-secondary); text-anchor: middle; }
-.centre.h { font-size: 14px; font-weight: 600; fill: var(--rpt-ink); }
-.wedge { fill: var(--region); stroke: var(--rpt-surface); stroke-width: 2; }
-.wedge.alt { fill: var(--region2); }
-.rosette.has-focus [data-sector]:not(.is-focus):not(.wedge) { opacity: 0.3; }
-.wedge.is-focus { stroke: var(--raptor); }
-.rosette-picker { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0 0; }
-.pick { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--rpt-border); background: var(--rpt-panel); align-items: center; justify-content: center; cursor: pointer; padding: 0; color: var(--rpt-ink); }
-.pick svg { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.pick.on { border-color: var(--raptor); box-shadow: inset 0 0 0 2px var(--raptor); }
-.worlds-pop { position: absolute; z-index: 6; max-width: 520px; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--rpt-ink); background: var(--rpt-panel);
-  border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
-.worlds-pop.inflow { position: static; max-width: none; margin: 8px 0 0; }
-.wp-h { font-weight: var(--w-strong); }
-.wp-s { color: var(--rpt-ink-secondary); margin-top: 4px; }
-.wp-t { border-collapse: collapse; font-size: 12px; margin-top: 6px; }
-.wp-t th, .wp-t td { padding: 2px 8px 2px 0; text-align: left; vertical-align: top; border-top: 1px solid var(--rpt-border); }
-.wp-t tr:first-child th { border-top: 0; color: var(--rpt-ink-secondary); font-weight: normal; }
-.wp-t td .v { display: block; font-weight: var(--w-strong); white-space: nowrap; }
-.wp-t td .r { display: block; color: var(--rpt-ink-secondary); }
-.wp-t td.no .v { font-weight: normal; }
-.wp-t .miss { color: var(--rpt-ink-secondary); font-style: italic; }
-.worlds .axis-note, .rosette .axis-note { margin-left: 0; max-width: 72ch; }
-.worlds-table { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
-.worlds-table caption { text-align: left; color: var(--rpt-ink-secondary); padding: 4px 0; }
-.worlds-table th, .worlds-table td { border-top: 1px solid var(--rpt-border); padding: 4px 10px 4px 0; text-align: left; vertical-align: top; }
-.worlds-table th.q { font-style: italic; }
-.worlds-table td.miss { color: var(--rpt-ink-secondary); font-style: italic; }
-.worlds-table tr.xh th { font-weight: var(--w-strong); }
-@container (max-width: 639px) {
-  .worlds-wide, .worlds .worlds-wide, .rosette .worlds-wide { display: none; }
-  .worlds-narrow { display: block; }
-  .worlds-status { display: block; }
-  .worlds-leg { padding: 3px; }
-  .worlds-leg .nm { display: none; }
-  .worlds-leg .chip { width: 24px; height: 24px; }
-  .worlds-leg .mono { display: inline; }
-}
-/* the Radar | Rosette toggle of the detailed view; both stay visible without script */
-.view-toggle { display: none; margin: 16px 0 0; border: 1px solid var(--rpt-border); border-radius: 999px; padding: 3px; background: var(--rpt-panel); }
-.view-js .view-toggle { display: inline-flex; }
-.view-opt { cursor: pointer; font: inherit; font-size: 14px; font-weight: var(--w-strong); padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--rpt-ink-secondary); }
-.view-opt:hover { color: var(--rpt-ink); }
-.view-opt[aria-pressed="true"] { background: var(--raptor-wash); color: var(--rpt-ink); box-shadow: inset 0 0 0 1px var(--raptor-soft); }
-.view-opt:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
-.perf-detailed[data-view="rosette"] .vis-radar, .perf-detailed[data-view="radar"] .vis-rosette { display: none; }
 .radar-axis.xh .radar-name { text-decoration: underline; }
 
 /* The landing radar's fan (js/radar.js): a major opens into its minors; the rest chart hides while the fan layer shows. */
@@ -533,7 +456,8 @@ html[data-theme="dark"] .capmap { --cm-sim: #9a9ac4; }
 .cm-chip.is-on { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); font-weight: var(--w-strong); }
 .cm-chip:focus-visible, .cm-scroll:focus-visible, .cm-compare summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
 .capmap:not(.cm-js) .cm-chips { display: none; }
-.cq-wide-box, .cq-narrow-box { max-width: 100%; }
+.cq-wide-box { max-width: 900px; margin-inline: auto; }
+.cq-narrow-box { max-width: 480px; margin-inline: auto; }
 .cq-narrow-box { display: none; }
 .cm-chart { position: relative; }
 .cq-hit { fill: transparent; stroke: none; }
@@ -594,7 +518,7 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
 .cm-table td[data-stop="none"] { color: var(--rpt-muted); }
 .cm-also { font-size: 12px; margin-left: 4px; }
 .capmap .axis-note { margin-left: 0; max-width: 72ch; }
-@container (max-width: 639px) {
+@container (max-width: 699px) {
   .cq-wide-box { display: none; }
   .cq-narrow-box { display: block; }
 }

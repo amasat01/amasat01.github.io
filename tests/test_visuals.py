@@ -1,12 +1,11 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""The two coverage visuals (the capability map, the rosette) and their data. The map is static and sourced: what it shows
-for every tool (each row's dot stop, the sentence, the list, the table) is compared with ``_data/capabilities.json``; the
-rosette is rebuilt from the page's own JSON (coverage verdicts) on every device the generated pages carry."""
+"""The capability chart and its data. The chart is static and sourced: what it shows for every tool (each icon's place, the
+sentence, the list, the table, the card) is compared with ``_data/capabilities.json``; the judged radar axes are held to the
+same sourced capability rows."""
 import functools
 import html
 import json
-import math
 import pathlib
 import re
 import sys
@@ -15,38 +14,10 @@ import unittest
 SITE_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SITE_ROOT / "tools"))
 
-import radar_icons  # noqa: E402
 import sync_cards as sc  # noqa: E402
 import visuals as V  # noqa: E402
-import visuals_markup as M  # noqa: E402
 
 GENERATED = SITE_ROOT / "_generated"
-MIN_GAP = 4.0
-#: Rosette label geometry is fixed per side, so its label gaps are checked on one card per side.
-LABEL_CARDS = (("gpu", "nvidia-h100-80gb-hbm3"), ("cpu", "amd-epyc-9b45"))
-
-
-def _blocks(text, cls):
-    """[(side, block html)] of every ``div.<cls>`` of a generated page (the blocks do not nest)."""
-    out = []
-    for m in re.finditer(rf'<div class="{cls}" data-side="(gpu|cpu)">', text):
-        end = text.index("</script>\n</div>", m.start()) + len("</script>\n</div>")
-        out.append((m.group(1), text[m.start():end]))
-    return out
-
-
-def _json(block):
-    return json.loads(re.search(r'<script type="application/json" class="worlds-json">(.*?)</script>', block, re.S).group(1).replace("<\\/", "</"))
-
-
-def _tools(block):
-    return re.findall(r'class="worlds-leg" data-tool="([^"]+)"', block)
-
-
-def _devices(block):
-    """[(slug, html of that device)] of a rosette block."""
-    parts = re.split(r'(?=<div class="worlds-dev)', block)[1:]
-    return [(re.search(r'data-slug="([^"]+)"', p).group(1), p) for p in parts]
 
 
 @functools.lru_cache(maxsize=None)
@@ -71,63 +42,8 @@ def _icons(block, mode):
 
 
 @functools.lru_cache(maxsize=None)
-def _rosette_page():
-    text = (GENERATED / "radar_detailed.md").read_text()
-    return {side: b for side, b in _blocks(text, "rosette")}
-
-
-@functools.lru_cache(maxsize=None)
 def _caps():
     return V.Capabilities(json.loads((SITE_ROOT / "_data" / "capabilities.json").read_text()))
-
-
-def _table(dev_json):
-    t = {}
-    for f, per_tool in dev_json["vals"].items():
-        t[f] = {tool: {"ok": bool(v[2])} for tool, v in per_tool.items() if v is not None}
-    return t
-
-
-def _paths(part, cls="blob"):
-    return re.findall(rf'<path class="{cls}[^"]*" data-tool="([^"]+)"[^>]*? d="([^"]+)"', part)
-
-
-class TestCoverageRule(unittest.TestCase):
-    """The rosette's verdict on every feature is the radar's rule, the same for every tool."""
-
-    def test_rule_on_the_ratio_and_the_score(self):
-        self.assertTrue(V.covers("uneven", {"x": 2.0}))
-        self.assertFalse(V.covers("uneven", {"x": 2.01}))
-        self.assertTrue(V.covers("tensor", {"pts": 4}))
-        self.assertFalse(V.covers("tensor", {"pts": 3}))
-        self.assertFalse(V.covers("uneven", None))
-        self.assertFalse(V.covers("uneven_eff", {"x": math.inf}))
-
-    def test_the_page_verdicts_follow_the_printed_ratios(self):
-        for side, b in _rosette_page().items():
-            for slug, dj in _json(b)["devices"].items():
-                for f, per_tool in dj["vals"].items():
-                    for tool, v in per_tool.items():
-                        if v is None or f == "compile":            # compile is printed as a band ("1-10 s"), not a ratio
-                            continue
-                        if f in V.MEASURED:
-                            m = re.match(r"([\d.]+)×", v[1])
-                            if m:
-                                x = float(m.group(1))
-                                if x < 2.0:                    # a printed 2.0 is floored: either verdict is possible there
-                                    self.assertTrue(v[2], (side, slug, f, tool, v))
-                                if x > 2.0:
-                                    self.assertFalse(v[2], (side, slug, f, tool, v))
-                            else:
-                                self.assertEqual(v[2], 0, (side, slug, f, tool, v))
-                        else:
-                            m = re.match(r"(\d) of 5", v[0])
-                            self.assertEqual(bool(v[2]), int(m.group(1)) >= V.RUBRIC_MIN, (side, slug, f, tool, v))
-
-    def test_labels_match_the_site_axis_names(self):
-        for k, lab in V.LABEL.items():
-            if k in sc.RADAR_AXIS_EXTRA:
-                self.assertEqual(lab, sc.RADAR_AXIS_EXTRA[k]["short"], k)
 
 
 class TestCapabilityData(unittest.TestCase):
@@ -181,6 +97,35 @@ class TestCapabilityData(unittest.TestCase):
 def _tool_pane(block, tool):
     m = re.search(rf'<div class="cm-tool" data-tool="{re.escape(html.escape(tool, quote=True))}"[^>]*>(.*?)</ul>(.*?)</div>', block, re.S)
     return m.group(0)
+
+
+class TestJudgedAxesAgreeWithCapabilities(unittest.TestCase):
+    """The judged radar scores and the sourced capability rows tell one story: a score of 4 or more needs the capability
+    covered (on at least one device), and a covered capability must not score 2 or less."""
+
+    def _axes(self):
+        return json.loads((SITE_ROOT / "_data" / "radar_qualitative.json").read_text())["axes"]
+
+    def test_every_judged_axis_is_mapped_with_a_reason(self):
+        caps, axes = _caps(), self._axes()
+        mapping = caps.data["radar_axes"]["map"]
+        self.assertEqual(set(mapping), set(axes))
+        for ax, m in mapping.items():
+            self.assertTrue(m["why"].strip() and "\n" not in m["why"], ax)
+            self.assertTrue(set(m["blocks"]) <= set(V.BLOCKS_KEYS), ax)
+        self.assertTrue(any(m["blocks"] for m in mapping.values()))
+
+    def test_scores_and_coverage_agree(self):
+        caps, axes = _caps(), self._axes()
+        for ax, m in caps.data["radar_axes"]["map"].items():
+            if not m["blocks"]:
+                continue
+            for tool, v in axes[ax]["scores"].items():
+                covered = any(caps.stop(tool, b) for b in m["blocks"])
+                if v["score"] >= 4:
+                    self.assertTrue(covered, f"{tool} scores {v['score']} on {ax} but covers none of {m['blocks']}")
+                if covered:
+                    self.assertGreater(v["score"], 2, f"{tool} covers {m['blocks']} but scores {v['score']} on {ax}")
 
 
 class TestOneToolAtATime(unittest.TestCase):
@@ -426,57 +371,22 @@ class TestOneToolAtATime(unittest.TestCase):
 
 
 class TestIcons(unittest.TestCase):
-    """One registry of icons, inline, each element with a name."""
+    """The chart's icons come from the shared registry, inline, each element with a name."""
 
-    def test_every_block_feature_and_sector_has_an_icon(self):
+    def test_every_block_has_an_icon(self):
+        import radar_icons
         for b in V.BLOCKS:
             self.assertIn(b[3], radar_icons.ICONS, b[0])
-        for s_ in V.SECTORS:
-            self.assertIn(s_[3], radar_icons.ICONS, s_[0])
-        for f, _l, _k in V.FEATURES:
-            self.assertIn(f, radar_icons.ICONS, f)
 
-    def test_every_node_has_a_name_and_a_symbol(self):
-        for side, b in _rosette_page().items():
-            ids = set(re.findall(r'<symbol id="([^"]+)"', b))
-            self.assertTrue(ids)
-            for href in set(re.findall(r'<use href="#([^"]+)"', b)):
-                self.assertIn(href, ids)
-            for g in re.findall(r'<g class="(?:rnode|rsector)[^"]*"[^>]*>', b):
-                self.assertRegex(g, r'aria-label="[^"]+"')
-                self.assertIn('tabindex="0"', g)
+    def test_no_external_images(self):
+        for b in _map_page().values():
             self.assertNotRegex(b, r'<(?:link|img)[^>]+(?:\.svg|\.png)')
 
 
-class TestLabels(unittest.TestCase):
-    """Label non-intersection, both visuals, wide and phone width, every rosette sector."""
-
-    def test_rosette_labels_clear_everything(self):
-        for side, slug in LABEL_CARDS:
-            b = _rosette_page()[side]
-            tools = [(t, "") for t in _tools(b)]
-            table = _table(_json(b)["devices"][slug])
-            for mode, sector in [("wide", "ensemble")] + ([("narrow", s_[0]) for s_ in V.SECTORS] if side == "gpu" else []):
-                g = V.Rosette(table, tools, mode, sector).min_gaps()
-                for kind, v in g.items():
-                    self.assertGreaterEqual(v, MIN_GAP, (side, slug, mode, sector, kind))
-
 class TestHoverPolicy(unittest.TestCase):
-    """A tool's band and its chip are one handler; nothing is hover-only."""
+    """The tool chips name their tool for a screen reader; nothing is hover-only."""
 
-    def test_blob_and_chip_share_one_handler(self):
-        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
-        self.assertIn('".worlds-leg, path.blob[data-tool]"', js)
-        for el in ("mouseenter", "mouseleave", "focus", "blur", "click"):
-            self.assertIn(f'el.addEventListener("{el}"', js)
-
-    def test_names_equal_chip_names(self):
-        for side, b in _rosette_page().items():
-            chips = _tools(b)
-            for t, d in _paths(b):
-                self.assertIn(html.unescape(t), [html.unescape(c) for c in chips])
-
-    def test_every_chip_names_its_tool_for_a_screen_reader(self):
+    def test_every_chip_names_its_tool(self):
         for side, b in _map_page().items():
             chips = re.findall(r'<button type="button" class="cm-chip[^"]*" data-tool="([^"]+)"', b)
             self.assertEqual([html.unescape(t) for t in chips], [t for t, _v in sc.CAPMAP_TOOLS])
@@ -485,21 +395,12 @@ class TestHoverPolicy(unittest.TestCase):
 
 
 class TestCrossHighlight(unittest.TestCase):
-    """One feature key links the rosette, the radar, the popover rows and the tables."""
+    """One feature key links a radar axis and its table rows."""
 
-    def test_every_feature_key_is_known_and_has_a_table_row(self):
-        for side, b in _rosette_page().items():
-            keys = set(re.findall(r'data-feature="([^"]+)"', b))
-            self.assertTrue(keys <= {f for f, _l, _k in V.FEATURES}, keys)
-            self.assertEqual(keys, {f for f, _l, _k in V.FEATURES})
-            for f in keys:
-                self.assertIn(f'<g class="rnode" data-feature="{f}"', b)
-                self.assertRegex(b, rf'<text class="nlabel[^"]*" data-feature="{f}"')
-
-    def test_the_detailed_radar_axes_carry_the_same_keys(self):
+    def test_the_detailed_radar_axes_carry_feature_keys(self):
         text = (GENERATED / "radar_detailed.md").read_text()
         radar = set(re.findall(r'class="radar-axis[^"]*" data-axis="([^"]+)" data-feature="\1"', text))
-        self.assertEqual(radar, {f for f, _l, _k in V.FEATURES if f in sc.RADAR_ALL_AXES})
+        self.assertEqual(radar, {k for k in sc.RADAR_ALL_AXES if k in sc.RADAR_MODE_KEYS["detailed"]})
 
     def test_the_script_does_the_highlight(self):
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
@@ -520,12 +421,11 @@ class TestPageComposition(unittest.TestCase):
             self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="capmap"'))
             self.assertLess(seg.index('<div class="capmap"'), seg.index('<div class="radar"'))
 
-    def test_detail_toggle(self):
+    def test_detail_page_carries_the_radar_only(self):
         text = (GENERATED / "radar_detailed.md").read_text()
-        for side in ("gpu", "cpu"):
-            self.assertIn('data-view="rosette" aria-pressed="true">Rosette<', text)
-            self.assertIn('data-view="radar" aria-pressed="false">Radar<', text)
-        self.assertLess(text.index('<div class="vis-rosette">'), text.index('<div class="vis-radar">'))
+        self.assertNotIn("rosette", text.lower())
+        self.assertNotIn("view-toggle", text)
+        self.assertIn('<div class="radar radar-detailed" data-side="gpu" data-mode="detailed">', text)
 
 
 class TestNoEarlyFinishView(unittest.TestCase):
@@ -538,7 +438,23 @@ class TestNoEarlyFinishView(unittest.TestCase):
 
 
 class TestPhoneLayout(unittest.TestCase):
-    """The rosette keeps its sector picker at phone width; the capability map is one column of rows that never needs a sideways page scroll."""
+    """The chart picks its layout by the width of its own container, not the viewport; neither layout needs a sideways page scroll."""
+
+    def test_the_layout_follows_the_container_not_the_viewport(self):
+        css = (SITE_ROOT / "_static" / "custom.css").read_text()
+        self.assertIn("container-type: inline-size", css[css.index(".capmap {"):][:300])
+        i = css.index("@container (max-width: 699px) {\n  .cq-wide-box { display: none; }")
+        self.assertNotIn("@media", css[i - 20:i])
+        # in the narrowest container that still gets the wide drawing (700 px) its names are still 11 px or more
+        w = V.QUAD_MODES["wide"]
+        self.assertGreaterEqual(w["fs"] * 700 / w["W"], 11.0)
+        # and the narrow drawing is capped so it never blows up in a middle-width column
+        self.assertIn(".cq-narrow-box { max-width: 480px;", css)
+        n = V.QUAD_MODES["narrow"]
+        self.assertGreaterEqual(n["fs"] * 340 / n["W"], 11.0)
+        for block in _map_page().values():
+            self.assertIn('class="cq-wide-box"', block)
+            self.assertIn('class="cq-narrow-box"', block)
 
     def test_the_map_scrolls_only_inside_its_own_box(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
@@ -546,12 +462,6 @@ class TestPhoneLayout(unittest.TestCase):
         self.assertIn(".cq-wide-box { display: none; }", css)
         self.assertIn(".cq-narrow-box { display: block; }", css)
         self.assertIn(".cq-svg { display: block; width: 100%; height: auto;", css)
-
-    def test_rosette_has_a_sector_picker(self):
-        for side, b in _rosette_page().items():
-            self.assertEqual(len(re.findall(r'<button type="button" class="pick', b)) % len(V.SECTORS), 0)
-            self.assertIn('class="rosette-picker"', b)
-
 
 if __name__ == "__main__":
     unittest.main()

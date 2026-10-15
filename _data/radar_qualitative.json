@@ -34,8 +34,8 @@
           "reason": "Built for per-sample kernels and ensembles; for dense tensor work it hands arrays to PyTorch or JAX zero-copy."
         },
         "Numba": {
-          "score": 2,
-          "reason": "Compiles loops and NumPy-style code; dense linear algebra comes from the libraries it calls."
+          "score": 3,
+          "reason": "Compiles loops and NumPy-style code; np.linalg is supported on the CPU through the BLAS and LAPACK it calls."
         }
       }
     },
@@ -104,12 +104,12 @@
           "reason": "float16 support and tile operations that can use tensor cores."
         },
         "NumPy": {
-          "score": 2,
-          "reason": "float16 storage and arithmetic, but slow on the CPU and nothing below it."
+          "score": 3,
+          "reason": "float16 storage and arithmetic are a supported path, though slow on the CPU and nothing below it."
         },
         "Numba": {
-          "score": 2,
-          "reason": "float16 arithmetic intrinsics in numba.cuda; no BF16/FP8 or tensor-core path."
+          "score": 3,
+          "reason": "float16 arithmetic intrinsics in numba.cuda are a supported path; no BF16/FP8 or tensor-core path."
         },
         "raptor": {
           "score": 1,

@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
-import itertools
 import json
 import math
 import pathlib
@@ -2982,32 +2981,6 @@ def radar_minor_axes(side, perf, rk78, qualitative):
     return axes
 
 
-#: The measured feature behind the "Batches that thin out" sector of the rosette.
-DIVERGENCE_KEYS = ("uneven_eff",)
-
-
-def divergence_features(pool, side, card):
-    """``{feature: {"tools": {tool: entry}}}`` for the uneven-batch efficiency of one
-    card, in the shape of a minor axis (``value``, ``ratio``, ``arm``, ``detail``, ``x`` = the ratio to the best,
-    inf when the tool has no saving). A feature with no reading on the card (no reference measurement yet) has
-    no tools."""
-    out = {k: {"tools": {}} for k in DIVERGENCE_KEYS}
-    if not card or not card.get("ns"):
-        return out
-    got = eff_values(pool, side, card)
-    vals = got[2] if got else []
-    top = max((v["fraction"] for _a, _l, v in vals), default=0.0)
-    for arm, _label, v in vals:
-        tool = radar_tool(arm, side)
-        if tool is None:
-            continue
-        out["uneven_eff"]["tools"][tool] = {
-            "value": _fmt_eff(v["fraction"]), "arm": arm_label(card, arm), "x": top / v["fraction"],
-            "ratio": ("1.0\u00d7 the best" if v["fraction"] == top else f"{_fmt_ratio(top / v['fraction'])} the best"),
-            "detail": f"{_fmt_rate(v['spread'])} of {_fmt_rate(v['sol'])} sample-steps per second"}
-    return out
-
-
 def radar_major_entry(minors):
     """One tool's entry on a major, from its minors' entries (``minors``: {minor key: entry}, in the
     major's order; a minor the tool has no reading on is simply absent). The radius is the plain
@@ -3436,36 +3409,6 @@ CAPMAP_CAPTION = ("What each tool has a documented, first-class way to do, on CP
 CAPMAP_NOTE = ("An icon lights up only when the tool's own documentation shows a designed feature or API for it; a workaround "
                "(masking every lane, raw CUDA strings, running the slowest sample to the end) does not count. Every covered cell "
                "links to its source. The tools are complementary; overlap is not a ranking.")
-ROSETTE_NOTE = ("Every radar major fanned open at once, in the radar's order, plus the batches that thin out. A tool's band encloses the "
-                "features it covers in a sector: within 2\u00d7 of the best tool on this device (measured, upright) or 4 of 5 in the rubric "
-                "(judgement, italic); the arcs on each feature say which tools cover it. Same rule for every tool; overlap is not a ranking.")
-
-
-def _feat_entry(pool, e):
-    return {"v": pool.track(str(e["value"])), "r": pool.track(str(e["ratio"])), "a": e.get("arm", ""), "x": e.get("x"), "pts": e.get("pts")}
-
-
-def feature_table(pool, dev, divergence):
-    """{feature: {tool: entry}} of one radar device for the coverage visuals: the sixteen radar minors plus the two
-    divergence features, readings as the radar shows them (value, ratio or reason) and the numbers the coverage rule reads
-    (``x`` = ratio to the best, ``pts`` = rubric score)."""
-    table = {k: {t: _feat_entry(pool, e) for t, e in ax["tools"].items()} for k, ax in dev["minor_axes"].items()}
-    for k, ax in divergence.items():
-        table[k] = {t: _feat_entry(pool, e) for t, e in ax["tools"].items()}
-    return table
-
-
-def visual_devices(pool, side, entries, rk78_entries, qualitative):
-    """[(slug, name, card line, feature table, date stamp)] for the side's devices in tab order."""
-    cards = dict(entries)
-    out = []
-    for slug, dev in radar_devices(side, entries, rk78_entries, qualitative, "landing"):
-        stamp = re.search(r"card of \d{4}-\d{2}-\d{2}", dev["card"])
-        out.append((slug, dev["name"], pool.track(dev["card"]), feature_table(pool, dev, divergence_features(pool, side, cards[slug])),
-                    stamp.group(0) if stamp else ""))
-    return out
-
-
 def load_capabilities(pool, path=None):
     """The capability map's table (`CAPABILITIES`), recorded in SOURCES.json by md5."""
     p = pool.site_source(CAPABILITIES) if path is None else pathlib.Path(path)
@@ -3477,15 +3420,6 @@ def build_capmap(pool, sides=("gpu", "cpu")):
     page (between the bars and the radar), with its ids namespaced by the side."""
     caps = load_capabilities(pool)
     return {side: visuals_markup.capmap_block(side, caps, CAPMAP_TOOLS, CAPMAP_NOTE, CAPMAP_CAPTION) for side in sides}
-
-
-def build_rosettes(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entries, qualitative):
-    """{side: html block}: the rosette of each side (all devices), the detailed view of where_raptor_fits."""
-    out = {}
-    for side, entries, rk in (("gpu", gpu_entries, rk78_gpu_entries), ("cpu", cpu_entries, rk78_cpu_entries)):
-        devs = visual_devices(pool, side, entries, rk, qualitative)
-        out[side] = visuals_markup.rosette_block(side, RADAR_TOOLS[side], devs, ROSETTE_NOTE) if devs else ""
-    return out
 
 
 def build_radar_page(pool, name, html_block):
@@ -3514,7 +3448,7 @@ def build_radars(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entr
     return blocks
 
 
-def build_detailed_radar(pool, blocks, rosettes=None):
+def build_detailed_radar(pool, blocks):
     """``_generated/radar_detailed.md``: the detailed radar of both sides under
     the same hardware pill and device chips as the landing's switch (the URL
     hash is shared), for where_raptor_fits.md."""
@@ -3534,10 +3468,7 @@ def build_detailed_radar(pool, blocks, rosettes=None):
     for side in sides:
         chips = re.findall(r'<div class="radar-dev" data-slug="([^"]+)"[^>]*>\n<p class="axis-note radar-caption">Radar for '
                            r'([^,<]+),', blocks[side])
-        view = ('<div class="view-toggle" role="group" aria-label="Which view">'
-                '<button type="button" class="view-opt" data-view="rosette" aria-pressed="true">Rosette</button>'
-                '<button type="button" class="view-opt" data-view="radar" aria-pressed="false">Radar</button></div>')
-        both = view + '\n<div class="vis-rosette">\n' + (rosettes or {}).get(side, "") + '\n</div>\n<div class="vis-radar">\n' + blocks[side] + "\n</div>"
+        both = blocks[side]
         lines += _side_html(side, names[side][1] + " model", [(html.escape(name), "") for _s, name in chips],
                             [slug for slug, _n in chips], both)
     lines.append("</div>")
@@ -3646,9 +3577,7 @@ def main(argv=None):
     detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
                             all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative, "detailed")
     capmap = build_capmap(pool)
-    rosettes = build_rosettes(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
-                              all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative)
-    radar_detailed, have_detailed = build_detailed_radar(pool, detailed, rosettes)
+    radar_detailed, have_detailed = build_detailed_radar(pool, detailed)
     # landing: under the bars of each side, the capability map (the same on both), then the radar
     landing = {side: (capmap[side] + "\n" + radars[side]) if radars.get(side) else "" for side in radars}
     perf_switch, have_switch = build_perf_switch(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], landing)

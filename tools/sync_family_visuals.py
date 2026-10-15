@@ -35,11 +35,11 @@ FILES = [
     ("icons.svg", "tools/radar_icons.py", "icons"),
 ]
 #: The site pages the fragments are cut from (one row each): the landing page's device switch, with the capability map
-#: and the landing radar of every device; and the detailed page's rosette + radar toggle.
+#: and the landing radar of every device; and the detailed page's radar.
 PAGES = {"switch": "_generated/perf_switch.md", "detailed": "_generated/radar_detailed.md"}
 #: Fragment kinds. map = the capability map alone (it is the same on every device, so it has no switch);
 #:   map_radar = the map, then the device switch with the landing radar of each device;
-#:   map_detailed = the map, then the device switch with the rosette/radar toggle of each device.
+#:   map_detailed = the map, then the device switch with the detailed radar of each device.
 #: Profiles: the docs repo -> {fragment file: kind} and the bundle files it loads.
 PROFILES = {
     "eagle": {"fragments": {"map.html": "map", "performance.html": "map_detailed"},
@@ -62,7 +62,7 @@ BUDGET_GZIP = 300_000
 
 CSS = "_static/custom.css"
 #: Stylesheet slices: (start marker, end marker or None) of custom.css. Tokens are scoped to the unit; the switch and bars
-#: rules lose their id-based lines (the generator writes id-free ones); the radar/worlds/rosette block runs to the end.
+#: rules lose their id-based lines (the generator writes id-free ones); the radar/map block runs to the end.
 CSS_TOKENS = ('/* ---- The tool palette', "/* ---- Typography")
 CSS_SLICES = [('/* "How it compares": plain HTML bar charts', '/* "Four libraries"'),
               ('/* "How it compares": hover and focus on a runtime bar', '/* The landing radar (radar_gpu.md'),
@@ -181,7 +181,7 @@ def _unit(kind, pages):
             out.append(_block(seg, rf'<div class="radar" data-side="{side}" data-mode="landing">'))
         elif kind == "map_detailed":
             d = det_sides[side]
-            i = d.index('<div class="view-toggle"')
+            i = d.index('<div class="radar radar-detailed"')
             j = d.rindex("</script>\n</div>\n</div>") + len("</script>\n</div>\n</div>") + 1
             out.append(d[i:j])
         out.append("</div>\n")
