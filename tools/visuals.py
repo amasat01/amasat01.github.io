@@ -1,18 +1,20 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""The family's two coverage visuals, as one generator with no dependency on the site: the two-worlds
-chart (blocks of work, each tool's rounded convex hull over the blocks it covers) and the rosette (the
-radar's majors fanned open, each tool's band over the features it covers).
+"""The family's two coverage visuals, as one generator with no dependency on the site: the capability map (blocks of
+work on the CPU and on the GPU, each tool's rounded convex hull over the blocks it has a documented, first-class way to
+do) and the rosette (the radar's majors fanned open, each tool's band over the features it covers).
 
-Input is plain data: a feature table ``{feature: {tool: entry}}`` where an entry is ``{"v": value text,
-"r": ratio or reason text, "a": arm, "x": ratio to the best (measured features), "pts": rubric score
-(judgement features)}``, and the drawn tools ``[(name, css colour variable, mono letter)]``. A tool covers
-a feature when it is within `WITHIN` times the best tool (measured) or scores at least `RUBRIC_MIN`
-(judgement): the same rule as the radar, for every tool. A block is covered by a tool that covers every
-feature the block needs.
+The capability map reads a static, sourced table (``_data/capabilities.json``): tool x block x device -> covered or not,
+with the source page and a one-line note for every covered cell. It is the same on every device and carries no
+measurement; performance lives in the bars and the radar.
 
-Geometry is computed here, in final drawing coordinates, so the checks the tests run (convexity,
-clearance, label gaps) read the same numbers the markup is drawn from."""
+The rosette reads a feature table ``{feature: {tool: entry}}`` where an entry is ``{"v": value text, "r": ratio or
+reason text, "a": arm, "x": ratio to the best (measured features), "pts": rubric score (judgement features)}``. A tool
+covers a feature when it is within `WITHIN` times the best tool (measured) or scores at least `RUBRIC_MIN` (judgement):
+the same rule as the radar, for every tool.
+
+Geometry is computed here, in final drawing coordinates, so the checks the tests run (convexity, clearance, label gaps)
+read the same numbers the markup is drawn from."""
 import html
 import itertools
 import math
@@ -23,7 +25,7 @@ import radar_icons  # noqa: E402,F401  (the shared icon registry)
 #: Every feature of the visuals, in the rosette's order: (key, short label, kind).
 FEATURES = (
     ("uneven", "Uneven ensembles", "m"), ("regular", "Regular ensembles", "m"), ("small", "Small jobs", "m"),
-    ("adaptive", "Adaptive ODEs", "m"), ("thinning", "Early-finish saving", "m"),
+    ("adaptive", "Adaptive ODEs", "m"),
     ("uneven_eff", "Uneven-batch efficiency", "m"), ("memory", "Memory", "m"), ("compile", "Compile time", "m"),
     ("code", "Code size", "m"), ("tensor", "Tensors", "q"), ("array_style", "Array style", "q"),
     ("half_precision", "Half precision", "q"), ("single_thread", "Single-thread", "q"),
@@ -62,42 +64,73 @@ def feature_covered(table, feature, tool):
 
 
 # --------------------------------------------------------------------------- blocks
-#: (key, label, label lines, icon, region, features needed). Region is "sim" or "ai": where the block sits in
-#: the layout, used only when a tool's hull has to be drawn in two convex pieces.
+#: (key, label, label lines, icon, region). Region is "sim" or "ai": the column of the capability map the block sits in.
 BLOCKS = (
-    ("handtuned", "Hand-tuned kernels", ("Hand-tuned", "kernels"), "app-handtuned", "sim", ("control", "regular", "small")),
-    ("fixed", "Fixed-step ODEs", ("Fixed-step", "ODEs"), "regular", "sim", ("regular", "small")),
-    ("deriv", "Differentiable sensitivities", ("Differentiable", "sensitivities"), "differentiable", "sim", ("differentiable",)),
-    ("zerocopy", "Zero-copy hand-over (DLPack)", ("Zero-copy", "hand-over"), "arrays", "sim", ("arrays",)),
-    ("models", "Per-sample models and RHS", ("Per-sample", "models, RHS"), "single_thread", "sim", ("single_thread",)),
-    ("half", "Half precision", ("Half", "precision"), "half_precision", "ai", ("half_precision",)),
-    ("linalg", "Dense linear algebra, large solvers", ("Dense linear", "algebra, solvers"), "tensor", "ai", ("tensor",)),
-    ("ensembles", "Ensembles and Monte Carlo", ("Ensembles,", "Monte Carlo"), "app-ensemble", "sim", ("regular", "uneven", "memory")),
-    ("divergent", "Divergent workloads", ("Divergent", "workloads"), "app-divergent", "sim", ("uneven", "thinning", "uneven_eff")),
-    ("adaptive", "Adaptive ODEs, embedded pairs", ("Adaptive ODEs,", "embedded pairs"), "adaptive", "sim", ("adaptive",)),
-    ("events", "Events and early exit", ("Events,", "early exit"), "thinning", "sim", ("uneven", "thinning")),
-    ("deploy", "Deployment outside Python", ("Deploy outside", "Python"), "deploy", "sim", ("deploy",)),
-    ("diffsim", "Differentiable simulation into learning", ("Differentiable", "simulation"), "app-diffsim", "sim", ("differentiable", "single_thread", "uneven")),
-    ("datagen", "Ensemble data for training", ("Ensemble data", "for training"), "app-datagen", "sim", ("uneven", "regular", "arrays")),
-    ("hybrid", "Hybrid, physics-informed models", ("Hybrid, physics-", "informed"), "app-hybrid", "ai", ("differentiable", "single_thread", "arrays", "deploy")),
-    ("training", "Dense tensor training", ("Dense tensor", "training"), "app-training", "ai", ("tensor", "array_style", "half_precision", "differentiable")),
-    ("inference", "Low-precision inference", ("Low-precision", "inference"), "app-inference", "ai", ("tensor", "half_precision", "deploy")),
-    ("arraystyle", "Array-style programs", ("Array-style", "programs"), "array_style", "ai", ("array_style",)),
+    ("handtuned", "Hand-tuned kernels", ("Hand-tuned", "kernels"), "app-handtuned", "sim"),
+    ("fixed", "Fixed-step ODEs", ("Fixed-step", "ODEs"), "regular", "sim"),
+    ("deriv", "Differentiable sensitivities", ("Differentiable", "sensitivities"), "differentiable", "sim"),
+    ("zerocopy", "Zero-copy hand-over (DLPack)", ("Zero-copy", "hand-over"), "arrays", "sim"),
+    ("models", "Per-sample models and RHS", ("Per-sample", "models, RHS"), "single_thread", "sim"),
+    ("half", "Half precision", ("Half", "precision"), "half_precision", "ai"),
+    ("linalg", "Dense linear algebra, large solvers", ("Dense linear", "algebra, solvers"), "tensor", "ai"),
+    ("ensembles", "Ensembles and Monte Carlo", ("Ensembles,", "Monte Carlo"), "app-ensemble", "sim"),
+    ("divergent", "Divergent workloads", ("Divergent", "workloads"), "app-divergent", "sim"),
+    ("events", "Events and early exit", ("Events,", "early exit"), "thinning", "sim"),
+    ("adaptive", "Adaptive ODEs, embedded pairs", ("Adaptive ODEs,", "embedded pairs"), "adaptive", "sim"),
+    ("deploy", "Deployment outside Python", ("Deploy outside", "Python"), "deploy", "sim"),
+    ("diffsim", "Differentiable simulation into learning", ("Differentiable", "simulation"), "app-diffsim", "sim"),
+    ("datagen", "Ensemble data for training", ("Ensemble data", "for training"), "app-datagen", "sim"),
+    ("hybrid", "Hybrid, physics-informed models", ("Hybrid, physics-", "informed"), "app-hybrid", "ai"),
+    ("training", "Dense tensor training", ("Dense tensor", "training"), "app-training", "ai"),
+    ("inference", "Low-precision inference", ("Low-precision", "inference"), "app-inference", "ai"),
+    ("arraystyle", "Array-style programs", ("Array-style", "programs"), "array_style", "ai"),
 )
 BLOCK = {b[0]: b for b in BLOCKS}
+BLOCKS_KEYS = tuple(b[0] for b in BLOCKS)
+#: The map's rows, top to bottom.
+DEVICES = (("cpu", "CPU"), ("gpu", "GPU"))
+DEVICE_NAME = dict(DEVICES)
 
 
-def block_features(table, key):
-    """The features a block needs that the device has a reading for (see `measured_anywhere`)."""
-    return tuple(f for f in BLOCK[key][5] if f not in MEASURED or measured_anywhere(table, f))
+def node_id(device, block):
+    """The key of one block on one device row, as the layout, the markup and the JSON spell it."""
+    return f"{device}:{block}"
 
 
-def block_covered(table, key, tool):
-    return all(feature_covered(table, f, tool) for f in block_features(table, key))
+def split_node(nid):
+    device, block = nid.split(":")
+    return device, block
 
 
-def covered_blocks(table, tool):
-    return [b[0] for b in BLOCKS if block_covered(table, b[0], tool)]
+class Capabilities:
+    """The static, sourced coverage table: ``data`` as read from ``_data/capabilities.json``."""
+
+    def __init__(self, data):
+        self.data = data
+        self.tools = list(data["tools"])
+        self.needs = dict(data["blocks"])
+        self.cells = data["cells"]
+
+    def cell(self, tool, block, device):
+        return self.cells[tool][block][device]
+
+    def covered(self, tool, block, device):
+        return bool(self.cell(tool, block, device)["covered"])
+
+    def who(self, block, device):
+        """The tools that cover a block on a device, in the table's tool order."""
+        return [t for t in self.tools if self.covered(t, block, device)]
+
+    def nodes(self):
+        """Every (device, block) that at least one tool covers: the blocks the map draws on each row."""
+        return [node_id(d, b) for d, _n in DEVICES for b in BLOCKS_KEYS if self.who(b, d)]
+
+    def covered_nodes(self, tool):
+        return [n for n in self.nodes() if self.covered(tool, *split_node(n)[::-1])]
+
+    def covered_cells(self):
+        """[(block, device, tool, cell)] of every covered cell, in block, device, tool order."""
+        return [(b, d, t, self.cell(t, b, d)) for b in BLOCKS_KEYS for d, _n in DEVICES for t in self.tools if self.covered(t, b, d)]
 
 
 # --------------------------------------------------------------------------- text measure
@@ -267,16 +300,19 @@ class Blob:
             a, b = c[i], c[(i + 1) % n]
             L = math.hypot(b[0] - a[0], b[1] - a[1])
             norm.append(((b[1] - a[1]) / L * sgn, -(b[0] - a[0]) / L * sgn))
-        sweep = 1 if sgn > 0 else 0
         parts = []
         for i in range(n):
             a, b = c[i], c[(i + 1) % n]
             nx, ny = norm[i]
             mx, my = norm[(i + 1) % n]
             if i == 0:
-                parts.append(f"M{a[0] + nx * r:.1f} {a[1] + ny * r:.1f}")
-            parts.append(f"L{b[0] + nx * r:.1f} {b[1] + ny * r:.1f}")
-            parts.append(f"A{r:.1f} {r:.1f} 0 0 {sweep} {b[0] + mx * r:.1f} {b[1] + my * r:.1f}")
+                parts.append(f"M{a[0] + nx * r:.2f} {a[1] + ny * r:.2f}")
+            parts.append(f"L{b[0] + nx * r:.2f} {b[1] + ny * r:.2f}")
+            # two decimals: a corner that turns only a little has a short chord, and 0.1 px rounding of its ends
+            # moves the arc's centre by pixels
+            # sweep from the turn itself, so the arc is the one centred on the corner (never its mirror image)
+            turn = nx * my - ny * mx
+            parts.append(f"A{r:.2f} {r:.2f} 0 0 {1 if turn > 0 else 0} {b[0] + mx * r:.2f} {b[1] + my * r:.2f}")
         return "".join(parts) + "Z"
 
     def outline(self, step=3.0):
@@ -323,62 +359,64 @@ def rounded_hull_path(hull, pad, inset=0.0):
     return Blob(hull, pad, inset).path()
 
 
-# --------------------------------------------------------------------------- worlds layout
+# --------------------------------------------------------------------------- capability map layout
 NODE_R, CLEAR = 19, 4
 
-#: Layout of the wide chart (viewBox 1000 x 790): block centres, the two world discs and each tool's pad.
-#: The four NVIDIA Warp blocks lie on one line (y = 520) so its hull is one stadium through the Simulation world
-#: that holds nothing else; raptor's blocks sit above that line plus two on it, "per-sample models" just below it;
-#: JAX's hull runs from "per-sample models" through half precision and dense linear algebra to the AI blocks with
-#: "hybrid" at its top; PyTorch's is JAX's without models and hybrid.
-WORLDS_LAYOUT = {
+
+def _rows(spec, dy=0.0):
+    return {k: (float(x), float(y) + dy) for k, (x, y) in spec.items()}
+
+
+#: The two layouts of the capability map: block centres per device row, the column boundary between Simulation (left)
+#: and AI (right), the row boundary between CPU (top) and GPU (bottom), node and icon sizes, and the viewBox. Positions
+#: were searched so that every tool's padded hull is one convex piece that clears every block it does not cover: the
+#: blocks only raptor does in a first-class way (adaptive, events, divergent) sit on the outer lines, the blocks nearly
+#: every tool does (fixed-step, ensembles, data, zero-copy) on the lines next to the row boundary, "hybrid" at the edge
+#: of the AI column, next to raptor's other blocks. The rows are nearly mirror images; where they differ, a tool covers
+#: a block on one device only.
+CAPMAP_LAYOUT = {
     "wide": {
-        "size": (1000, 790), "node": 19, "icon": 21, "fs": 11,
-        "pos": {"handtuned": (72, 520), "fixed": (210, 520), "deriv": (470, 520), "zerocopy": (650, 520),
-                "models": (260, 630), "half": (430, 712), "linalg": (600, 672),
-                "ensembles": (290, 420), "divergent": (370, 340), "adaptive": (340, 160), "events": (480, 170),
-                "deploy": (560, 410), "diffsim": (440, 275), "datagen": (560, 120), "hybrid": (680, 200),
-                "training": (880, 240), "inference": (930, 380), "arraystyle": (830, 520)},
-        "sim": (400, 400, 360), "ai": (820, 380, 270),
+        "size": (1040, 780), "node": NODE_R, "icon": 21, "fs": 11, "pad_scale": 1.0, "cols": 700.0, "rows": 416.0,
+        "pos": _rows({
+            "cpu:adaptive": (100, 80), "cpu:divergent": (247, 80), "cpu:events": (353, 80), "cpu:handtuned": (524, 80),
+            "cpu:training": (990, 80), "cpu:diffsim": (238, 185), "cpu:fixed": (479, 185), "cpu:ensembles": (586, 185),
+            "cpu:linalg": (759, 185), "cpu:half": (865, 185), "cpu:arraystyle": (982, 185), "cpu:deploy": (100, 290),
+            "cpu:deriv": (207, 290), "cpu:models": (427, 290), "cpu:datagen": (539, 290), "cpu:zerocopy": (650, 290),
+            "cpu:hybrid": (825, 290), "cpu:inference": (981, 290),
+            "gpu:deploy": (100, 430), "gpu:deriv": (207, 430), "gpu:models": (427, 430), "gpu:datagen": (540, 430),
+            "gpu:zerocopy": (650, 430), "gpu:hybrid": (828, 430), "gpu:inference": (981, 430), "gpu:diffsim": (339, 535),
+            "gpu:fixed": (478, 535), "gpu:ensembles": (586, 535), "gpu:linalg": (835, 535), "gpu:arraystyle": (982, 535),
+            "gpu:adaptive": (100, 640), "gpu:divergent": (247, 640), "gpu:events": (353, 640), "gpu:handtuned": (524, 640),
+            "gpu:half": (788, 640), "gpu:training": (990, 640)}, dy=56),
     },
-    # the CPU side: raptor's early-finish saving is below the best on some CPUs, so "events" and "divergent" sit at the
-    # outer edge of the Simulation world, where a hull that leaves them out stays clear of them
-    "wide_cpu": {
-        "size": (1000, 790), "node": 19, "icon": 21, "fs": 11,
-        "pos": {"handtuned": (89, 682), "fixed": (210, 520), "deriv": (470, 520), "zerocopy": (650, 520),
-                "models": (260, 630), "half": (430, 712), "linalg": (600, 672),
-                "ensembles": (133, 290), "divergent": (48, 103), "adaptive": (248, 242), "events": (298, 92),
-                "deploy": (560, 410), "diffsim": (312, 380), "datagen": (560, 120), "hybrid": (680, 200),
-                "training": (880, 240), "inference": (930, 380), "arraystyle": (830, 520)},
-        "sim": (400, 400, 400), "ai": (820, 380, 270),
+    # the phone column: CPU over GPU, four lines a row, icons only (the key list under the chart names them)
+    "narrow": {
+        "size": (390, 700), "node": 13, "icon": 16, "fs": 0, "pad_scale": 0.66, "cols": 268.0, "rows": 365.0,
+        "pos": _rows({
+            "cpu:divergent": (93, 50), "cpu:events": (152, 50), "cpu:handtuned": (216, 50), "cpu:training": (299, 50),
+            "cpu:inference": (347, 50), "cpu:adaptive": (48, 130), "cpu:models": (211, 130), "cpu:linalg": (299, 130),
+            "cpu:arraystyle": (350, 130), "cpu:deploy": (47, 212), "cpu:datagen": (158, 210), "cpu:fixed": (251, 210),
+            "cpu:half": (335, 210), "cpu:diffsim": (59, 290), "cpu:deriv": (106, 290), "cpu:ensembles": (170, 290),
+            "cpu:zerocopy": (252, 290), "cpu:hybrid": (334, 290),
+            "gpu:diffsim": (59, 360), "gpu:deriv": (107, 360), "gpu:datagen": (159, 360), "gpu:ensembles": (205, 360),
+            "gpu:zerocopy": (252, 360), "gpu:hybrid": (334, 360), "gpu:deploy": (104, 440), "gpu:fixed": (252, 440),
+            "gpu:linalg": (336, 440), "gpu:adaptive": (48, 520), "gpu:models": (213, 520), "gpu:half": (291, 520),
+            "gpu:arraystyle": (350, 520), "gpu:divergent": (93, 600), "gpu:events": (152, 600), "gpu:handtuned": (219, 600),
+            "gpu:training": (296, 600), "gpu:inference": (347, 600)}, dy=40),
     },
 }
 #: Pad of each tool's hull (the outer offset of its outline from the blocks it covers), nested so the shapes of tools
-#: that share blocks stay distinct. The first four are the GPU side's tools; Numba and NumPy are the CPU side's.
-WORLDS_PAD = {"raptor": 92, "JAX": 80, "PyTorch": 74, "NVIDIA Warp": 70, "Numba": 66, "NumPy": 62, "CuPy": 58}
+#: that share blocks stay distinct. CuPy (GPU only) and NumPy (CPU only) never share a row, so they share a pad.
+CAPMAP_PAD = {"raptor": 46, "JAX": 41, "PyTorch": 37, "NVIDIA Warp": 33, "Numba": 30, "CuPy": 27, "NumPy": 27}
 #: How far a hull is pulled in before it is grown by pad + inset: a rounder corner, edges unchanged (see `Blob`).
-WORLDS_INSET = 56
+CAPMAP_INSET = 40
+#: Tools allowed to be drawn in more than one convex piece (the ruled fallback), with the reason. Empty: every tool's
+#: covered blocks are one convex hull that clears every block it does not cover, in both layouts.
+FALLBACK = {}
 #: Where a label sits relative to its node by default, and the order the others are tried in.
 LABEL_SIDES = ("b", "a", "r", "l")
-#: Per-block forced label sides, each with its reason. Empty: the choice is made by gap measurement.
+#: Per-node forced label sides, each with its reason. Empty: the choice is made by gap measurement.
 SIDE_FORCE = {}
-
-
-#: Phone layout constants: offsets that keep every outline inside the 390 px column (the largest pad reaches 25 px
-#: left of the first block column), the scales, the node and icon sizes, the pad scale and the viewBox.
-NARROW_OX, NARROW_OY = 45, 56
-NARROW = {"sx": 0.5, "sy": 0.7, "node": 13, "icon": 16, "pad_scale": 0.4, "size": (390, 760)}
-
-
-def narrow_layout(side, sx, sy, node, icon, pad_scale, size):
-    """The phone layout of ``side``: the wide layout turned a quarter, then scaled by (``sx`` across, ``sy`` down) so it
-    fits the column; positions only: nodes, icons and pads keep their own sizes, so the geometry rules run on it unchanged."""
-    w = WORLDS_LAYOUT["wide" if side == "gpu" else "wide_cpu"]
-    pos = {k: (round(NARROW_OX + (y - 100) * sx, 1), round(NARROW_OY + (x - 60) * sy, 1)) for k, (x, y) in w["pos"].items()}
-    sc_, sc2 = (w["sim"], w["ai"])
-    return {"size": size, "node": node, "icon": icon, "fs": 0, "pos": pos, "pad_scale": pad_scale,
-            "sim": (round(NARROW_OX + (sc_[1] - 100) * sx, 1), round(NARROW_OY + (sc_[0] - 60) * sy, 1), sc_[2] * min(sx, sy)),
-            "ai": (round(NARROW_OX + (sc2[1] - 100) * sx, 1), round(NARROW_OY + (sc2[0] - 60) * sy, 1), sc2[2] * min(sx, sy))}
 
 
 # --------------------------------------------------------------------------- label placement
@@ -415,37 +453,43 @@ def _box_node_gap(box, c, r):
     return max(0.0, _gap(box, c) - r)
 
 
-class Worlds:
-    """One device's two-worlds chart in one layout: the covered blocks, each tool's pieces (rounded convex hulls),
-    the clearance violations (a layout bug when not empty) and the label placement. ``table`` is the feature table;
-    ``tools`` the drawn ``[(name, var)]``; ``layout`` one of `WORLDS_LAYOUT` / `narrow_layout`."""
+class CapMap:
+    """The capability map in one layout: the drawn nodes (a block on a device row), each tool's pieces (rounded convex
+    hulls), the clearance violations (a layout bug when not empty) and the label placement. ``caps`` is a
+    `Capabilities`; ``tools`` the drawn ``[(name, css var)]``; ``layout`` one of `CAPMAP_LAYOUT`."""
 
-    def __init__(self, table, tools, layout):
-        self.table, self.tools, self.lay = table, [t[0] for t in tools], layout
+    def __init__(self, caps, tools, layout):
+        self.caps, self.tools, self.lay = caps, [t[0] for t in tools], layout
         self.vars = dict((t[0], t[1]) for t in tools)
-        self.pos = layout["pos"]
+        self.nodes = caps.nodes()
+        self.pos = {n: layout["pos"][n] for n in self.nodes}
         self.node = layout["node"]
         scale = layout.get("pad_scale", 1.0)
-        self.pads = {t: WORLDS_PAD.get(t, 60) * scale for t in self.tools}
-        self.inset = WORLDS_INSET * scale
-        self.cov = {t: covered_blocks(table, t) for t in self.tools}
-        self.pieces = {}          # tool -> [(hull blob, [block keys])]
+        self.pads = {t: CAPMAP_PAD.get(t, 24) * scale for t in self.tools}
+        self.inset = CAPMAP_INSET * scale
+        self.cov = {t: caps.covered_nodes(t) for t in self.tools}
+        self.pieces = {}          # tool -> [(blob, [node ids])]
         self.violations = []
+        self.split = []
         for t in self.tools:
             self.pieces[t] = self._pieces(t)
         self.labels = {}
         if layout["fs"]:
             self._place_labels()
 
+    def who(self, nid):
+        device, block = split_node(nid)
+        return [t for t in self.tools if self.caps.covered(t, block, device)]
+
     # ---- hulls and clearance
-    def _blob(self, tool, members, scale=1.0):
+    def _blob(self, tool, members):
         return Blob(convex_hull([self.pos[k] for k in members]), self.pads[tool], self.inset, keep=self.node + CLEAR)
 
     def _clearance_errors(self, tool, blob, members):
-        """Every block the outline must clear (not covered by the tool) and every member it must enclose."""
+        """Every node the outline must clear (not covered by the tool) and every member it must enclose."""
         bad = []
         need = self.node + CLEAR
-        for k in BLOCKS_KEYS:
+        for k in self.nodes:
             d = blob.distance(self.pos[k])
             if k in members:
                 if d > -need:
@@ -455,16 +499,15 @@ class Worlds:
         return bad
 
     def _pieces(self, tool):
-        """One piece, the hull of everything the tool covers. When that hull would enclose a block the tool does not
-        cover, the covered set is drawn as several convex hulls instead (never for raptor, whose hull is convex
-        above all): start from one piece per block and join the two nearest pieces whenever the joined hull is
-        clear; a piece whose own outline is not clear is a layout bug and is reported in ``violations``."""
+        """One piece, the hull of everything the tool covers on both rows. Only a tool named in `FALLBACK` (never raptor,
+        whose hull is convex above all) may be drawn as several convex hulls instead: start from one piece per node and
+        join the two nearest pieces whenever the joined hull is clear. Anything not clear is reported in ``violations``."""
         cov = self.cov[tool]
         if not cov:
             return []
         whole = self._blob(tool, cov)
         errs = self._clearance_errors(tool, whole, cov)
-        if not errs or tool == "raptor":
+        if not errs or tool == "raptor" or tool not in FALLBACK:
             self.violations += errs
             return [(whole, list(cov))]
         groups = [[k] for k in cov]
@@ -482,18 +525,18 @@ class Worlds:
             b = self._blob(tool, g)
             self.violations += self._clearance_errors(tool, b, g)
             out.append((b, g))
-        self.split = getattr(self, "split", []) + [tool]
+        self.split.append(tool)
         return out
 
     def _centre(self, members):
         return (sum(self.pos[k][0] for k in members) / len(members), sum(self.pos[k][1] for k in members) / len(members))
 
     def min_clearance(self):
-        """Smallest (distance to the outline minus node radius) over every uncovered block of every tool, px."""
+        """Smallest (distance to the outline minus node radius) over every uncovered node of every tool, px."""
         worst = None
         for t in self.tools:
-            for blob, members in self.pieces[t]:
-                for k in BLOCKS_KEYS:
+            for blob, _members in self.pieces[t]:
+                for k in self.nodes:
                     if k not in self.cov[t]:
                         d = blob.distance(self.pos[k]) - self.node
                         worst = d if worst is None else min(worst, d)
@@ -501,13 +544,16 @@ class Worlds:
 
     # ---- labels
     def _obstacles(self):
-        circles = [(self.pos[k], self.node + 2) for k in BLOCKS_KEYS]
+        circles = [(self.pos[k], self.node + 2) for k in self.nodes]
         pts = [p for t in self.tools for blob, _m in self.pieces[t] for p in blob.outline(4.0)]
         return circles, pts
 
-    def _score(self, box, own, circles, pts, placed):
-        """Smallest gap from the label box to any obstacle, capped at 7 px (nothing further matters)."""
+    def _score(self, box, circles, pts, placed):
+        """Smallest gap from the label box to any obstacle, capped at 7 px (nothing further matters); a box outside
+        the viewBox scores below zero."""
         g = 7.0
+        w, h = self.lay["size"]
+        g = min(g, box[0] - 2, w - 2 - box[2], box[1] - 2, h - 2 - box[3])
         for c, r in circles:
             g = min(g, _box_node_gap(box, c, r))
         l, t, r_, b = box[0] - 7, box[1] - 7, box[2] + 7, box[3] + 7
@@ -522,31 +568,47 @@ class Worlds:
         circles, pts = self._obstacles()
         fs, lh = self.lay["fs"], self.lay["fs"] + 1
         placed = {}
-        # blocks in the order of the tightest neighbourhood first would be better; the layout order is stable and enough
-        order = list(BLOCKS_KEYS) * 3                # three passes: each label is re-placed against the others' final places
+        order = list(self.nodes) * 3                 # three passes: each label is re-placed against the others' final places
         for k in order:
             placed.pop(k, None)
             x, y = self.pos[k]
-            lines = BLOCK[k][2]
+            lines = BLOCK[split_node(k)[1]][2]
             sides = (SIDE_FORCE[k],) if k in SIDE_FORCE else LABEL_SIDES
             best = None
             for rank, side in enumerate(sides):
                 for ddx, ddy in ((0, 0), (-12, 0), (12, 0), (0, 6), (0, -6), (-24, 0), (24, 0), (0, 12), (0, -12), (-14, 8), (14, 8),
-                                 (-14, -8), (14, -8), (-36, 0), (36, 0), (0, 20), (0, -20), (0, 32), (0, -32), (0, 44), (0, -44),
-                                 (0, 56), (0, -56), (-48, 0), (48, 0), (-60, 0), (60, 0)):
+                                 (-14, -8), (14, -8), (-36, 0), (36, 0), (0, 20), (0, -20), (0, 32), (0, -32), (-48, 0), (48, 0)):
                     if side in "ab" and ddy and ((side == "b") != (ddy > 0)):
                         continue            # a vertical nudge moves the label away from its node only
                     if side in "rl" and ddx and ((side == "r") != (ddx > 0)):
                         continue
                     box = _box_for(x, y, lines, side, self.node, fs, lh)
                     box = (box[0] + ddx, box[1] + ddy, box[2] + ddx, box[3] + ddy, box[4], box[5] + ddx, box[6] + ddy)
-                    g = self._score(box, k, circles, pts, placed)
+                    g = self._score(box, circles, pts, placed)
                     disp = abs(ddx) + abs(ddy)
                     key = (min(g, 5.0), -rank * 40 - disp)
                     if best is None or key > best[0]:
                         best = (key, side, box, g, disp)
             _key, side, box, g, disp = best
             placed[k] = {"side": side, "box": box, "gap": g, "lines": lines, "disp": disp}
+        # a label still short of room (a node where several outlines run together) looks further away, tied by a leader
+        for k in list(self.nodes):
+            if placed[k]["gap"] >= 5.0:
+                continue
+            lab = placed.pop(k)
+            x, y = self.pos[k]
+            best = (min(lab["gap"], 5.0), -lab["disp"], lab)
+            for side in LABEL_SIDES:
+                base = _box_for(x, y, lab["lines"], side, self.node, fs, lh)
+                for ddx in range(-88, 89, 8):
+                    for ddy in range(-64, 65, 8):
+                        box = (base[0] + ddx, base[1] + ddy, base[2] + ddx, base[3] + ddy, base[4], base[5] + ddx, base[6] + ddy)
+                        g = self._score(box, circles, pts, placed)
+                        disp = abs(ddx) + abs(ddy)
+                        cand = (min(g, 5.0), -disp)
+                        if cand > best[:2]:
+                            best = (cand[0], cand[1], {"side": side, "box": box, "gap": g, "lines": lab["lines"], "disp": disp})
+            placed[k] = best[2]
         self.labels = placed
 
     def name_boxes(self):
@@ -599,15 +661,12 @@ class Worlds:
         return out
 
 
-BLOCKS_KEYS = tuple(b[0] for b in BLOCKS)
-
-
 # --------------------------------------------------------------------------- rosette
 #: The radar's majors fanned open, in the radar's order, plus the batches that thin out after Ensemble speed:
 #: (key, name lines, features, icon).
 SECTORS = (
     ("ensemble", ("Ensemble", "speed"), ("uneven", "regular", "small", "adaptive"), "uneven"),
-    ("thinout", ("Batches that", "thin out"), ("thinning", "uneven_eff"), "thinning"),
+    ("thinout", ("Batches that", "thin out"), ("uneven_eff",), "thinning"),
     ("footprint", ("Footprint and", "turnaround"), ("memory", "compile", "code"), "memory"),
     ("numerics", ("Tensors and", "precision"), ("tensor", "array_style", "half_precision"), "tensor"),
     ("authoring", ("One-sample", "authoring"), ("single_thread", "differentiable"), "single_thread"),
@@ -618,7 +677,7 @@ SECTOR = {s[0]: s for s in SECTORS}
 SECTOR_OF = {f: s[0] for s in SECTORS for f in s[2]}
 FEATURE_LINES = {
     "uneven": ("Uneven", "ensembles"), "regular": ("Regular", "ensembles"), "small": ("Small jobs",), "adaptive": ("Adaptive", "ODEs"),
-    "thinning": ("Early-finish", "saving"), "uneven_eff": ("Uneven-batch", "efficiency"), "memory": ("Memory",),
+    "uneven_eff": ("Uneven-batch", "efficiency"), "memory": ("Memory",),
     "compile": ("Compile", "time"), "code": ("Code size",), "tensor": ("Tensors",), "array_style": ("Array style",),
     "half_precision": ("Half", "precision"), "single_thread": ("Single-", "thread"), "differentiable": ("Derivatives",),
     "control": ("Control",), "arrays": ("Your arrays",), "deploy": ("Deploy",), "extensible": ("Extensibility",)}
@@ -830,17 +889,17 @@ class Rosette:
         return {"label_label": ll, "label_node": ln, "label_band": lb, "name_label": nl}
 
 
-# --------------------------------------------------------------------------- worlds titles
-def _world_titles(self):
-    """Where the two world names go: the free spot nearest the preferred corner with the widest clearance from every
-    node, label and outline (the names are soft headings and must never be cut by a shape)."""
+# --------------------------------------------------------------------------- capability map titles
+def _map_titles(self):
+    """Where the two column names go: the free spot nearest the preferred top corner with the widest clearance from
+    every node, label and outline (the names are soft headings and must never be cut by a shape)."""
     wide = bool(self.lay["fs"])
     W, H = self.lay["size"]
     circles, pts = self._obstacles()
     boxes = [v["box"][:4] for v in self.labels.values()]
     specs = {"sim": (("Simulation", "per-sample models, ensembles, ODEs") if wide else ("Simulation",), "start"),
-             "ai": (("AI", "PyTorch and JAX lead") if wide else ("AI",), "end")}
-    pref = {"sim": (30, 26), "ai": (W - 12, H - 70 if wide else H - 40)}
+             "ai": (("AI", "tensor models, training, inference") if wide else ("AI",), "end")}
+    pref = {"sim": (40, 22), "ai": (W - 12, 22)}
     fs1, fs2, lh = (15, 11.5, 18) if wide else (13, 11, 16)
     out = {}
     taken = []
@@ -849,9 +908,9 @@ def _world_titles(self):
         w = max(text_width(lines[0], fs1, True), text_width(lines[1], fs2) if len(lines) > 1 else 0)
         h = fs1 * 1.25 + (lh if len(lines) > 1 else 0)
         best = None
-        y = 22.0
+        y = 18.0
         while y < H - h:
-            x = 10.0 if anchor == "start" else W - 10.0
+            x = 30.0 if anchor == "start" else W - 8.0
             while (anchor == "start" and x < W - w - 10) or (anchor == "end" and x > w + 10):
                 left = x if anchor == "start" else x - w
                 box = (left, y - 0.95 * fs1, left + w, y - 0.95 * fs1 + h)
@@ -876,4 +935,4 @@ def _world_titles(self):
     return out
 
 
-Worlds.titles = _world_titles
+CapMap.titles = _map_titles

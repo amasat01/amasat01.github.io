@@ -1,0 +1,1476 @@
+{
+ "about": "Which tool has a documented, first-class way to do each block of work, on the CPU and on the GPU. A cell is covered only when the tool's own documentation shows a designed feature or API for it, not a workaround (masking every lane, writing raw CUDA strings inside it, running the slowest sample to the end). 'judgement' marks a cell the author found close to the line. Performance is not part of this table.",
+ "tools": [
+  "raptor",
+  "NVIDIA Warp",
+  "JAX",
+  "PyTorch",
+  "CuPy",
+  "Numba",
+  "NumPy"
+ ],
+ "devices": [
+  "cpu",
+  "gpu"
+ ],
+ "blocks": {
+  "handtuned": "You write what each thread does and how it is launched.",
+  "fixed": "Many independent ODEs stepped with a fixed step.",
+  "deriv": "Derivatives of a result with respect to its inputs, generated for you.",
+  "zerocopy": "Arrays handed to and from other libraries without a copy (DLPack or the CUDA array interface).",
+  "models": "You write one sample's model; the batching is done for you.",
+  "half": "float16 or bfloat16 arithmetic as a supported path.",
+  "linalg": "Dense linear algebra and large solvers as library calls.",
+  "ensembles": "Many independent samples in one run, with random numbers per sample.",
+  "divergent": "Samples that diverge keep the hardware busy, without masking every lane or waiting for the slowest one.",
+  "events": "A sample stops on its own condition and stops costing work.",
+  "adaptive": "Each sample picks its own step size from an embedded error estimate.",
+  "deploy": "A compiled program runs from C++ or another runtime, without Python.",
+  "diffsim": "Gradients through a whole simulation, into a training loop.",
+  "datagen": "Simulated batches handed to a training framework without copies.",
+  "hybrid": "A network and a physics model in one differentiable program.",
+  "training": "Training dense tensor models: layers, optimisers, training loops.",
+  "inference": "Inference in low precision, such as bfloat16, float8 or quantised integers.",
+  "arraystyle": "Whole-array expressions, the NumPy way."
+ },
+ "cells": {
+  "raptor": {
+   "handtuned": {
+    "cpu": {
+     "covered": false,
+     "note": "By design raptor picks threads and launches; NVIDIA Warp or Numba is the right tool for this."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "By design raptor picks threads and launches; NVIDIA Warp or Numba is the right tool for this."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/modules/filtering/run_until_done.html",
+     "note": "A step written for one sample, run over the batch until every sample is done."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/modules/filtering/run_until_done.html",
+     "note": "A step written for one sample, run over the batch until every sample is done."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/04_gradients_backward.html",
+     "note": "Every hawk kernel carries generated forward- and reverse-mode derivatives."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/04_gradients_backward.html",
+     "note": "Every hawk kernel carries generated forward- and reverse-mode derivatives."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
+     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp and NumPy."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
+     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp and NumPy."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html",
+     "note": "You write one step of one sample; the batch is launched for you."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html",
+     "note": "You write one step of one sample; the batch is launched for you."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": false,
+     "note": "Scoped to float32 and float64; half precision belongs with PyTorch or JAX."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Scoped to float32 and float64; half precision belongs with PyTorch or JAX."
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/examples/01_ensemble_drag_throughput.html",
+     "note": "Many independent samples in one batched run."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/examples/01_ensemble_drag_throughput.html",
+     "note": "Many independent samples in one batched run."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/modules/filtering/scan_and_compaction.html",
+     "note": "Finished samples are compacted out, so each launch covers only the samples still running."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/modules/filtering/scan_and_compaction.html",
+     "note": "Finished samples are compacted out, so each launch covers only the samples still running."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/03_stop_when_youre_done.html",
+     "note": "A sample stops on its own condition and leaves the work."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/hawk/content/tutorials/03_stop_when_youre_done.html",
+     "note": "A sample stops on its own condition and leaves the work."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/performance/rk78.html",
+     "note": "eagle.simulate runs an embedded RKF7(8) pair with per-sample step control."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/performance/rk78.html",
+     "note": "eagle.simulate runs an embedded RKF7(8) pair with per-sample step control."
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html",
+     "note": "A compiled kernel is embedded in a C++ program and run there."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html",
+     "note": "A compiled kernel is embedded in a C++ program and run there."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/tutorials/10_gradients_through_a_graph.html",
+     "note": "Gradients through a whole captured run."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/tutorials/10_gradients_through_a_graph.html",
+     "note": "Gradients through a whole captured run."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/tutorials/03_torch_training.html",
+     "note": "Simulated batches feed a PyTorch training loop without copies."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/tutorials/03_torch_training.html",
+     "note": "Simulated batches feed a PyTorch training loop without copies."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/raptor/content/examples/two_body_hybrid.html",
+     "note": "A network and a physics model in one differentiable program."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/raptor/content/examples/two_body_hybrid.html",
+     "note": "A network and a physics model in one differentiable program."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Left to array libraries, which raptor hands arrays to without a copy."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": false,
+     "note": "A per-sample kernel language by design; left to array libraries, which raptor hands arrays to without a copy."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "A per-sample kernel language by design; left to array libraries, which raptor hands arrays to without a copy."
+    }
+   }
+  },
+  "NVIDIA Warp": {
+   "handtuned": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "You write the per-thread kernel and choose its launch."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "You write the per-thread kernel and choose its launch."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "A time-step loop inside a per-thread kernel."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "A time-step loop inside a per-thread kernel."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+     "note": "Reverse mode through wp.Tape over its kernels."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+     "note": "Reverse mode through wp.Tape over its kernels."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability.html",
+     "note": "Zero-copy views of PyTorch, JAX, CuPy and NumPy arrays, DLPack included."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability.html",
+     "note": "Zero-copy views of PyTorch, JAX, CuPy and NumPy arrays, DLPack included."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "A per-thread kernel holds one sample's model; you index it by thread.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "A per-thread kernel holds one sample's model; you index it by thread.",
+     "judgement": true
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/runtime.html",
+     "note": "float16 arrays and arithmetic.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/runtime.html",
+     "note": "float16 arrays and arithmetic.",
+     "judgement": true
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/programming_model/tiles.html",
+     "note": "Tile Cholesky and matrix multiply, plus iterative solvers in warp.optim.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/programming_model/tiles.html",
+     "note": "Tile Cholesky and matrix multiply, plus iterative solvers in warp.optim.",
+     "judgement": true
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/language_reference/builtins.html",
+     "note": "Per-thread random numbers over a launch of many samples."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/language_reference/builtins.html",
+     "note": "Per-thread random numbers over a launch of many samples."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": false,
+     "note": "Each thread runs its own length, and the launch lasts as long as the slowest sample."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Each thread runs its own length, and the launch lasts as long as the slowest sample."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/basics.html",
+     "note": "On the CPU a sample's loop breaks on its own condition and the work moves on.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Each thread runs its own length, and the launch lasts as long as the slowest sample."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "No built-in ODE solver; an adaptive stepper is yours to write."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No built-in ODE solver; an adaptive stepper is yours to write."
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": false,
+     "note": "The C++ replay path is for captured GPU work.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/programming_model/cpp_cuda_workflows.html",
+     "note": "Kernels compiled ahead of time, and captured work replayed from C++ without Python."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+     "note": "Gradients through whole simulations with wp.Tape."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/differentiability.html",
+     "note": "Gradients through whole simulations with wp.Tape."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability.html",
+     "note": "Arrays hand over to PyTorch and JAX for training without copies."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability.html",
+     "note": "Arrays hand over to PyTorch and JAX for training without copies."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability/pytorch.html",
+     "note": "Warp kernels inside PyTorch autograd, next to a network.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/warp/stable/user_guide/interoperability/pytorch.html",
+     "note": "Warp kernels inside PyTorch autograd, next to a network.",
+     "judgement": true
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": false,
+     "note": "Not a training framework; it hands arrays to one."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not a training framework; it hands arrays to one."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": false,
+     "note": "Not an inference runtime; it hands arrays to one."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not an inference runtime; it hands arrays to one."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": false,
+     "note": "You write per-thread kernels; whole-array expressions are not the model."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "You write per-thread kernels; whole-array expressions are not the model."
+    }
+   }
+  },
+  "JAX": {
+   "handtuned": {
+    "cpu": {
+     "covered": false,
+     "note": "Pallas runs on the CPU only in interpret mode."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/pallas/index.html",
+     "note": "Pallas writes custom kernels with block-level control.",
+     "judgement": true
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/_autosummary/jax.lax.scan.html",
+     "note": "A step loop with lax.scan, batched with vmap."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/_autosummary/jax.lax.scan.html",
+     "note": "A step loop with lax.scan, batched with vmap."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "grad, jvp and vjp: forward and reverse mode."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "grad, jvp and vjp: forward and reverse mode."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.dlpack.html",
+     "note": "DLPack import and export."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.dlpack.html",
+     "note": "DLPack import and export."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-vectorization.html",
+     "note": "Write one sample's function; vmap batches it."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-vectorization.html",
+     "note": "Write one sample's function; vmap batches it."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/type_promotion.html",
+     "note": "bfloat16, float16 and float8 types."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/type_promotion.html",
+     "note": "bfloat16, float16 and float8 types."
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.scipy.html",
+     "note": "jax.numpy.linalg and jax.scipy.linalg."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.scipy.html",
+     "note": "jax.numpy.linalg and jax.scipy.linalg."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/random-numbers.html",
+     "note": "Batched sampling with explicit random keys."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/random-numbers.html",
+     "note": "Batched sampling with explicit random keys."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": false,
+     "note": "Under vmap, loops and branches of different lengths become masking."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Under vmap, loops and branches of different lengths become masking."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": false,
+     "note": "Under vmap, loops and branches of different lengths become masking."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Under vmap, loops and branches of different lengths become masking."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "No adaptive solver documented in JAX itself; libraries such as Diffrax build one on it.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No adaptive solver documented in JAX itself; libraries such as Diffrax build one on it.",
+     "judgement": true
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/export/index.html",
+     "note": "jax.export serialises a compiled program for other runtimes."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/export/index.html",
+     "note": "jax.export serialises a compiled program for other runtimes."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "Gradients through a whole simulation loop."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "Gradients through a whole simulation loop."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/notebooks/Neural_Network_and_Data_Loading.html",
+     "note": "Generated arrays feed a JAX training loop directly."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/notebooks/Neural_Network_and_Data_Loading.html",
+     "note": "Generated arrays feed a JAX training loop directly."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "A network and a physics model in one function, differentiated together."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/automatic-differentiation.html",
+     "note": "A network and a physics model in one function, differentiated together."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/notebooks/Neural_Network_and_Data_Loading.html",
+     "note": "Training loops with grad and jit."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/notebooks/Neural_Network_and_Data_Loading.html",
+     "note": "Training loops with grad and jit."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/type_promotion.html",
+     "note": "Low-precision types, bfloat16 and float8, for inference.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/type_promotion.html",
+     "note": "Low-precision types, bfloat16 and float8, for inference.",
+     "judgement": true
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.numpy.html",
+     "note": "The NumPy API, traced and compiled."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/jax.numpy.html",
+     "note": "The NumPy API, traced and compiled."
+    }
+   }
+  },
+  "PyTorch": {
+   "handtuned": {
+    "cpu": {
+     "covered": false,
+     "note": "Custom kernels come through C++ extensions or another kernel language."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Custom kernels come through C++ extensions or another kernel language."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/tensors.html",
+     "note": "A whole batch of states stepped as tensors."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/tensors.html",
+     "note": "A whole batch of states stepped as tensors."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "Autograd, reverse and forward mode."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "Autograd, reverse and forward mode."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/dlpack.html",
+     "note": "DLPack import and export."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/dlpack.html",
+     "note": "DLPack import and export."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/generated/torch.func.vmap.html",
+     "note": "Write one sample's function; torch.func.vmap batches it."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/generated/torch.func.vmap.html",
+     "note": "Write one sample's function; torch.func.vmap batches it."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/amp.html",
+     "note": "Autocast to float16 and bfloat16 (bfloat16 on the CPU)."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/amp.html",
+     "note": "Autocast to float16 and bfloat16 (bfloat16 on the CPU)."
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/linalg.html",
+     "note": "torch.linalg."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/linalg.html",
+     "note": "torch.linalg."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/generated/torch.Generator.html",
+     "note": "Batched tensors with seeded random generators."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/generated/torch.Generator.html",
+     "note": "Batched tensors with seeded random generators."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": false,
+     "note": "Samples step together; a finished one is masked, not removed."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Samples step together; a finished one is masked, not removed."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": false,
+     "note": "Samples step together; a finished one is masked, not removed."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Samples step together; a finished one is masked, not removed."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "No ODE solver in PyTorch itself; libraries such as torchdiffeq add one.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No ODE solver in PyTorch itself; libraries such as torchdiffeq add one.",
+     "judgement": true
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/export.html",
+     "note": "torch.export and ahead-of-time compilation run models from C++."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/export.html",
+     "note": "torch.export and ahead-of-time compilation run models from C++."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "Gradients through a simulation written in tensors."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "Gradients through a simulation written in tensors."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/dlpack.html",
+     "note": "Simulated arrays taken into training without copies."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/dlpack.html",
+     "note": "Simulated arrays taken into training without copies."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "A network and a physics model in one autograd graph."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/autograd.html",
+     "note": "A network and a physics model in one autograd graph."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/optim.html",
+     "note": "Modules, optimisers and training loops."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/optim.html",
+     "note": "Modules, optimisers and training loops."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/quantization.html",
+     "note": "Quantised and low-precision inference."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/quantization.html",
+     "note": "Quantised and low-precision inference."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/tensors.html",
+     "note": "Eager tensor expressions."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.pytorch.org/docs/stable/tensors.html",
+     "note": "Eager tensor expressions."
+    }
+   }
+  },
+  "CuPy": {
+   "handtuned": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Raw kernels are CUDA source strings inside Python."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/user_guide/basic.html",
+     "note": "A whole batch of states stepped as arrays."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation; it pairs with a framework that has one."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/user_guide/interoperability.html",
+     "note": "DLPack and the CUDA array interface."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Element-wise kernels run per element; per-sample batching is yours."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "float16 arrays follow NumPy's types; no half-precision path is documented beyond that.",
+     "judgement": true
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/reference/linalg.html",
+     "note": "cupy.linalg over the CUDA math libraries."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/reference/random.html",
+     "note": "Batched random sampling on the GPU."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Whole-array code: every element takes every step."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Whole-array code: every element takes every step."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No ODE solver of its own."
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Lives in Python."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/user_guide/interoperability.html",
+     "note": "Arrays hand over to PyTorch and JAX without copies."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not a training framework."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not an inference runtime."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": false,
+     "note": "CuPy runs on GPUs."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/user_guide/basic.html",
+     "note": "The NumPy API on the GPU."
+    }
+   }
+  },
+  "Numba": {
+   "handtuned": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
+     "note": "Compiled loops you control, run in parallel with prange."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/kernels.html",
+     "note": "Thread indexing, shared memory and explicit launch shapes."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
+     "note": "A time-step loop compiled with njit, one sample per prange iteration."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/kernels.html",
+     "note": "A time-step loop inside a kernel."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/reference/numpysupported.html",
+     "note": "Works on NumPy arrays directly, which other libraries read without copies.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/cuda_array_interface.html",
+     "note": "The CUDA array interface, read by CuPy, PyTorch and others."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/user/vectorize.html",
+     "note": "guvectorize: write one sample, batched for you."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/ufunc.html",
+     "note": "guvectorize: write one sample, batched for you."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": false,
+     "note": "No float16 arithmetic in CPU code."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/reference/types.html",
+     "note": "float16 arithmetic in CUDA kernels.",
+     "judgement": true
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/reference/numpysupported.html",
+     "note": "np.linalg calls inside compiled code, LAPACK underneath.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No linear algebra in CUDA kernels."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/reference/numpysupported.html",
+     "note": "np.random inside compiled, parallel loops."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/random.html",
+     "note": "Per-thread random number generators."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
+     "note": "A chunk-size setting balances uneven iterations across threads.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Each thread runs its own length, and the launch lasts as long as the slowest sample."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/user/parallel.html",
+     "note": "A sample's loop breaks on its own condition and the thread moves on.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Each thread runs its own length, and the launch lasts as long as the slowest sample."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "No ODE solver of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No ODE solver of its own."
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": false,
+     "note": "Ahead-of-time compilation is limited; most use stays in Python.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Ahead-of-time compilation is limited; most use stays in Python.",
+     "judgement": true
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numba.readthedocs.io/en/stable/reference/numpysupported.html",
+     "note": "Results are NumPy arrays, which training frameworks read without copies.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://nvidia.github.io/numba-cuda/user/cuda_array_interface.html",
+     "note": "Device arrays hand over without copies through the CUDA array interface."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": false,
+     "note": "Not a training framework."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not a training framework."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": false,
+     "note": "Not an inference runtime."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Not an inference runtime."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": false,
+     "note": "NumPy expressions compile, but loops are the model.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy expressions compile, but loops are the model.",
+     "judgement": true
+    }
+   }
+  },
+  "NumPy": {
+   "handtuned": {
+    "cpu": {
+     "covered": false,
+     "note": "No kernels of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "fixed": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/user/basics.broadcasting.html",
+     "note": "A whole batch of states stepped as arrays."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "deriv": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "zerocopy": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/reference/generated/numpy.from_dlpack.html",
+     "note": "DLPack import, and arrays every library reads."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "models": {
+    "cpu": {
+     "covered": false,
+     "note": "np.vectorize is a convenience loop, not a batching engine.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "half": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/user/basics.types.html",
+     "note": "float16 storage and arithmetic.",
+     "judgement": true
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "linalg": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/reference/routines.linalg.html",
+     "note": "numpy.linalg over LAPACK."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "ensembles": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/reference/random/index.html",
+     "note": "Batched random sampling."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "divergent": {
+    "cpu": {
+     "covered": false,
+     "note": "Whole-array code: every element takes every step."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "events": {
+    "cpu": {
+     "covered": false,
+     "note": "Whole-array code: every element takes every step."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "adaptive": {
+    "cpu": {
+     "covered": false,
+     "note": "No ODE solver of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "deploy": {
+    "cpu": {
+     "covered": false,
+     "note": "A Python library."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "diffsim": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "datagen": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/reference/generated/numpy.from_dlpack.html",
+     "note": "Arrays hand over to training frameworks without copies."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "hybrid": {
+    "cpu": {
+     "covered": false,
+     "note": "No automatic differentiation of its own."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "training": {
+    "cpu": {
+     "covered": false,
+     "note": "Not a training framework."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "inference": {
+    "cpu": {
+     "covered": false,
+     "note": "Not an inference runtime."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   },
+   "arraystyle": {
+    "cpu": {
+     "covered": true,
+     "source": "https://numpy.org/doc/stable/user/basics.broadcasting.html",
+     "note": "Whole-array expressions are the model."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "NumPy runs on the CPU."
+    }
+   }
+  }
+ }
+}

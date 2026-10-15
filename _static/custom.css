@@ -243,8 +243,7 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
 .bars-opt[aria-pressed="true"] { background: var(--raptor-wash); color: var(--rpt-ink); box-shadow: inset 0 0 0 1px var(--raptor-soft); }
 .bars-opt:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
 .perf-switch .bars-view { display: none; }
-.perf-switch:not([data-bars]) .bars-wall, .perf-switch[data-bars="wall"] .bars-wall, .perf-switch[data-bars="eff"] .bars-eff,
-.perf-switch[data-bars="early"] .bars-early { display: block; }
+.perf-switch:not([data-bars]) .bars-wall, .perf-switch[data-bars="wall"] .bars-wall, .perf-switch[data-bars="eff"] .bars-eff { display: block; }
 @media (max-width: 720px) { .bars-opt { padding: 6px 12px; } }
 
 /* "Four libraries": a plain list (no cards --
@@ -422,8 +421,8 @@ body:has(#perf-hw-cpu:checked) .perf-gpu-only { display: none; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-/* The two-worlds chart (.worlds) and the rosette (.rosette), drawn on the server and shown by js/visuals.js. Tool colours are the
- * palette tokens above; the world tints are local. Below 640 px of column the labels give way to icons and a key list. */
+/* The capability map (.worlds.capmap) and the rosette (.rosette), drawn on the server and shown by js/visuals.js. Tool colours are
+ * the palette tokens above; the column tints are local. Below 640 px of column the labels give way to icons and a key list. */
 .worlds, .rosette { --world-sim: #8d8da8; --region: #f3f3f8; --region2: #e9e9f1; margin: 36px 0 0; max-width: 100%; container-type: inline-size; position: relative; }
 html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim: #9a9ac4; --region: #1e1e26; --region2: #26262f; }
 .worlds-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
@@ -442,6 +441,8 @@ html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim:
 .vis-icons { position: absolute; width: 0; height: 0; overflow: hidden; }
 .world-title { fill: var(--rpt-ink); font-weight: 700; }
 .world-sub { fill: var(--rpt-ink-secondary); font-weight: 400; }
+.row-title { fill: var(--rpt-ink-secondary); font-weight: 700; letter-spacing: 0.08em; }
+.row-rule { stroke: var(--rpt-border); stroke-width: 1; stroke-dasharray: 5 5; }
 .blob { fill: var(--c); fill-opacity: 0.11; stroke: var(--c); stroke-opacity: 0.6; stroke-width: 1.3; stroke-linejoin: round; cursor: pointer; transition: fill-opacity 0.15s, stroke-opacity 0.15s; }
 .blob.band { fill-opacity: 0.1; stroke-opacity: 1; stroke-width: 1.4; }
 .has-hl .blob:not(.is-hl) { fill-opacity: 0.03; stroke-opacity: 0.15; }
@@ -450,7 +451,6 @@ html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim:
 .bname { display: none; font-size: 16px; font-weight: 700; pointer-events: none; }
 .bname.is-hl { display: block; }
 .node { fill: var(--rpt-panel); stroke: var(--rpt-border); stroke-width: 1.3; }
-.wnode.none .node { stroke: var(--rpt-muted); stroke-dasharray: 3 2; }
 .arc { fill: none; stroke-width: 3.5; }
 .worlds .ic, .rosette .ic { color: var(--rpt-ink); stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .hit { fill: transparent; stroke: none; }
@@ -474,6 +474,12 @@ html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim:
 .worlds-pop { position: absolute; z-index: 6; max-width: 520px; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--rpt-ink); background: var(--rpt-panel);
   border: 1px solid var(--rpt-border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16); pointer-events: none; }
 .worlds-pop.inflow { position: static; max-width: none; margin: 8px 0 0; }
+.capmap .worlds-pop { pointer-events: auto; max-width: 460px; }
+.capmap .blob { fill-opacity: 0.07; }
+.wp-d { margin-top: 6px; font-weight: var(--w-strong); color: var(--rpt-ink-secondary); font-size: 12px; letter-spacing: 0.06em; }
+.wp-l { margin: 2px 0 0; padding: 0; list-style: none; }
+.wp-l li { padding: 1px 0; }
+.wp-l a { color: var(--raptor); }
 .wp-h { font-weight: var(--w-strong); }
 .wp-s { color: var(--rpt-ink-secondary); margin-top: 4px; }
 .wp-t { border-collapse: collapse; font-size: 12px; margin-top: 6px; }
@@ -490,6 +496,7 @@ html[data-theme="dark"] .worlds, html[data-theme="dark"] .rosette { --world-sim:
 .worlds-table th.q { font-style: italic; }
 .worlds-table td.miss { color: var(--rpt-ink-secondary); font-style: italic; }
 .worlds-table tr.xh th { font-weight: var(--w-strong); }
+.worlds-key li.xh .kn { font-weight: var(--w-strong); }
 .worlds-key { margin: 10px 0 0; padding: 0; list-style: none; columns: 2; column-gap: 20px; font-size: 14px; }
 .worlds-key li { break-inside: avoid; padding: 3px 0; cursor: pointer; }
 .worlds-key .ic { vertical-align: -4px; margin-right: 6px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; color: var(--rpt-ink); }

@@ -1,6 +1,6 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""Markup of the two coverage visuals (see visuals.py): the two-worlds chart and the rosette, as inline SVG plus the data
+"""Markup of the two coverage visuals (see visuals.py): the capability map and the rosette, as inline SVG plus the data
 tables and the JSON the script reads. No dependency on the site; styled by the classes in custom.css and driven by
 js/visuals.js."""
 import html
@@ -50,14 +50,6 @@ def _signature(table, tools):
     return tuple((f, tuple(V.feature_covered(table, f, t) for t in tools), V.measured_anywhere(table, f)) for f, _l, _k in V.FEATURES)
 
 
-def cached_worlds(table, tools, layout_key, layout):
-    """`V.Worlds`, computed once per coverage pattern (several devices share one)."""
-    key = ("w", layout_key, tuple(t[0] for t in tools), _signature(table, [t[0] for t in tools]))
-    if key not in _CACHE:
-        _CACHE[key] = V.Worlds(table, tools, layout)
-    return _CACHE[key]
-
-
 def cached_rosette(table, tools, mode, sector="ensemble"):
     key = ("r", mode, sector, tuple(t[0] for t in tools), _signature(table, [t[0] for t in tools]))
     if key not in _CACHE:
@@ -65,72 +57,146 @@ def cached_rosette(table, tools, mode, sector="ensemble"):
     return _CACHE[key]
 
 
-def block_aria(table, tools, key):
-    who = [t for t in tools if V.block_covered(table, key, t)]
-    return f"{V.BLOCK[key][1]}: " + (f"covered by {', '.join(who)}" if who else "covered by no tool on this device")
+def node_aria(M, nid):
+    device, block = V.split_node(nid)
+    who = M.who(nid)
+    return f"{V.BLOCK[block][1]}, {V.DEVICE_NAME[device]}: " + (f"{', '.join(who)}" if who else "no tool")
 
 
-# --------------------------------------------------------------------------- the two worlds
-def worlds_svg(W, ids, uid, aria):
-    """The two-worlds chart of one `V.Worlds`: soft world regions, each tool's rounded convex hull(s), the blocks (a node
-    with one arc per covering tool, its icon and, on the wide chart, its label)."""
-    wide = bool(W.lay["fs"])
-    w, h = W.lay["size"]
-    node, isz = W.node, W.lay["icon"]
-    sx, sy, sr = W.lay["sim"]
-    ax, ay, ar = W.lay["ai"]
+# --------------------------------------------------------------------------- the capability map
+def capmap_svg(M, ids, uid, aria):
+    """The capability map of one `V.CapMap`: soft column regions (Simulation | AI), the CPU and GPU rows, each tool's
+    rounded convex hull(s), the blocks (a node with one arc per covering tool, its icon and, on the wide map, its label)."""
+    wide = bool(M.lay["fs"])
+    w, h = M.lay["size"]
+    isz = M.lay["icon"]
+    cx, ry = M.lay["cols"], M.lay["rows"]
     out = [f'<svg class="worlds-svg {"worlds-svg-wide" if wide else "worlds-svg-narrow"}" viewBox="0 0 {w} {h}" role="group" aria-label="{ESC(aria, quote=True)}">']
-    out.append(f'<defs><radialGradient id="gsim-{uid}"><stop offset="45%" stop-color="var(--world-sim)" stop-opacity=".55"/>'
-               f'<stop offset="78%" stop-color="var(--world-sim)" stop-opacity=".22"/><stop offset="100%" stop-color="var(--world-sim)" stop-opacity="0"/></radialGradient>'
+    out.append(f'<defs><radialGradient id="gsim-{uid}"><stop offset="45%" stop-color="var(--world-sim)" stop-opacity=".5"/>'
+               f'<stop offset="80%" stop-color="var(--world-sim)" stop-opacity=".2"/><stop offset="100%" stop-color="var(--world-sim)" stop-opacity="0"/></radialGradient>'
                f'<radialGradient id="gai-{uid}"><stop offset="40%" stop-color="var(--tool-pytorch)" stop-opacity=".22"/>'
-               f'<stop offset="75%" stop-color="var(--tool-pytorch)" stop-opacity=".09"/><stop offset="100%" stop-color="var(--tool-pytorch)" stop-opacity="0"/></radialGradient></defs>')
-    out.append(f'<circle class="world world-sim" cx="{sx:.0f}" cy="{sy:.0f}" r="{sr:.0f}" fill="url(#gsim-{uid})"/>'
-               f'<circle class="world world-ai" cx="{ax:.0f}" cy="{ay:.0f}" r="{ar:.0f}" fill="url(#gai-{uid})"/>')
-    for key, tt in W.titles().items():
+               f'<stop offset="78%" stop-color="var(--tool-pytorch)" stop-opacity=".09"/><stop offset="100%" stop-color="var(--tool-pytorch)" stop-opacity="0"/></radialGradient></defs>')
+    # the two columns as soft regions that blend at the column boundary
+    out.append(f'<ellipse class="world world-sim" cx="{cx * 0.5:.0f}" cy="{h / 2:.0f}" rx="{cx * 0.62:.0f}" ry="{h * 0.62:.0f}" fill="url(#gsim-{uid})"/>'
+               f'<ellipse class="world world-ai" cx="{cx + (w - cx) * 0.55:.0f}" cy="{h / 2:.0f}" rx="{(w - cx) * 0.75:.0f}" ry="{h * 0.62:.0f}" fill="url(#gai-{uid})"/>')
+    # the row boundary and the row names on the side
+    out.append(f'<line class="row-rule" x1="{4 if not wide else 8}" y1="{ry:.0f}" x2="{w - 4}" y2="{ry:.0f}"/>')
+    for dev, name in V.DEVICES:
+        yy = [M.pos[n][1] for n in M.nodes if n.startswith(dev + ":")]
+        ym = (min(yy) + max(yy)) / 2
+        x = 15 if wide else 8
+        out.append(f'<text class="row-title" data-device="{dev}" text-anchor="middle" transform="translate({x} {ym:.0f}) rotate(-90)" '
+                   f'style="font-size:{13 if wide else 11}px">{name}</text>')
+    for key, tt in M.titles().items():
         fs1, fs2 = tt["fs"]
         name = "Simulation" if key == "sim" else "AI"
         sub = tt["lines"][1:] if len(tt["lines"]) > 1 else ()
         out.append(f'<text class="world-title" data-world="{key}" text-anchor="{tt["anchor"]}" x="{tt["x"]:.1f}" y="{tt["y"]:.1f}" style="font-size:{fs1}px">{name}'
                    + "".join(f'<tspan class="world-sub" x="{tt["x"]:.1f}" dy="{tt["lh"]}" style="font-size:{fs2}px">{ESC(s_)}</tspan>' for s_ in sub) + "</text>")
-    for t in W.tools:
-        for i, (blob, members) in enumerate(W.pieces[t]):
+    for t in M.tools:
+        for i, (blob, members) in enumerate(M.pieces[t]):
             out.append(f'<path class="blob" data-tool="{ESC(t, quote=True)}" data-piece="{i}" data-blocks="{" ".join(members)}" '
-                       f'style="--c:var({W.vars[t]})" d="{blob.path()}"/>')
-    names = W.name_boxes() if wide else {}
+                       f'style="--c:var({M.vars[t]})" d="{blob.path()}"/>')
+    names = M.name_boxes() if wide else {}
     for t, nb in names.items():
-        out.append(f'<text class="bname" data-tool="{ESC(t, quote=True)}" text-anchor="middle" x="{nb["x"]:.1f}" y="{nb["y"]:.1f}" style="fill:var({W.vars[t]})">{ESC(t)}</text>')
-    for key in V.BLOCKS_KEYS:
-        b = V.BLOCK[key]
-        x, y = W.pos[key]
-        who = [t for t in W.tools if V.block_covered(W.table, key, t)]
-        feats = V.block_features(W.table, key)
-        q = all(f not in V.MEASURED for f in b[5])
-        out.append(f'<g class="wnode{" none" if not who else ""}" data-block="{key}" data-features="{" ".join(b[5])}" tabindex="0" role="button" '
-                   f'aria-label="{ESC(block_aria(W.table, W.tools, key), quote=True)}">'
-                   f'<circle class="hit" cx="{x:.1f}" cy="{y:.1f}" r="{W.node + 6}"/>'
-                   f'<circle class="node" cx="{x:.1f}" cy="{y:.1f}" r="{W.node}"/>' + _arcs(x, y, W.node + 1.5, who, W.tools, W.vars)
+        out.append(f'<text class="bname" data-tool="{ESC(t, quote=True)}" text-anchor="middle" x="{nb["x"]:.1f}" y="{nb["y"]:.1f}" style="fill:var({M.vars[t]})">{ESC(t)}</text>')
+    for nid in M.nodes:
+        device, block = V.split_node(nid)
+        b = V.BLOCK[block]
+        x, y = M.pos[nid]
+        who = M.who(nid)
+        out.append(f'<g class="wnode" data-node="{nid}" data-block="{block}" data-device="{device}" tabindex="0" role="button" '
+                   f'aria-label="{ESC(node_aria(M, nid), quote=True)}">'
+                   f'<circle class="hit" cx="{x:.1f}" cy="{y:.1f}" r="{M.node + 6}"/>'
+                   f'<circle class="node" cx="{x:.1f}" cy="{y:.1f}" r="{M.node}"/>' + _arcs(x, y, M.node + 1.5, who, M.tools, M.vars)
                    + icon_g(ids, b[3], x, y, isz))
         if wide:
-            lab = W.labels[key]
+            lab = M.labels[nid]
             if lab["disp"] > 30:        # a label moved well away from its node is tied to it by a thin leader
                 l_, t_, r_, b_ = lab["box"][:4]
                 px, py = min(max(x, l_), r_), min(max(y, t_), b_)
                 d = math.hypot(px - x, py - y) or 1.0
                 ux, uy = (px - x) / d, (py - y) / d
-                out.append(f'<line class="leader" x1="{x + ux * (W.node + 4):.1f}" y1="{y + uy * (W.node + 4):.1f}" x2="{px - ux * 2:.1f}" y2="{py - uy * 2:.1f}"/>')
-            out.append(f'<text class="nlabel{" q" if q else ""}" data-n="{key}" text-anchor="{lab["box"][4]}" x="{lab["box"][5]:.1f}" y="{lab["box"][6]:.1f}">'
-                       + _tspans(lab["box"][5], lab["lines"], W.lay["fs"] + 1) + "</text>")
+                out.append(f'<line class="leader" x1="{x + ux * (M.node + 4):.1f}" y1="{y + uy * (M.node + 4):.1f}" x2="{px - ux * 2:.1f}" y2="{py - uy * 2:.1f}"/>')
+            out.append(f'<text class="nlabel" data-n="{nid}" text-anchor="{lab["box"][4]}" x="{lab["box"][5]:.1f}" y="{lab["box"][6]:.1f}">'
+                       + _tspans(lab["box"][5], lab["lines"], M.lay["fs"] + 1) + "</text>")
         out.append("</g>")
     out.append("</svg>")
     return "".join(out)
 
 
-def _fmt_pass(feature, entry):
-    if entry is None:
-        return "no reading"
-    return entry.get("v", "")
+def capmap_json(caps):
+    """What the popover shows for each node, in the table's own words: the block, what counts, and per tool the note and
+    the source of a covered cell (or the note of one that is not)."""
+    blocks = {k: {"l": V.BLOCK[k][1], "n": caps.needs[k]} for k in V.BLOCKS_KEYS}
+    nodes = {}
+    for nid in caps.nodes():
+        device, block = V.split_node(nid)
+        yes, no = [], []
+        for t in caps.tools:
+            c = caps.cell(t, block, device)
+            (yes if c["covered"] else no).append([t, c.get("note", "")] + ([c["source"]] if c["covered"] else []))
+        nodes[nid] = {"w": yes, "x": no}
+    return {"blocks": blocks, "nodes": nodes, "devices": dict(V.DEVICES)}
 
 
+def capmap_table(caps):
+    """Every covered cell with its note and its source link, one row each, grouped by block and device."""
+    rows = []
+    for block, device, tool, c in caps.covered_cells():
+        rows.append(f'<tr data-block="{block}" data-device="{device}" data-tool="{ESC(tool, quote=True)}"><th scope="row">{ESC(V.BLOCK[block][1])}</th>'
+                    f'<td>{V.DEVICE_NAME[device]}</td><td>{ESC(tool)}</td><td>{ESC(c["note"])}</td>'
+                    f'<td><a href="{ESC(c["source"], quote=True)}">source</a></td></tr>')
+    return ('<table class="worlds-table capmap-cells"><caption>Every covered cell: the block, the device, the tool, how the tool does '
+            'it, and the page of the tool\'s own documentation that shows it</caption>'
+            '<thead><tr><th scope="col">Block</th><th scope="col">Device</th><th scope="col">Tool</th><th scope="col">How</th>'
+            f'<th scope="col">Source</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
+
+
+def key_list(M, ids):
+    """The icon -> block list under the phone-width map: every block named once, with who covers it on each row."""
+    items = []
+    for key in V.BLOCKS_KEYS:
+        b = V.BLOCK[key]
+        per = []
+        for dev, name in V.DEVICES:
+            nid = V.node_id(dev, key)
+            if nid in M.pos:
+                per.append(f"{name}: " + " ".join(V.MONO.get(t, t) for t in M.who(nid)))
+        items.append(f'<li data-block="{key}"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#{ids}-{b[3]}"/></svg>'
+                     f'<span class="kn">{ESC(b[1])}</span><span class="kw">{ESC(" · ".join(per))}</span></li>')
+    return '<ol class="worlds-key" aria-label="Blocks of work">' + "".join(items) + "</ol>"
+
+
+def capmap_block(side, caps, tools, intro, caption):
+    """The capability map, the same on every device: wide and phone-width SVG, the key list, the table of every covered
+    cell and the JSON the popover reads. ``side`` only namespaces the ids (the landing page carries one copy per hardware
+    panel). ``tools`` = [(name, css var)]."""
+    ids = f"wic-{side}"
+    keys = sorted(set(b[3] for b in V.BLOCKS))
+    out = [f'<div class="worlds capmap" data-side="{side}">', sprite(ids, keys)]
+    out.append('<div class="worlds-legend" role="group" aria-label="Tools">')
+    for t, var in tools:
+        out.append(f'<button type="button" class="worlds-leg" data-tool="{ESC(t, quote=True)}" aria-pressed="false" aria-label="{ESC(t, quote=True)}" style="--c:var({var})">'
+                   f'<span class="chip"><span class="mono">{ESC(V.MONO.get(t, t))}</span></span><span class="nm">{ESC(t)}</span></button>')
+    out.append("</div>")
+    out.append('<p class="worlds-status" aria-live="polite"></p>')
+    out.append('<div class="worlds-stage">')
+    wide = V.CapMap(caps, tools, V.CAPMAP_LAYOUT["wide"])
+    narrow = V.CapMap(caps, tools, V.CAPMAP_LAYOUT["narrow"])
+    aria = "Capability map: " + "; ".join(f"{t} covers {len(wide.cov[t])} of {len(wide.nodes)} blocks" for t, _v in tools)
+    out.append(f'<div class="worlds-wide">{capmap_svg(wide, ids, side + "w", aria)}</div>')
+    out.append(f'<div class="worlds-narrow">{capmap_svg(narrow, ids, side + "n", aria)}{key_list(narrow, ids)}</div>')
+    out.append(f'<p class="axis-note worlds-caption">{caption}</p>')
+    out.append('<details class="radar-data worlds-data"><summary>Show every covered cell and its source</summary>' + capmap_table(caps) + "</details>")
+    out.append('<div class="worlds-pop" role="tooltip" hidden></div></div>')
+    out.append(f'<p class="axis-note worlds-note">{intro}</p>')
+    out.append('<script type="application/json" class="worlds-json">' + json.dumps({"side": side, "map": capmap_json(caps)}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")
+    out.append("</div>")
+    return "\n".join(out)
+
+
+# --------------------------------------------------------------------------- the feature tables (rosette)
 def feature_rows(table, tools, features=None):
     """[(feature, label, measured, {tool: (value text, detail text, covers)})] for the feature table."""
     rows = []
@@ -145,31 +211,18 @@ def feature_rows(table, tools, features=None):
     return rows
 
 
-def worlds_json(table, tools):
-    """What the popover shows for each block and each feature, in the tables' own words."""
-    blocks = {}
-    for b in V.BLOCKS:
-        k = b[0]
-        blocks[k] = {"l": b[1], "f": [[f, V.LABEL[f]] for f in b[5]], "x": [f for f in b[5] if f not in V.block_features(table, k)],
-                     "w": [t for t in tools if V.block_covered(table, k, t)]}
+def feature_json(table, tools):
+    """What the rosette's popover shows for each feature, in the table's own words."""
     vals = {}
     for f, _l, _m, cells in feature_rows(table, tools):
         measured = f in V.MEASURED
         vals[f] = {t: ([c[0], c[1] if measured else "", 1 if c[2] else 0] if c[0] is not None else None) for t, c in cells.items()}
-    return {"blocks": blocks, "vals": vals}
+    return {"vals": vals}
 
 
-def worlds_tables(table, tools):
-    """The data behind the chart: block coverage, then every feature's reading per tool with whether it meets the rule."""
+def feature_table(table, tools):
+    """Every feature's reading per tool, with whether it meets the radar's rule."""
     th = "".join(f'<th scope="col">{ESC(t)}</th>' for t in tools)
-    rows = []
-    for b in V.BLOCKS:
-        k = b[0]
-        need = ", ".join(V.LABEL[f] for f in b[5])
-        cells = "".join(f'<td>{"covered" if V.block_covered(table, k, t) else "–"}</td>' for t in tools)
-        rows.append(f'<tr data-block="{k}"><th scope="row">{ESC(b[1])}</th><td class="needs">{ESC(need)}</td>{cells}</tr>')
-    t1 = (f'<table class="worlds-table worlds-blocks"><caption>Blocks of work: a tool covers a block when it covers every feature the block needs</caption>'
-          f'<thead><tr><th scope="col">Block</th><th scope="col">Needs</th>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table>')
     rows = []
     for f, label, measured, cells in feature_rows(table, tools):
         tds = []
@@ -183,56 +236,9 @@ def worlds_tables(table, tools):
                 tds.append(f'<td class="{"ok" if ok else "no"}">{ESC(text)}{" ✓" if ok else ""}{why}</td>')
         qc = "" if measured else ' class="q"'
         rows.append(f'<tr data-feature="{f}"><th scope="row"{qc}>{ESC(label)}</th>{"".join(tds)}</tr>')
-    t2 = (f'<table class="worlds-table worlds-features"><caption>Features: measured readings, and the rubric scores (judgement). A tick marks '
-          f'a feature the tool covers: within {V.WITHIN:g}× of the best tool, or {V.RUBRIC_MIN} of 5</caption>'
-          f'<thead><tr><th scope="col">Feature</th>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table>')
-    return t1 + t2
-
-
-def key_list(W, ids):
-    """The icon -> block list under the phone-width chart: every icon named once."""
-    items = []
-    for key in V.BLOCKS_KEYS:
-        b = V.BLOCK[key]
-        who = [V.MONO.get(t, t) for t in W.tools if V.block_covered(W.table, key, t)]
-        items.append(f'<li data-block="{key}" data-features="{" ".join(b[5])}"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#{ids}-{b[3]}"/></svg>'
-                     f'<span class="kn">{ESC(b[1])}</span><span class="kw">{ESC(" ".join(who))}</span></li>')
-    return '<ol class="worlds-key" aria-label="Blocks of work">' + "".join(items) + "</ol>"
-
-
-def worlds_block(side, tools, devices, intro):
-    """The two-worlds visual of one side, all devices: ``devices`` = [(slug, name, card line, feature table)]. The first
-    device shows; the page's device switch shows the others (js/visuals.js). ``tools`` = [(name, css var)]."""
-    ids = f"wic-{side}"
-    keys = sorted(set([b[3] for b in V.BLOCKS]))
-    out = [f'<div class="worlds" data-side="{side}">', sprite(ids, keys)]
-    out.append('<div class="worlds-legend" role="group" aria-label="Tools">')
-    for t, var in tools:
-        out.append(f'<button type="button" class="worlds-leg" data-tool="{ESC(t, quote=True)}" aria-pressed="false" aria-label="{ESC(t, quote=True)}" style="--c:var({var})">'
-                   f'<span class="chip"><span class="mono">{ESC(V.MONO.get(t, t))}</span></span><span class="nm">{ESC(t)}</span></button>')
-    out.append("</div>")
-    out.append('<p class="worlds-status" aria-live="polite"></p>')
-    out.append('<div class="worlds-stage">')
-    jsons = {}
-    lay_w = V.WORLDS_LAYOUT["wide" if side == "gpu" else "wide_cpu"]
-    lay_n = V.narrow_layout(side, **{k: V.NARROW[k] for k in ("sx", "sy", "node", "icon", "pad_scale", "size")})
-    for i, (slug, name, card, table) in enumerate(devices):
-        Wd = cached_worlds(table, tools, side + "-wide", lay_w)
-        Wn = cached_worlds(table, tools, side + "-narrow", lay_n)
-        aria = f"Two worlds on {name}: " + "; ".join(
-            f"{t} covers {len(V.covered_blocks(table, t))} of {len(V.BLOCKS)} blocks" for t, _v in tools)
-        out.append(f'<div class="worlds-dev" data-slug="{ESC(slug, quote=True)}"{"" if i == 0 else " hidden"}>')
-        out.append(f'<div class="worlds-wide">{worlds_svg(Wd, ids, f"{side}{i}w", aria)}</div>')
-        out.append(f'<div class="worlds-narrow">{worlds_svg(Wn, ids, f"{side}{i}n", aria)}{key_list(Wn, ids)}</div>')
-        out.append(f'<p class="axis-note worlds-caption">Two worlds on {ESC(card)}.</p>')
-        out.append('<details class="radar-data worlds-data"><summary>Show the data behind the two worlds</summary>'
-                   + worlds_tables(table, [t for t, _v in tools]) + "</details></div>")
-        jsons[slug] = worlds_json(table, [t for t, _v in tools])
-    out.append('<div class="worlds-pop" role="tooltip" hidden></div></div>')
-    out.append(f'<p class="axis-note worlds-note">{intro}</p>')
-    out.append('<script type="application/json" class="worlds-json">' + json.dumps({"side": side, "devices": jsons}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")
-    out.append("</div>")
-    return "\n".join(out)
+    return (f'<table class="worlds-table worlds-features"><caption>Features: measured readings, and the rubric scores (judgement). A tick marks '
+            f'a feature the tool covers: within {V.WITHIN:g}× of the best tool, or {V.RUBRIC_MIN} of 5</caption>'
+            f'<thead><tr><th scope="col">Feature</th>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table>')
 
 
 # --------------------------------------------------------------------------- the rosette
@@ -304,7 +310,7 @@ SECTOR_FEATURES = {s[0]: s[2] for s in V.SECTORS}
 
 def rosette_block(side, tools, devices, intro):
     """The rosette of one side, all devices: wide (every sector) and phone width (one sector at a time under a picker of
-    sector icons). ``devices`` as in `worlds_block`, plus a date stamp as the fifth item."""
+    sector icons). ``devices`` = [(slug, name, card line, feature table, date stamp)]."""
     ids = f"ric-{side}"
     keys = sorted(set(k for k, _l, _m in V.FEATURES) | set(s[3] for s in V.SECTORS))
     out = [f'<div class="rosette" data-side="{side}">', sprite(ids, keys)]
@@ -331,8 +337,8 @@ def rosette_block(side, tools, devices, intro):
         out.append("</div>")
         out.append(f'<p class="axis-note worlds-caption">Rosette on {ESC(card)}.</p>')
         out.append('<details class="radar-data worlds-data"><summary>Show the data behind the rosette</summary>'
-                   + worlds_tables(table, [t for t, _v in tools]).split("</table>", 1)[1] + "</details></div>")
-        jsons[slug] = worlds_json(table, [t for t, _v in tools])
+                   + feature_table(table, [t for t, _v in tools]) + "</details></div>")
+        jsons[slug] = feature_json(table, [t for t, _v in tools])
     out.append("</div>")
     out.append(f'<p class="axis-note worlds-note">{intro}</p>')
     out.append('<script type="application/json" class="worlds-json">' + json.dumps({"side": side, "devices": jsons}, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")

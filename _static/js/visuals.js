@@ -1,15 +1,18 @@
-/* The two coverage visuals of the site: the two-worlds chart (.worlds) and the rosette (.rosette), plus the
+/* The two coverage visuals of the site: the capability map (.worlds.capmap) and the rosette (.rosette), plus the
  * cross-highlight every visual shares.
  *
- * Both are drawn on the server (tools/visuals.py, tools/visuals_markup.py) for every device, with the data tables behind
- * them; this script only shows the device the page's switch selects and handles three interactions:
+ * Both are drawn on the server (tools/visuals.py, tools/visuals_markup.py), with the data tables behind them. The map
+ * is the same on every device; the rosette is drawn for every device and this script shows the one the page's switch
+ * selects. Three interactions:
  *   1. a tool, by its legend chip or by its blob (the same handler): the tool is isolated (the others fade), its outline
  *      thickens and, on the wide chart, its name shows inside its blob. Tap = focus = hover; Escape clears.
- *   2. a block (worlds) or a feature (rosette): an evidence popover with the features it needs, every tool's reading and
- *      who covers it, built from the JSON that mirrors the tables.
+ *   2. a block (map) or a feature (rosette): an evidence popover. For a block: what counts, and per tool how it does it
+ *      with a link to the source, or why not; for a feature: every tool's reading. Built from the JSON that mirrors the
+ *      tables.
  *   3. a rosette sector: focus it (the others fade); on a phone-width column the sector picker shows one sector fanned.
  * Cross-highlight: anything carrying data-feature (a rosette node or label, a popover row, a radar axis, a table row)
- * lights every other element of the same feature on the page while it is hovered or focused.
+ * lights every other element of the same feature on the page while it is hovered or focused; a map block lights the
+ * same block on the other row, in the key list and in the table.
  * Nothing is hover-only: every fact is in the tables, and a tap does what hover does. Vanilla JS, no library. */
 (function () {
   "use strict";
@@ -29,12 +32,17 @@
     for (var i = 0; i < old.length; i++) { old[i].classList.remove("xh"); }
     xhKey = key;
     if (!key) { return; }
-    var hit = document.querySelectorAll('[data-feature="' + key + '"], [data-axis="' + key + '"]');
+    var sel = key.indexOf("block:") === 0 ? '.capmap [data-block="' + key.slice(6) + '"]'
+      : '[data-feature="' + key + '"], [data-axis="' + key + '"]';
+    var hit = document.querySelectorAll(sel);
     for (var j = 0; j < hit.length; j++) { hit[j].classList.add("xh"); }
   }
   function featureOf(target) {
-    var n = target.closest ? target.closest("[data-feature], .radar-axis[data-axis], .radar-icon[data-axis]") : null;
-    return n ? (n.getAttribute("data-feature") || n.getAttribute("data-axis")) : null;
+    if (!target.closest) { return null; }
+    var n = target.closest("[data-feature], .radar-axis[data-axis], .radar-icon[data-axis]");
+    if (n) { return n.getAttribute("data-feature") || n.getAttribute("data-axis"); }
+    var b = target.closest(".capmap [data-block]");
+    return b ? "block:" + b.getAttribute("data-block") : null;
   }
   document.addEventListener("mouseover", function (ev) { setXh(featureOf(ev.target)); });
   document.addEventListener("mouseout", function (ev) { if (!ev.relatedTarget || !featureOf(ev.relatedTarget)) { setXh(null); } });
@@ -44,7 +52,7 @@
   function mount(root) {
     var data = JSON.parse(root.querySelector(".worlds-json").textContent);
     var side = data.side;
-    var rosette = root.classList.contains("rosette");
+    var map = data.map || null;            /* the capability map: one, the same on every device */
     var stage = root.querySelector(".worlds-stage");
     var pop = root.querySelector(".worlds-pop");
     var status = root.querySelector(".worlds-status");
@@ -70,11 +78,13 @@
       var slug = r ? r.getAttribute("data-slug") : null;
       if (slug && slug !== devSlug) { showDevice(slug); }
     }
-    var sw = document.querySelector(".perf-switch");
-    if (sw) { sw.addEventListener("perf-device-change", followSwitch); }
-    var first = root.querySelector(".worlds-dev:not([hidden])");
-    devSlug = first ? first.getAttribute("data-slug") : null;
-    followSwitch();
+    if (!map) {
+      var sw = document.querySelector(".perf-switch");
+      if (sw) { sw.addEventListener("perf-device-change", followSwitch); }
+      var first = root.querySelector(".worlds-dev:not([hidden])");
+      devSlug = first ? first.getAttribute("data-slug") : null;
+      followSwitch();
+    }
 
     /* ---- a tool: chip and blob share one handler ---- */
     function setHl(tool) {
@@ -102,7 +112,39 @@
     for (var t = 0; t < tools.length; t++) { bindTool(tools[t]); }
 
     /* ---- the evidence popover of a block or a feature ---- */
-    function closePop() { if (pop) { pop.hidden = true; pop.textContent = ""; } }
+    var popTimer = null;
+    function closePop() { if (popTimer) { clearTimeout(popTimer); popTimer = null; } if (pop) { pop.hidden = true; pop.textContent = ""; } }
+    /* leaving a node closes its popover a moment later, so the pointer can reach the links inside it */
+    function closeSoon() { if (popTimer) { clearTimeout(popTimer); } popTimer = setTimeout(closePop, 250); }
+    if (pop) {
+      pop.addEventListener("mouseenter", function () { if (popTimer) { clearTimeout(popTimer); popTimer = null; } });
+      pop.addEventListener("mouseleave", closeSoon);
+    }
+    function link(href, text) { var a = mk("a", "", text); a.href = href; return a; }
+    function capEvidence(block, devices) {
+      var b = map.blocks[block];
+      var box = mk("div", "wp");
+      box.appendChild(mk("div", "wp-h", b.l));
+      box.appendChild(mk("div", "wp-s", b.n));
+      devices.forEach(function (dev) {
+        var c = map.nodes[dev + ":" + block];
+        if (!c) { return; }
+        box.appendChild(mk("div", "wp-d", map.devices[dev]));
+        var ul = mk("ul", "wp-l");
+        c.w.forEach(function (w) {
+          var li = mk("li", "ok");
+          li.appendChild(mk("b", "", w[0] + " ✓ "));
+          li.appendChild(document.createTextNode(w[1] + " "));
+          li.appendChild(link(w[2], "source"));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+        if (c.x.length) {
+          box.appendChild(mk("div", "wp-s", "Not covered: " + c.x.map(function (x) { return x[0]; }).join(", ") + "."));
+        }
+      });
+      return box;
+    }
     function evidence(key, kind) {
       var d = data.devices[devSlug];
       var feats, title, who = null, dropped = [];
@@ -160,18 +202,19 @@
     }
     function showNode(n) {
       if (!pop) { return; }
+      if (popTimer) { clearTimeout(popTimer); popTimer = null; }
       var block = n.getAttribute("data-block"), feature = n.getAttribute("data-feature");
       pop.textContent = "";
-      pop.appendChild(evidence(block || feature, block ? "block" : "feature"));
+      pop.appendChild(map ? capEvidence(block, [n.getAttribute("data-device")]) : evidence(block || feature, block ? "block" : "feature"));
       placePop(n);
     }
     var nodes = root.querySelectorAll(".wnode, .rnode");
     for (var k = 0; k < nodes.length; k++) {
       (function (n) {
         n.addEventListener("mouseenter", function () { showNode(n); });
-        n.addEventListener("mouseleave", closePop);
+        n.addEventListener("mouseleave", closeSoon);
         n.addEventListener("focus", function () { showNode(n); });
-        n.addEventListener("blur", closePop);
+        n.addEventListener("blur", closeSoon);
         n.addEventListener("click", function (ev) { ev.stopPropagation(); showNode(n); });
         n.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); showNode(n); } });
       })(nodes[k]);
@@ -180,7 +223,14 @@
     for (var q = 0; q < keys.length; q++) {
       (function (li) {
         li.tabIndex = 0;
-        li.addEventListener("click", function () { if (pop) { pop.textContent = ""; pop.appendChild(evidence(li.getAttribute("data-block"), "block")); placePop(li); } });
+        var show = function () {
+          if (!pop) { return; }
+          pop.textContent = "";
+          pop.appendChild(map ? capEvidence(li.getAttribute("data-block"), ["cpu", "gpu"]) : evidence(li.getAttribute("data-block"), "block"));
+          placePop(li);
+        };
+        li.addEventListener("click", show);
+        li.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); show(); } });
       })(keys[q]);
     }
 

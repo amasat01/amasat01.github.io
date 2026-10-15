@@ -702,7 +702,7 @@ class LandingHeroFragments(unittest.TestCase):
         self.assertIn("50.0 ms", text)
         self.assertLess(text.index("5.00 ms"), text.index("50.0 ms"))
         # no SVG inside the bar charts (the radar beside them is the only SVG)
-        bars_only = re.sub(r'<div class="worlds".*?<script type="application/json" class="worlds-json">.*?</script>\n</div>', "", text, flags=re.S)
+        bars_only = re.sub(r'<div class="worlds[^"]*".*?<script type="application/json" class="worlds-json">.*?</script>\n</div>', "", text, flags=re.S)
         self.assertNotIn("<svg", re.sub(r'<div class="radar".*?<script type="application/json".*?</div>\n?', "", bars_only, flags=re.S).split('class="radar"')[0])
 
     def test_memory_chart_lightest_first_same_row_form(self):

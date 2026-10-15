@@ -1,8 +1,8 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""The two coverage visuals (two worlds, rosette) and their data: the ten acceptance tests of the design ruling, run on every
-device the generated pages carry. Geometry is rebuilt from the page's own JSON (coverage verdicts) with the same code that drew it,
-then compared with what was drawn."""
+"""The two coverage visuals (the capability map, the rosette) and their data. The map is static and sourced: its geometry
+is rebuilt from ``_data/capabilities.json`` with the same code that drew it and compared with what was drawn; the rosette
+is rebuilt from the page's own JSON (coverage verdicts) on every device the generated pages carry."""
 import functools
 import html
 import json
@@ -22,7 +22,7 @@ import visuals_markup as M  # noqa: E402
 
 GENERATED = SITE_ROOT / "_generated"
 MIN_GAP = 4.0
-#: Label geometry is fixed per side, so label gaps are checked on one card per side.
+#: Rosette label geometry is fixed per side, so its label gaps are checked on one card per side.
 LABEL_CARDS = (("gpu", "nvidia-h100-80gb-hbm3"), ("cpu", "amd-epyc-9b45"))
 
 
@@ -44,21 +44,26 @@ def _tools(block):
 
 
 def _devices(block):
-    """[(slug, html of that device)] of a worlds / rosette block."""
+    """[(slug, html of that device)] of a rosette block."""
     parts = re.split(r'(?=<div class="worlds-dev)', block)[1:]
     return [(re.search(r'data-slug="([^"]+)"', p).group(1), p) for p in parts]
 
 
 @functools.lru_cache(maxsize=None)
-def _worlds_page():
+def _map_page():
     text = (GENERATED / "perf_switch.md").read_text()
-    return {side: b for side, b in _blocks(text, "worlds")}
+    return {side: b for side, b in _blocks(text, "worlds capmap")}
 
 
 @functools.lru_cache(maxsize=None)
 def _rosette_page():
     text = (GENERATED / "radar_detailed.md").read_text()
     return {side: b for side, b in _blocks(text, "rosette")}
+
+
+@functools.lru_cache(maxsize=None)
+def _caps():
+    return V.Capabilities(json.loads((SITE_ROOT / "_data" / "capabilities.json").read_text()))
 
 
 def _table(dev_json):
@@ -69,27 +74,22 @@ def _table(dev_json):
 
 
 @functools.lru_cache(maxsize=None)
-def _worlds(side, slug, mode):
-    block = _worlds_page()[side]
-    tools = [(t, "") for t in _tools(block)]
-    table = _table(_json(block)["devices"][slug])
-    if mode == "wide":
-        lay = V.WORLDS_LAYOUT["wide" if side == "gpu" else "wide_cpu"]
-    else:
-        lay = V.narrow_layout(side, **{k: V.NARROW[k] for k in ("sx", "sy", "node", "icon", "pad_scale", "size")})
-    return V.Worlds(table, tools, lay)
+def _map(mode):
+    return V.CapMap(_caps(), list(sc.CAPMAP_TOOLS), V.CAPMAP_LAYOUT[mode])
 
 
-def _all_devices():
-    return [(side, slug) for side, b in _worlds_page().items() for slug in _json(b)["devices"]]
+def _paths(part, cls="blob"):
+    return re.findall(rf'<path class="{cls}[^"]*" data-tool="([^"]+)"[^>]*? d="([^"]+)"', part)
 
 
-def _paths(dev_html, cls="blob"):
-    return re.findall(rf'<path class="{cls}[^"]*" data-tool="([^"]+)"[^>]*? d="([^"]+)"', dev_html)
+def _parts():
+    """(wide html, narrow html) of the map as drawn under the GPU panel."""
+    b = _map_page()["gpu"]
+    return b.split('<div class="worlds-narrow">')[0], b.split('<div class="worlds-narrow">')[1]
 
 
 class TestCoverageRule(unittest.TestCase):
-    """1. The verdict on every feature is the radar's rule, the same for every tool."""
+    """The rosette's verdict on every feature is the radar's rule, the same for every tool."""
 
     def test_rule_on_the_ratio_and_the_score(self):
         self.assertTrue(V.covers("uneven", {"x": 2.0}))
@@ -97,17 +97,15 @@ class TestCoverageRule(unittest.TestCase):
         self.assertTrue(V.covers("tensor", {"pts": 4}))
         self.assertFalse(V.covers("tensor", {"pts": 3}))
         self.assertFalse(V.covers("uneven", None))
-        self.assertFalse(V.covers("thinning", {"x": math.inf}))
+        self.assertFalse(V.covers("uneven_eff", {"x": math.inf}))
 
     def test_the_page_verdicts_follow_the_printed_ratios(self):
-        for side, b in _worlds_page().items():
+        for side, b in _rosette_page().items():
             for slug, dj in _json(b)["devices"].items():
                 for f, per_tool in dj["vals"].items():
                     for tool, v in per_tool.items():
-                        if v is None:
+                        if v is None or f == "compile":            # compile is printed as a band ("1-10 s"), not a ratio
                             continue
-                        if f == "compile":
-                            continue                       # printed as a band ("1-10 s"), not a ratio
                         if f in V.MEASURED:
                             m = re.match(r"([\d.]+)×", v[1])
                             if m:
@@ -117,7 +115,7 @@ class TestCoverageRule(unittest.TestCase):
                                 if x > 2.0:
                                     self.assertFalse(v[2], (side, slug, f, tool, v))
                             else:
-                                self.assertEqual(v[2], 0, (side, slug, f, tool, v))       # "no saving" and the like
+                                self.assertEqual(v[2], 0, (side, slug, f, tool, v))
                         else:
                             m = re.match(r"(\d) of 5", v[0])
                             self.assertEqual(bool(v[2]), int(m.group(1)) >= V.RUBRIC_MIN, (side, slug, f, tool, v))
@@ -128,83 +126,104 @@ class TestCoverageRule(unittest.TestCase):
                 self.assertEqual(lab, sc.RADAR_AXIS_EXTRA[k]["short"], k)
 
 
-class TestTablesAndPopovers(unittest.TestCase):
-    """2 and 4. The tables carry the blocks' coverage and every field the popover shows."""
+class TestCapabilityData(unittest.TestCase):
+    """The map's coverage is static and sourced: every cell is in the data file, and every covered one has a source."""
 
-    def test_block_table_matches_coverage(self):
-        for side, slug in _all_devices():
-            w = _worlds(side, slug, "wide")
-            dev = dict(_devices(_worlds_page()[side]))[slug]
-            for key in V.BLOCKS_KEYS:
-                row = re.search(rf'<tr data-block="{key}">(.*?)</tr>', dev, re.S).group(1)
-                cells = re.findall(r"<td[^>]*>(.*?)</td>", row)[1:]
-                for tool, cell in zip(w.tools, cells):
-                    self.assertEqual(cell == "covered", V.block_covered(w.table, key, tool), (side, slug, key, tool))
+    def test_every_cell_is_present_and_every_covered_cell_has_a_source(self):
+        caps = _caps()
+        self.assertEqual(caps.tools, [t for t, _v in sc.CAPMAP_TOOLS])
+        self.assertEqual(set(caps.needs), set(V.BLOCKS_KEYS))
+        for t in caps.tools:
+            self.assertEqual(set(caps.cells[t]), set(V.BLOCKS_KEYS), t)
+            for b in V.BLOCKS_KEYS:
+                self.assertEqual(set(caps.cells[t][b]), {d for d, _n in V.DEVICES}, (t, b))
+                for d, _n in V.DEVICES:
+                    c = caps.cell(t, b, d)
+                    self.assertIsInstance(c["covered"], bool, (t, b, d))
+                    if c["covered"]:
+                        self.assertRegex(c["source"], r"^https://[^\s\"<>]+$", (t, b, d))
+                        self.assertTrue(c["note"].strip(), (t, b, d))
+                        self.assertNotIn("\n", c["note"])
+                    else:
+                        self.assertNotIn("source", c, (t, b, d))
 
-    def test_popover_fields_are_in_the_tables(self):
-        for side, b in _worlds_page().items():
-            data = _json(b)["devices"]
-            for slug, dev in _devices(b):
-                dj = data[slug]
-                tables = html.unescape(dev)
-                for key, blk in dj["blocks"].items():
-                    self.assertIn(html.escape(blk["l"]) if False else blk["l"], tables)
-                    for f, label in blk["f"]:
-                        self.assertIn(f'<tr data-feature="{f}">', dev)
-                        self.assertIn(label, tables)
-                    for tool in blk["w"]:
-                        self.assertIn(tool, _tools(b))
-                for f, per_tool in dj["vals"].items():
-                    row = re.search(rf'<tr data-feature="{f}">(.*?)</tr>', dev, re.S).group(1)
-                    cells = re.findall(r"<td class=\"[^\"]*\">(.*?)</td>", row, re.S)
-                    names = _tools(b)
-                    self.assertEqual(len(cells), len(names))
-                    for tool, cell in zip(names, cells):
-                        v = per_tool[tool]
-                        text = html.unescape(re.sub(r"<[^>]+>", " ", cell))
-                        if v is None:
-                            self.assertEqual(html.unescape(cell), "no reading")
-                            continue
-                        self.assertIn(v[0], text)
-                        if f in V.MEASURED and v[1]:
-                            self.assertIn(v[1], text)
-                        self.assertEqual("✓" in text, bool(v[2]), (slug, f, tool))
+    def test_the_measured_rule_is_gone_from_the_map(self):
+        block = _map_page()["gpu"]
+        self.assertNotIn("2×", block)
+        self.assertNotIn("of 5", block)
+        self.assertIn("Speed is not part of it", block)
 
-    def test_cpu_missing_readings_are_never_claimed(self):
-        """CPU honesty: a tool with no reading on a feature shows 'no reading' and cannot cover a block that needs it."""
-        checked = 0
-        for side, slug in _all_devices():
-            if side != "cpu":
-                continue
-            dj = _json(_worlds_page()[side])["devices"][slug]
-            for f, per_tool in dj["vals"].items():
-                for tool, v in per_tool.items():
-                    if v is None:
-                        checked += 1
-                        for key, blk in dj["blocks"].items():
-                            if f in [x[0] for x in blk["f"]] and f not in blk["x"]:
-                                self.assertNotIn(tool, blk["w"], (slug, f, tool, key))
-            for key, blk in dj["blocks"].items():            # a tool covers a block only through readings that all say so
-                for tool in blk["w"]:
-                    for f, _l in blk["f"]:
-                        if f not in blk["x"]:
-                            self.assertTrue(dj["vals"][f][tool] and dj["vals"][f][tool][2], (slug, key, tool, f))
-        self.assertGreater(checked, 0)
+    def test_the_table_lists_every_covered_cell_once_with_its_source(self):
+        caps = _caps()
+        for side, block in _map_page().items():
+            rows = re.findall(r'<tr data-block="([^"]+)" data-device="([^"]+)" data-tool="([^"]+)">(.*?)</tr>', block, re.S)
+            want = [(b, d, t) for b, d, t, _c in caps.covered_cells()]
+            self.assertEqual([(b, d, html.unescape(t)) for b, d, t, _r in rows], want, side)
+            for (b, d, t, row), (_b, _d, _t, c) in zip(rows, caps.covered_cells()):
+                self.assertIn(f'<a href="{html.escape(c["source"], quote=True)}">source</a>', row)
+                self.assertIn(html.escape(c["note"]), row)
+
+    def test_table_cell_count_equals_the_map_coverage(self):
+        wide_html, narrow_html = _parts()
+        drawn = len(re.findall(r'<path class="arc" data-tool=', wide_html))
+        rows = len(re.findall(r'<tr data-block="[^"]+" data-device=', _map_page()["gpu"]))
+        cov = sum(len(_map("wide").cov[t]) for t in _map("wide").tools)
+        self.assertEqual(rows, cov)
+        self.assertEqual(drawn, cov)
+        self.assertEqual(len(re.findall(r'<path class="arc" data-tool=', narrow_html.split("</svg>")[0])), cov)
+
+    def test_popover_json_mirrors_the_data(self):
+        caps = _caps()
+        for side, block in _map_page().items():
+            j = _json(block)
+            self.assertEqual(j["side"], side)
+            for nid, n in j["map"]["nodes"].items():
+                d, b = V.split_node(nid)
+                self.assertEqual([w[0] for w in n["w"]], caps.who(b, d))
+                for t, note, src in n["w"]:
+                    self.assertEqual((note, src), (caps.cell(t, b, d)["note"], caps.cell(t, b, d)["source"]))
+            self.assertEqual(set(j["map"]["nodes"]), set(caps.nodes()))
+
+
+class TestOneMap(unittest.TestCase):
+    """The map is the same on every device: no device switch, no per-card variant."""
+
+    def test_both_panels_carry_the_same_map(self):
+        pages = _map_page()
+        self.assertEqual(set(pages), {"gpu", "cpu"})
+        norm = {side: b.replace(f'data-side="{side}"', "").replace(f"wic-{side}", "wic").replace(f'"side":"{side}"', "")
+                .replace(f"-{side}w", "-w").replace(f"-{side}n", "-n") for side, b in pages.items()}
+        self.assertEqual(norm["gpu"], norm["cpu"])
+        self.assertNotIn("data-slug", pages["gpu"])
+        self.assertNotIn("worlds-dev", pages["gpu"])
+
+    def test_every_block_appears_on_each_row_where_a_tool_does_it(self):
+        caps = _caps()
+        for d, _n in V.DEVICES:
+            for b in V.BLOCKS_KEYS:
+                self.assertEqual(V.node_id(d, b) in caps.nodes(), bool(caps.who(b, d)), (d, b))
+        for mode in ("wide", "narrow"):
+            lay = V.CAPMAP_LAYOUT[mode]
+            for nid in caps.nodes():
+                d, b = V.split_node(nid)
+                x, y = lay["pos"][nid]
+                self.assertEqual(y < lay["rows"], d == "cpu", (mode, nid, "row"))
+                self.assertEqual(x > lay["cols"], V.BLOCK[b][4] == "ai", (mode, nid, "column"))
 
 
 class TestIcons(unittest.TestCase):
-    """3. One registry of icons, inline, each element with a name."""
+    """One registry of icons, inline, each element with a name."""
 
     def test_every_block_feature_and_sector_has_an_icon(self):
         for b in V.BLOCKS:
             self.assertIn(b[3], radar_icons.ICONS, b[0])
-        for s in V.SECTORS:
-            self.assertIn(s[3], radar_icons.ICONS, s[0])
+        for s_ in V.SECTORS:
+            self.assertIn(s_[3], radar_icons.ICONS, s_[0])
         for f, _l, _k in V.FEATURES:
             self.assertIn(f, radar_icons.ICONS, f)
 
     def test_every_node_has_a_name_and_a_symbol(self):
-        for side, b in list(_worlds_page().items()) + list(_rosette_page().items()):
+        for side, b in list(_map_page().items()) + list(_rosette_page().items()):
             ids = set(re.findall(r'<symbol id="([^"]+)"', b))
             self.assertTrue(ids)
             for href in set(re.findall(r'<use href="#([^"]+)"', b)):
@@ -216,47 +235,39 @@ class TestIcons(unittest.TestCase):
 
 
 class TestConvexityAndClearance(unittest.TestCase):
-    """5. Every drawn blob is the rounded convex hull of its covered blocks, and every uncovered block clears it, on every card."""
+    """Every drawn blob is the rounded convex hull of its covered blocks, and every uncovered block clears it."""
 
-    def test_drawn_shapes_are_the_hulls_on_every_card(self):
-        for side, slug in _all_devices():
-            dev = dict(_devices(_worlds_page()[side]))[slug]
-            wide_html, narrow_html = dev.split('<div class="worlds-narrow">')
-            for mode, part in (("wide", wide_html), ("narrow", narrow_html)):
-                w = _worlds(side, slug, mode)
-                drawn = _paths(part)
-                want = [(t, blob.path()) for t in w.tools for blob, _m in w.pieces[t]]
-                self.assertEqual(drawn, want, (side, slug, mode))
-                for t in w.tools:
-                    for blob, members in w.pieces[t]:
-                        hull = V.convex_hull([w.pos[k] for k in members])
-                        self.assertEqual(sorted(blob.hull), sorted(hull))
-                        c = blob.core
-                        if len(c) >= 3:
-                            signs = {math.copysign(1, (c[(i + 1) % len(c)][0] - c[i][0]) * (c[(i + 2) % len(c)][1] - c[(i + 1) % len(c)][1])
-                                                   - (c[(i + 1) % len(c)][1] - c[i][1]) * (c[(i + 2) % len(c)][0] - c[(i + 1) % len(c)][0])) for i in range(len(c))}
-                            self.assertEqual(len(signs), 1, (side, slug, t, "core is not convex"))
+    def test_drawn_shapes_are_the_hulls(self):
+        for mode, part in zip(("wide", "narrow"), _parts()):
+            w = _map(mode)
+            want = [(t, blob.path()) for t in w.tools for blob, _m in w.pieces[t]]
+            self.assertEqual([(html.unescape(t), d) for t, d in _paths(part)], want, mode)
+            for t in w.tools:
+                for blob, members in w.pieces[t]:
+                    self.assertEqual(sorted(blob.hull), sorted(V.convex_hull([w.pos[k] for k in members])))
+                    c = blob.core
+                    if len(c) >= 3:
+                        signs = {math.copysign(1, (c[(i + 1) % len(c)][0] - c[i][0]) * (c[(i + 2) % len(c)][1] - c[(i + 1) % len(c)][1])
+                                               - (c[(i + 1) % len(c)][1] - c[i][1]) * (c[(i + 2) % len(c)][0] - c[(i + 1) % len(c)][0])) for i in range(len(c))}
+                        self.assertEqual(len(signs), 1, (mode, t, "core is not convex"))
 
     def test_uncovered_blocks_clear_every_outline(self):
-        need = V.NODE_R + V.CLEAR
-        for side, slug in _all_devices():
-            for mode in ("wide", "narrow"):
-                w = _worlds(side, slug, mode)
-                self.assertEqual(w.violations, [], (side, slug, mode))
-                nr = w.node
-                for t in w.tools:
-                    for blob, members in w.pieces[t]:
-                        for k in V.BLOCKS_KEYS:
-                            d = blob.distance(w.pos[k])
-                            if k in members:
-                                self.assertLessEqual(d, -(nr + V.CLEAR), (side, slug, mode, t, k, "not enclosed"))
-                            elif k not in w.cov[t]:
-                                self.assertGreaterEqual(d, nr + V.CLEAR, (side, slug, mode, t, k, "enclosed or too close"))
-        self.assertEqual(need, 23)
+        for mode in ("wide", "narrow"):
+            w = _map(mode)
+            self.assertEqual(w.violations, [], mode)
+            for t in w.tools:
+                for blob, members in w.pieces[t]:
+                    for k in w.nodes:
+                        d = blob.distance(w.pos[k])
+                        if k in members:
+                            self.assertLessEqual(d, -(w.node + V.CLEAR), (mode, t, k, "not enclosed"))
+                        elif k not in w.cov[t]:
+                            self.assertGreaterEqual(d, w.node + V.CLEAR, (mode, t, k, "enclosed or too close"))
+        self.assertEqual(V.NODE_R + V.CLEAR, 23)
 
     def test_drawn_arcs_bulge_outwards(self):
         """The drawn SVG outline, not only the geometry: the midpoint of every arc in a blob's path lies on that blob's
-        outline. An arc swept the wrong way (an inward stadium cap) puts it deep inside and leaves blocks outside."""
+        outline. An arc swept the wrong way (an inward cap) puts it deep inside and leaves blocks outside."""
         def arc_mid(p, q, r, large, sweep):
             # SVG arc centre parameterisation (SVG 1.1 F.6.5), circle case
             mx, my = (p[0] - q[0]) / 2, (p[1] - q[1]) / 2
@@ -270,88 +281,94 @@ class TestConvexityAndClearance(unittest.TestCase):
             return cx + r * math.cos(a0 + d / 2), cy + r * math.sin(a0 + d / 2)
 
         tok = re.compile(r"([MLAZ])([^MLAZ]*)")
-        for side, slug in _all_devices():
-            for mode in ("wide", "narrow"):
-                w = _worlds(side, slug, mode)
-                for t in w.tools:
-                    for blob, _m in w.pieces[t]:
-                        cur = None
-                        for cmd, args in tok.findall(blob.path()):
-                            v = [float(x) for x in args.split()]
-                            if cmd in "ML":
-                                cur = (v[0], v[1])
-                            elif cmd == "A":
-                                nxt = (v[5], v[6])
-                                mid = arc_mid(cur, nxt, v[0], int(v[3]), int(v[4]))
-                                self.assertLess(abs(blob.distance(mid)), 1.0, (side, slug, mode, t, "arc swept inwards"))
-                                cur = nxt
+        for mode in ("wide", "narrow"):
+            w = _map(mode)
+            for t in w.tools:
+                for blob, _m in w.pieces[t]:
+                    cur = None
+                    for cmd, args in tok.findall(blob.path()):
+                        v = [float(x) for x in args.split()]
+                        if cmd in "ML":
+                            cur = (v[0], v[1])
+                        elif cmd == "A":
+                            nxt = (v[5], v[6])
+                            mid = arc_mid(cur, nxt, v[0], int(v[3]), int(v[4]))
+                            self.assertLess(abs(blob.distance(mid)), 1.0, (mode, t, "arc swept inwards"))
+                            cur = nxt
+
+    def test_path_snapshot(self):
+        """Two-decimal coordinates and a per-corner sweep (a mirror-image arc would be a different string)."""
+        self.assertEqual(V.rounded_hull_path([(0, 0), (100, 0), (0, 100)], 10),
+                         "M0.00 -10.00L100.00 -10.00A10.00 10.00 0 0 1 107.07 7.07L7.07 107.07A10.00 10.00 0 0 1 -10.00 100.00"
+                         "L-10.00 0.00A10.00 10.00 0 0 1 0.00 -10.00Z")
 
     def test_raptor_is_never_split(self):
-        for side, slug in _all_devices():
-            for mode in ("wide", "narrow"):
-                self.assertLessEqual(len(_worlds(side, slug, mode).pieces["raptor"]), 1)
+        for mode in ("wide", "narrow"):
+            self.assertEqual(len(_map(mode).pieces["raptor"]), 1)
+            self.assertNotIn("raptor", V.FALLBACK)
 
-    def test_the_fallback_cases_are_few_and_named(self):
-        """Pieces beyond one hull are the ruled fallback; list them so a change that adds one is a visible edit here."""
-        split = {}
-        for side, slug in _all_devices():
-            w = _worlds(side, slug, "wide")
-            for t in getattr(w, "split", []):
-                split.setdefault(side, set()).add((slug, t))
-        for side, cases in split.items():
-            self.assertTrue(all(t != "raptor" for _s, t in cases))
-        self.assertEqual({t for cases in split.values() for _s, t in cases}, {"NVIDIA Warp"})
+    def test_the_fallback_cases_are_named(self):
+        """Pieces beyond one hull are the ruled fallback, allowed only for the tools `V.FALLBACK` names; today none needs it,
+        so a change that adds one is a visible edit here."""
+        self.assertEqual(V.FALLBACK, {})
+        for mode in ("wide", "narrow"):
+            w = _map(mode)
+            self.assertEqual(w.split, [], mode)
+            for t in w.tools:
+                self.assertEqual(len(w.pieces[t]), 1 if w.cov[t] else 0, (mode, t))
 
 
 class TestLabels(unittest.TestCase):
-    """6. Label non-intersection, both visuals, every card, wide and phone width, every rosette sector."""
+    """Label non-intersection, both visuals, wide and phone width, every rosette sector."""
 
-    def test_worlds_labels_clear_everything(self):
-        for side, slug in LABEL_CARDS:
-            w = _worlds(side, slug, "wide")
-            self.assertGreaterEqual(min(v["gap"] for v in w.labels.values()), MIN_GAP, (side, slug))
-            for k, tt in w.titles().items():
-                self.assertGreaterEqual(tt["gap"], MIN_GAP, (side, slug, k))
-            for t, nb in w.name_boxes().items():
-                self.assertGreaterEqual(nb["gap"], MIN_GAP, (side, slug, "name", t))
-            # label vs label, recomputed from the boxes
-            boxes = [v["box"][:4] for v in w.labels.values()]
-            for i, a in enumerate(boxes):
-                for b in boxes[i + 1:]:
-                    self.assertGreaterEqual(V._box_gap(a, b), MIN_GAP)
-            n = _worlds(side, slug, "narrow")
-            for k, tt in n.titles().items():
-                self.assertGreaterEqual(tt["gap"], MIN_GAP, (side, slug, k, "narrow"))
+    def test_map_labels_clear_everything(self):
+        w = _map("wide")
+        self.assertGreaterEqual(min(v["gap"] for v in w.labels.values()), MIN_GAP)
+        for k, tt in w.titles().items():
+            self.assertGreaterEqual(tt["gap"], MIN_GAP, k)
+        for t, nb in w.name_boxes().items():
+            self.assertGreaterEqual(nb["gap"], MIN_GAP, ("name", t))
+        boxes = [v["box"][:4] for v in w.labels.values()]
+        circles, pts = w._obstacles()
+        width, height = w.lay["size"]
+        for i, a in enumerate(boxes):
+            self.assertTrue(0 <= a[0] and a[2] <= width and 0 <= a[1] and a[3] <= height, a)
+            for b in boxes[i + 1:]:
+                self.assertGreaterEqual(V._box_gap(a, b), MIN_GAP)
+            for c, r in circles:
+                self.assertGreaterEqual(V._box_node_gap(a, c, r), MIN_GAP)
+            self.assertGreaterEqual(min(V._gap(a, p) for p in pts), MIN_GAP)
+        for k, tt in _map("narrow").titles().items():
+            self.assertGreaterEqual(tt["gap"], MIN_GAP, (k, "narrow"))
 
     def test_rosette_labels_clear_everything(self):
         for side, slug in LABEL_CARDS:
             b = _rosette_page()[side]
             tools = [(t, "") for t in _tools(b)]
             table = _table(_json(b)["devices"][slug])
-            for mode, sector in [("wide", "ensemble")] + ([("narrow", s[0]) for s in V.SECTORS] if side == "gpu" else []):
+            for mode, sector in [("wide", "ensemble")] + ([("narrow", s_[0]) for s_ in V.SECTORS] if side == "gpu" else []):
                 g = V.Rosette(table, tools, mode, sector).min_gaps()
                 for kind, v in g.items():
                     self.assertGreaterEqual(v, MIN_GAP, (side, slug, mode, sector, kind))
 
     def test_nothing_leaves_the_phone_column(self):
-        for side, slug in _all_devices():
-            w = _worlds(side, slug, "narrow")
-            width, height = w.lay["size"]
-            for t in w.tools:
-                for blob, _m in w.pieces[t]:
-                    xs = [p[0] for p in blob.outline(6)]
-                    ys = [p[1] for p in blob.outline(6)]
-                    self.assertGreaterEqual(min(xs), 0, (side, slug, t))
-                    self.assertLessEqual(max(xs), width, (side, slug, t))
-                    self.assertGreaterEqual(min(ys), 0, (side, slug, t))
-                    self.assertLessEqual(max(ys), height, (side, slug, t))
-            for k, tt in w.titles().items():
-                self.assertGreaterEqual(tt["box"][0], 0)
-                self.assertLessEqual(tt["box"][2], width)
+        w = _map("narrow")
+        width, height = w.lay["size"]
+        for t in w.tools:
+            for blob, _m in w.pieces[t]:
+                xs = [p[0] for p in blob.outline(6)]
+                ys = [p[1] for p in blob.outline(6)]
+                self.assertGreaterEqual(min(xs), 0, t)
+                self.assertLessEqual(max(xs), width, t)
+                self.assertGreaterEqual(min(ys), 0, t)
+                self.assertLessEqual(max(ys), height, t)
+        for k, tt in w.titles().items():
+            self.assertGreaterEqual(tt["box"][0], 0)
+            self.assertLessEqual(tt["box"][2], width)
 
 
 class TestHoverPolicy(unittest.TestCase):
-    """7. A tool's blob and its chip are one handler; the drawn name is the chip's name; nothing is hover-only."""
+    """A tool's blob and its chip are one handler; the drawn name is the chip's name; nothing is hover-only."""
 
     def test_blob_and_chip_share_one_handler(self):
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
@@ -360,23 +377,29 @@ class TestHoverPolicy(unittest.TestCase):
             self.assertIn(f'el.addEventListener("{el}"', js)
 
     def test_names_equal_chip_names(self):
-        for side, b in _worlds_page().items():
+        for side, b in list(_map_page().items()) + list(_rosette_page().items()):
             chips = _tools(b)
-            for slug, dev in _devices(b):
-                for t, d in _paths(dev):
-                    self.assertIn(html.unescape(t), chips)
-                for name in re.findall(r'<text class="bname" data-tool="([^"]+)"[^>]*>([^<]*)</text>', dev):
-                    self.assertEqual(name[0], name[1])
-                    self.assertIn(name[0], chips)
+            for t, d in _paths(b):
+                self.assertIn(html.unescape(t), [html.unescape(c) for c in chips])
+            for name in re.findall(r'<text class="bname" data-tool="([^"]+)"[^>]*>([^<]*)</text>', b):
+                self.assertEqual(name[0], name[1])
+                self.assertIn(name[0], chips)
 
     def test_every_chip_names_its_tool_for_a_screen_reader(self):
-        for side, b in _worlds_page().items():
+        for side, b in _map_page().items():
+            self.assertEqual([html.unescape(t) for t in _tools(b)], [t for t, _v in sc.CAPMAP_TOOLS])
             for t in _tools(b):
-                self.assertIn(f'aria-label="{html.escape(t, quote=True)}"', b)
+                self.assertIn(f'aria-label="{t}"', b)
+
+    def test_the_popover_carries_the_sources(self):
+        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
+        self.assertIn('link(w[2], "source")', js)
+        self.assertIn("closeSoon", js)          # the popover stays while the pointer moves into it to follow a link
 
 
 class TestCrossHighlight(unittest.TestCase):
-    """8. One feature key links the rosette, the radar, the popover rows and the tables."""
+    """One feature key links the rosette, the radar, the popover rows and the tables; one block key links a map block's
+    two rows, its key-list entry and its table rows."""
 
     def test_every_feature_key_is_known_and_has_a_table_row(self):
         for side, b in _rosette_page().items():
@@ -398,18 +421,27 @@ class TestCrossHighlight(unittest.TestCase):
         self.assertIn('"xh"', js)
         self.assertIn("mouseover", js)
         self.assertIn("focusin", js)
+        self.assertIn('"block:"', js)
+
+    def test_every_map_block_key_links_its_rows(self):
+        caps = _caps()
+        b = _map_page()["gpu"]
+        for nid in caps.nodes():
+            d, k = V.split_node(nid)
+            self.assertIn(f'data-node="{nid}" data-block="{k}" data-device="{d}"', b)
+            self.assertIn(f'<li data-block="{k}">', b)
 
 
 class TestPageComposition(unittest.TestCase):
-    """The landing page: bars, then the two worlds, then the radar; the detail page: the toggle with the rosette first."""
+    """The landing page: bars, then the capability map, then the radar; the detail page: the toggle with the rosette first."""
 
     def test_landing_order_under_each_side(self):
         text = (GENERATED / "perf_switch.md").read_text()
         for side in ("gpu", "cpu"):
             i = text.index(f'<div class="perf-side perf-side-{side}">')
             seg = text[i:]
-            self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="worlds"'))
-            self.assertLess(seg.index('<div class="worlds"'), seg.index('<div class="radar"'))
+            self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="worlds capmap"'))
+            self.assertLess(seg.index('<div class="worlds capmap"'), seg.index('<div class="radar"'))
 
     def test_detail_toggle(self):
         text = (GENERATED / "radar_detailed.md").read_text()
@@ -419,44 +451,24 @@ class TestPageComposition(unittest.TestCase):
         self.assertLess(text.index('<div class="vis-rosette">'), text.index('<div class="vis-radar">'))
 
 
-class TestEarlyFinishBars(unittest.TestCase):
-    """9. The third bars view."""
+class TestNoEarlyFinishView(unittest.TestCase):
+    """The landing page carries no early-finish saving view or button."""
 
-    def test_saving_formula(self):
-        card = {"ns": [1000], "results": []}
-        for arm, wu, ws, su, ss in (("eagle_simulate", 1.0, 0.4, 1000, 500), ("warp_kernel", 1.0, 0.9, 1000, 500)):
-            card["results"].append({"arm": arm, "n": 1000, "distribution": "uniform", "max_steps": 1000, "wall_s": {"mean": wu, "median": wu, "min": wu},
-                                    "sample_steps": su})
-            card["results"].append({"arm": arm, "n": 1000, "distribution": "spread", "max_steps": 1000, "wall_s": {"mean": ws, "median": ws, "min": ws},
-                                    "sample_steps": ss})
-        sav = sc.early_saving_by_tool(card, "gpu")
-        self.assertAlmostEqual(sav["raptor"][0], (1 - 0.4) / (1 - 0.5))
-        self.assertAlmostEqual(sav["NVIDIA Warp"][0], (1 - 0.9) / (1 - 0.5))
-        self.assertEqual(sc._fmt_saving(0.12), "12%")
-        self.assertEqual(sc._fmt_saving(0.001), "none")
-
-    def test_every_device_panel_has_the_view(self):
+    def test_no_panel_has_the_view(self):
         text = (GENERATED / "perf_switch.md").read_text()
-        panels = re.findall(r'<section class="perf-dev">(.*?)</section>', text, re.S)
-        self.assertTrue(panels)
-        for p in panels:
-            self.assertIn('data-view="early" aria-pressed="false">Early-finish saving<', p)
-            self.assertIn('class="bars-view bars-early"', p)
-            self.assertIn(sc.EARLY_NOTE, p)
-            self.assertIn("Early-finish saving on", p)
+        self.assertNotIn("bars-early", text)
+        self.assertNotIn("Early-finish saving", text)
 
 
 class TestPhoneLayout(unittest.TestCase):
-    """10. At phone width the icons stand in for the labels, each reachable and named, with the key listed once."""
+    """At phone width the icons stand in for the labels, each reachable and named, with the key listed once; CPU over GPU."""
 
     def test_narrow_charts_have_no_label_text_and_a_key(self):
-        for side, b in _worlds_page().items():
-            for slug, dev in _devices(b):
-                narrow = dev.split('<div class="worlds-narrow">')[1]
-                svg = narrow.split("</svg>")[0]
-                self.assertNotIn('class="nlabel', svg)
-                self.assertEqual(len(re.findall(r'<li data-block="', narrow)), len(V.BLOCKS))
-                self.assertEqual(len(re.findall(r'class="wnode', svg)), len(V.BLOCKS))
+        _wide, narrow = _parts()
+        svg = narrow.split("</svg>")[0]
+        self.assertNotIn('class="nlabel', svg)
+        self.assertEqual(len(re.findall(r'<li data-block="', narrow)), len(V.BLOCKS))
+        self.assertEqual(len(re.findall(r'class="wnode', svg)), len(_caps().nodes()))
 
     def test_the_legend_is_letters_on_a_phone(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
