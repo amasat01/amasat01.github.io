@@ -193,8 +193,8 @@ def text_width(text, size, bold=False):
 #: Chart constants per width: viewBox width, left margin (axis labels), right margin, icon size, label font and line height,
 #: gap icon->label, band padding, header height.
 QUAD_MODES = {
-    "wide": {"W": 920, "L": 104, "R": 12, "icon": 28, "fs": 11, "lh": 13, "gap": 4, "pad": 8, "head": 34, "cell_gap": 6},
-    "narrow": {"W": 390, "L": 56, "R": 6, "icon": 22, "fs": 9.5, "lh": 11, "gap": 2, "pad": 4, "head": 28, "cell_gap": 2},
+    "wide": {"W": 920, "L": 104, "R": 12, "icon": 28, "fs": 11, "lh": 13, "gap": 6, "pad": 8, "head": 34, "cell_gap": 8, "vpad": 6},
+    "narrow": {"W": 350, "L": 52, "R": 4, "icon": 22, "fs": 11, "lh": 12.5, "gap": 4, "pad": 4, "head": 26, "cell_gap": 4, "vpad": 5},
 }
 BANDS = ("cpu", "mid", "gpu")
 BAND_NAME = {"cpu": "CPU", "mid": "CPU and GPU", "gpu": "GPU"}
@@ -203,19 +203,21 @@ BAND_OF_Y = lambda y: "cpu" if y <= -0.5 else "gpu" if y >= 0.5 else "mid"  # no
 
 class QuadChart:
     """The capability chart in one width: Simulation (left) to AI (right) across, CPU / CPU and GPU / GPU down. A capability's
-    x is fixed; its band is the selected tool's stored y. Icons sit in cells of a fixed deterministic packing (by x order, the
-    first sub-row where the cell does not touch the one before it), so nothing overlaps by construction; the number of
-    sub-rows per band is the most any tool (or the no-tool strip) needs, so the chart never changes height."""
+    x is fixed; its band is the selected tool's stored y. A labelled icon is a cell (icon, then its name to the right, or to
+    the left when the name would leave the chart); cells are packed by a fixed deterministic rule (by left edge, the first
+    sub-row where the cell does not touch the one before it), so nothing overlaps by construction. The number of sub-rows per
+    band is the most any tool (or the no-tool strip) needs, so the chart never changes height."""
 
     def __init__(self, caps, mode):
         self.caps, self.mode = caps, mode
         c = self.c = QUAD_MODES[mode]
         self.lines = {k: BLOCK[k][2] for k in BLOCKS_KEYS}
         self.lab_w = {k: max(text_width(l, c["fs"]) for l in self.lines[k]) for k in BLOCKS_KEYS}
-        self.cell_w = {k: max(c["icon"] + 6, self.lab_w[k] + 8) for k in BLOCKS_KEYS}
-        self.m = max(self.cell_w.values()) / 2.0
-        self.x0, self.x1 = c["L"] + self.m, c["W"] - c["R"] - self.m
-        self.pitch = c["icon"] + c["gap"] + 2 * c["lh"] + 6
+        self.lab_h = {k: len(self.lines[k]) * c["lh"] for k in BLOCKS_KEYS}
+        self.x0 = c["L"] + c["icon"] / 2 + 4
+        self.x1 = c["W"] - c["R"] - c["icon"] / 2 - 4
+        self.side = {k: "l" if self.px(k) + c["icon"] / 2 + c["gap"] + self.lab_w[k] > c["W"] - c["R"] - 2 else "r" for k in BLOCKS_KEYS}
+        self.pitch = max(c["icon"], max(self.lab_h.values())) + c["vpad"]
         self.states = {None: self._plan(None)}
         for t in caps.tools:
             self.states[t] = self._plan(t)
@@ -234,27 +236,38 @@ class QuadChart:
     def px(self, block):
         return self.x0 + self.caps.xs[block] * (self.x1 - self.x0)
 
+    def cell(self, block, labelled):
+        """(left, right) of a block's cell: its icon and, when labelled, its name on the side the chart allows."""
+        c, cx = self.c, self.px(block)
+        l, r = cx - c["icon"] / 2, cx + c["icon"] / 2
+        if labelled:
+            if self.side[block] == "r":
+                r += c["gap"] + self.lab_w[block]
+            else:
+                l -= c["gap"] + self.lab_w[block]
+        return l, r
+
     def _plan(self, tool):
         """{block: (band, kind, sub-row)}: kind cov (a labelled icon in its band), ghost or neutral (a bare icon on the middle band)."""
         items = {b: [] for b in BANDS}
         for k in BLOCKS_KEYS:
             y = self.caps.y(tool, k) if tool else None
             if tool and y is not None:
-                items[BAND_OF_Y(y)].append((k, "cov", self.cell_w[k]))
+                items[BAND_OF_Y(y)].append((k, "cov"))
             else:
-                items["mid"].append((k, "ghost" if tool else "neutral", self.c["icon"] + 6))
+                items["mid"].append((k, "ghost" if tool else "neutral"))
         plan = {}
         for b in BANDS:
             rights = []
-            for k, kind, w in sorted(items[b], key=lambda it: (self.caps.xs[it[0]], BLOCKS_KEYS.index(it[0]))):
-                cx = self.px(k)
+            for k, kind in sorted(items[b], key=lambda it: (self.cell(it[0], it[1] == "cov")[0], BLOCKS_KEYS.index(it[0]))):
+                l, r_ = self.cell(k, kind == "cov")
                 for r, right in enumerate(rights):
-                    if cx - w / 2 >= right + self.c["cell_gap"]:
-                        rights[r] = cx + w / 2
+                    if l >= right + self.c["cell_gap"]:
+                        rights[r] = r_
                         break
                 else:
                     r = len(rights)
-                    rights.append(cx + w / 2)
+                    rights.append(r_)
                 plan[k] = (b, kind, r)
         return plan
 
@@ -271,19 +284,22 @@ class QuadChart:
         out = {}
         for k, (b, kind, r) in plan.items():
             cx = self.px(k)
-            cy = self.band[b][0] + c["pad"] + r * self.pitch + c["icon"] / 2
+            cy = self.band[b][0] + c["pad"] + r * self.pitch + self.pitch / 2 - c["vpad"] / 2
             ic = (cx - c["icon"] / 2, cy - c["icon"] / 2, cx + c["icon"] / 2, cy + c["icon"] / 2)
             lab = None
             if kind == "cov":
-                t0 = cy + c["icon"] / 2 + c["gap"]
-                lab = (cx - self.lab_w[k] / 2, t0, cx + self.lab_w[k] / 2, t0 + len(self.lines[k]) * c["lh"])
+                if self.side[k] == "r":
+                    lx = cx + c["icon"] / 2 + c["gap"]
+                else:
+                    lx = cx - c["icon"] / 2 - c["gap"] - self.lab_w[k]
+                lab = (lx, cy - self.lab_h[k] / 2, lx + self.lab_w[k], cy + self.lab_h[k] / 2)
             out[k] = {"x": cx, "y": cy, "band": b, "kind": kind, "icon": ic, "label": lab}
         return out
 
     def json(self):
         r = lambda v: round(v, 1)  # noqa: E731
         return {"size": [self.c["W"], round(self.H, 1)], "plot": [r(self.x0), r(self.x1)], "icon": self.c["icon"],
-                "bands": {b: [r(a), r(z)] for b, (a, z) in self.band.items()},
+                "bands": {b: [r(a), r(z)] for b, (a, z) in self.band.items()}, "side": self.side,
                 "pos": {(t or "none"): {k: [r(p["x"]), r(p["y"]), p["kind"]] for k, p in st.items()} for t, st in self.pos.items()}}
 
 

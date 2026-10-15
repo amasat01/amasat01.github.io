@@ -91,18 +91,24 @@ def cq_svg(Q, ids, uid, tool, aria):
         gx = Q.x0 + f * (Q.x1 - Q.x0)
         out.append(f'<line class="cq-grid" x1="{gx:.1f}" y1="{mt + 3:.1f}" x2="{gx:.1f}" y2="{mz - 3:.1f}"/>')
     for r in range(1, Q.nrows["mid"]):
-        gy = mt + c["pad"] + r * Q.pitch - 2
+        gy = mt + c["pad"] + r * Q.pitch - c["vpad"] / 2
         out.append(f'<line class="cq-grid" x1="{x0 + 4}" y1="{gy:.1f}" x2="{x1 - 4}" y2="{gy:.1f}"/>')
     isz = round(c["icon"] * 0.62, 1)
     for k in V.BLOCKS_KEYS:
         p = Q.pos[tool][k]
         b = V.BLOCK[k]
         r = c["icon"] / 2
-        lab = "".join(f'<tspan x="0" dy="{c["fs"] * 0.95 if i == 0 else c["lh"]:.1f}">{ESC(l)}</tspan>' for i, l in enumerate(b[2]))
+        n = len(b[2])
+        right = Q.side[k] == "r"
+        lx = r + c["gap"] if right else -(r + c["gap"])
+        y0 = -(n - 1) * c["lh"] / 2 + 0.35 * c["fs"]
+        lab = "".join(f'<tspan x="{lx:.1f}" dy="{0 if i == 0 else c["lh"]}">{ESC(l)}</tspan>' for i, l in enumerate(b[2]))
         out.append(f'<g class="cq-ic is-{p["kind"]}" data-block="{k}" data-x="{Q.caps.xs[k]}" data-y="{"" if Q.caps.y(tool, k) is None else Q.caps.y(tool, k)}" '
+                   f'tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="{ESC(b[1], quote=True)}: details" '
                    f'style="transform:translate({p["x"]:.1f}px,{p["y"]:.1f}px)">'
+                   f'<circle class="cq-hit" r="{r + 5}"/>'
                    f'<circle class="cq-ring" r="{r}"/><g class="ic" transform="translate({-isz / 2} {-isz / 2})"><use href="#{ids}-{b[3]}" width="{isz}" height="{isz}"/></g>'
-                   f'<text class="cq-lab" text-anchor="middle" x="0" y="{r + c["gap"]:.1f}">{lab}</text></g>')
+                   f'<text class="cq-lab" text-anchor="{"start" if right else "end"}" x="{lx:.1f}" y="{y0:.2f}" style="font-size:{c["fs"]}px">{lab}</text></g>')
     out.append("</svg>")
     return "".join(out)
 
@@ -155,10 +161,23 @@ def cm_compare(caps, tools):
             f'<thead><tr><th scope="col">Capability</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div></details>')
 
 
+def cards_json(caps, tools):
+    """What the details card shows, per capability: its name, what counts, and for every tool the CPU and GPU cells
+    ({c: covered, n: the note, s: the source link when covered})."""
+    out = {}
+    for k in V.BLOCKS_KEYS:
+        per = {}
+        for t, _v in tools:
+            per[t] = {d: dict({"c": caps.covered(t, k, d), "n": caps.cell(t, k, d)["note"]}, **({"s": caps.cell(t, k, d)["source"]} if caps.covered(t, k, d) else {}))
+                      for d, _n in V.DEVICES}
+        out[k] = {"l": V.BLOCK[k][1], "needs": caps.needs[k], "t": per}
+    return out
+
+
 def capmap_json(caps, tools, charts):
     """What the script reads: for each width, the chart's size, bands and every tool's icon positions (and the no-tool strip)."""
     return {"tools": [t for t, _v in tools], "modes": {m: q.json() for m, q in charts.items()},
-            "x": {k: caps.xs[k] for k in V.BLOCKS_KEYS},
+            "x": {k: caps.xs[k] for k in V.BLOCKS_KEYS}, "cards": cards_json(caps, tools),
             "y": {t: {k: caps.y(t, k) for k in V.BLOCKS_KEYS} for t, _v in tools}}
 
 
@@ -183,12 +202,15 @@ def capmap_block(side, caps, tools, intro, caption, default="raptor"):
     out.append('<div class="cm-chart">')
     for m, q in charts.items():
         out.append(f'<div class="cq-{m}-box">{cq_svg(q, ids, side + m, default, aria)}</div>')
+    out.append('<div class="cq-card" role="group" aria-label="Capability details" hidden></div>')
     out.append("</div>")
     out.append('<p class="cm-legend"><span class="cm-key"><span class="cm-dot-on"></span>first-class: a glowing icon with its name</span> '
                '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a faint icon on the middle band, no name</span></p>')
     out.append(f'<p class="cm-summary" aria-live="polite" data-none="{ESC(NONE_SENTENCE, quote=True)}">{ESC(caps.summary(default))}</p>')
+    out.append('<details class="cm-details"><summary>Show details</summary>')
     for t, _v in tools:
         out.append(f'<div class="cm-tool" data-tool="{ESC(t, quote=True)}"{"" if t == default else " hidden"}>{cm_list(caps, t)}</div>')
+    out.append("</details>")
     out.append(cm_compare(caps, tools))
     out.append(f'<p class="axis-note cm-caption">{caption}</p>')
     out.append(f'<p class="axis-note cm-note-text">{intro}</p>')

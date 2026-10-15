@@ -265,7 +265,72 @@
         g.setAttribute("class", "cq-ic is-" + p[2]);
       });
     }
+    /* ---- the details card of one capability: opens on tap, click or focus; one at a time ---- */
+    var card = root.querySelector(".cq-card");
+    var chartBox = root.querySelector(".cm-chart");
+    var openIc = null;
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
+    function tick(c, name) {
+      if (c.c) { var a = el("a", "cm-tick", name + " \u2713"); a.href = c.s; return a; }
+      return el("span", "cm-tick is-no", name + " \u2013");
+    }
+    function fill(block) {
+      var d = data.cards[block], tool = root.getAttribute("data-tool");
+      card.textContent = "";
+      card.appendChild(el("div", "cc-h", d.l));
+      card.appendChild(el("div", "cc-s", d.needs));
+      function line(t) {
+        var row = el("div", "cc-t");
+        row.appendChild(el("span", "cc-tool", t));
+        row.appendChild(tick(d.t[t].cpu, "CPU"));
+        row.appendChild(tick(d.t[t].gpu, "GPU"));
+        return row;
+      }
+      if (tool) {
+        card.appendChild(line(tool));
+        var notes = [];
+        ["cpu", "gpu"].forEach(function (k) { if (notes.indexOf(d.t[tool][k].n) < 0) { notes.push(d.t[tool][k].n); } });
+        card.appendChild(el("div", "cc-s", notes.join(" ")));
+        if (!d.t[tool].cpu.c && !d.t[tool].gpu.c) { card.appendChild(el("div", "cc-s", "Not first-class for " + tool + ".")); }
+      } else {
+        data.tools.forEach(function (t) { if (d.t[t].cpu.c || d.t[t].gpu.c) { card.appendChild(line(t)); } });
+      }
+    }
+    function closeCard() {
+      if (openIc) { openIc.classList.remove("is-open"); openIc.setAttribute("aria-expanded", "false"); openIc = null; }
+      if (card) { card.hidden = true; }
+    }
+    function openCard(g) {
+      if (!card || openIc === g) { return; }
+      closeCard();
+      openIc = g;
+      g.classList.add("is-open");
+      g.setAttribute("aria-expanded", "true");
+      fill(g.getAttribute("data-block"));
+      card.hidden = false;
+      var cr = chartBox.getBoundingClientRect(), ir = g.getBoundingClientRect();
+      var w = card.offsetWidth, h = card.offsetHeight;
+      var cx = ir.left + ir.width / 2 - cr.left;
+      var left = Math.max(0, Math.min(cr.width - w, cx - w / 2));
+      var below = ir.bottom - cr.top + 8;
+      var top = (ir.top - cr.top > h + 16 && ir.top - cr.top > cr.height * 0.55) ? ir.top - cr.top - h - 8 : below;
+      card.style.left = left + "px";
+      card.style.top = top + "px";
+    }
+    icons.forEach(function (g) {
+      g.addEventListener("click", function (ev) { ev.stopPropagation(); openCard(g); });
+      g.addEventListener("focus", function () { openCard(g); });
+      g.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openCard(g); }
+        if (ev.key === "Escape") { closeCard(); }
+      });
+    });
+    root.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { closeCard(); } });
+    document.addEventListener("pointerdown", function (ev) {
+      if (!ev.target.closest || !ev.target.closest(".cq-ic, .cq-card")) { closeCard(); }
+    });
     function choose(tool, focus) {
+      closeCard();
       root.setAttribute("data-tool", tool);
       root.classList.toggle("is-neutral", !tool);
       chips.forEach(function (c) {

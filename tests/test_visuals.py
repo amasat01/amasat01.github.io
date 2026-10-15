@@ -67,7 +67,7 @@ def _icons(block, mode):
     """{block key: (x px, y px, class)} of the chart icons of one width as rendered in the page."""
     svg = re.search(rf'<svg class="cq-svg cq-{mode}".*?</svg>', block, re.S).group(0)
     return {k: (float(x), float(y), cl) for cl, k, x, y in re.findall(
-        r'<g class="cq-ic (is-\w+)" data-block="([^"]+)" data-x="[^"]*" data-y="[^"]*" style="transform:translate\(([\d.]+)px,([\d.]+)px\)"', svg)}
+        r'<g class="cq-ic (is-\w+)" data-block="([^"]+)" data-x="[^"]*" data-y="[^"]*" tabindex="0"[^>]*? style="transform:translate\(([\d.]+)px,([\d.]+)px\)"', svg)}
 
 
 @functools.lru_cache(maxsize=None)
@@ -253,6 +253,27 @@ class TestOneToolAtATime(unittest.TestCase):
                     if p["label"]:
                         self.assertAlmostEqual(p["label"][2] - p["label"][0], q.lab_w[k], places=3)
 
+    def test_compact_chart_and_readable_phone_names(self):
+        self.assertGreaterEqual(V.QUAD_MODES["narrow"]["fs"], 11)
+        self.assertLessEqual(V.QUAD_MODES["narrow"]["W"], 360)      # drawn about 1:1 in a phone column, so the names stay >= 11 px
+        for mode, limit in (("wide", 130), ("narrow", 190)):
+            q = V.QuadChart(_caps(), mode)
+            for b in ("cpu", "gpu"):
+                self.assertLessEqual(q.band[b][1] - q.band[b][0], limit, (mode, b))
+        # one fixed height: the chart is the same size for every tool
+        self.assertEqual(len({v for v in (V.QuadChart(_caps(), "wide").H,)}), 1)
+
+    def test_names_sit_beside_their_icon_and_stay_in_the_chart(self):
+        for mode in ("wide", "narrow"):
+            q = V.QuadChart(_caps(), mode)
+            for k, side in q.side.items():
+                for tool, st in q.pos.items():
+                    p = st[k]
+                    if p["label"]:
+                        self.assertEqual(p["label"][0] >= p["icon"][2], side == "r", (mode, k))
+                        self.assertLessEqual(p["label"][2], q.c["W"] - q.c["R"], (mode, tool, k))
+                        self.assertGreaterEqual(p["label"][0], q.c["L"], (mode, tool, k))
+
     def test_the_icon_order_inside_a_band_is_deterministic(self):
         a = V.QuadChart(_caps(), "wide").json()
         b = V.QuadChart(_caps(), "wide").json()
@@ -346,6 +367,38 @@ class TestOneToolAtATime(unittest.TestCase):
                 kinds = {v[2] for v in _cm_json(block)["modes"][mode]["pos"]["none"].values()}
                 self.assertEqual(kinds, {"neutral"})
 
+    def test_details_card_content_matches_the_data(self):
+        caps = _caps()
+        for block in _map_page().values():
+            cards = _cm_json(block)["cards"]
+            self.assertEqual(set(cards), set(V.BLOCKS_KEYS))
+            for k, d in cards.items():
+                self.assertEqual(d["l"], V.BLOCK[k][1])
+                self.assertEqual(d["needs"], caps.needs[k])
+                self.assertEqual(set(d["t"]), set(caps.tools))
+                for t in caps.tools:
+                    for dev, _n in V.DEVICES:
+                        c, want = d["t"][t][dev], caps.cell(t, k, dev)
+                        self.assertEqual((c["c"], c["n"]), (want["covered"], want["note"]), (k, t, dev))
+                        self.assertEqual(c.get("s"), want.get("source"), (k, t, dev))
+            self.assertIn('<div class="cq-card" role="group"', block)
+            self.assertIn("hidden></div>", block.split('class="cq-card"')[1][:120])
+            self.assertEqual(len(re.findall(r'<g class="cq-ic [^"]*" data-block="[^"]+" data-x="[^"]*" data-y="[^"]*" tabindex="0" role="button"', block)), 2 * len(V.BLOCKS_KEYS))
+        js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
+        for needle in ('"focus"', '"Escape"', "pointerdown", "closeCard", "No tool" if False else "data.tools.forEach", "Not first-class for"):
+            self.assertIn(needle, js)
+
+    def test_the_list_and_the_table_are_closed_disclosures(self):
+        for side, block in _map_page().items():
+            self.assertEqual(re.findall(r'<details class="(cm-[a-z]+)">', block), ["cm-details", "cm-compare"], side)
+            self.assertIn("<summary>Show details</summary>", block)
+            self.assertIn("<summary>Compare all tools</summary>", block)
+            self.assertNotRegex(block, r"<details[^>]* open")
+            # the summary sentence stays outside, above them
+            self.assertLess(block.index('<p class="cm-summary"'), block.index('<details class="cm-details">'))
+            det = block[block.index('<details class="cm-details">'):block.index("</details>")]
+            self.assertEqual(len(re.findall(r'<div class="cm-tool"', det)), len(sc.CAPMAP_TOOLS))
+
     def test_both_panels_carry_the_same_map(self):
         pages = _map_page()
         self.assertEqual(set(pages), {"gpu", "cpu"})
@@ -364,7 +417,7 @@ class TestOneToolAtATime(unittest.TestCase):
 
     def test_motion_and_focus(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
-        self.assertIn(".cq-ic { transition: transform 0.35s", css)
+        self.assertIn("transition: transform 0.35s ease, opacity 0.3s ease", css)
         self.assertIn("prefers-reduced-motion: reduce) { * { transition: none", css)
         self.assertIn(".cm-chip:focus-visible", css)
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
