@@ -107,7 +107,8 @@ class StartHere(unittest.TestCase):
     def test_the_notebook_installs_gpu_extras_only_with_a_gpu_and_checks_python(self):
         nb = json.loads((SITE_ROOT / "notebooks" / "raptor_start_here.ipynb").read_text())
         cell = "".join(next(c for c in nb["cells"] if c["cell_type"] == "code")["source"])
-        self.assertIn('extra = "[cuda12]" if gpu else ""', cell)
+        self.assertIn('extra = ""', cell)                       # the GPU extras only with a GPU, matched to its CUDA major
+        self.assertIn('extra = f"[cuda{major}]"', cell)
         self.assertLess(cell.index("sys.version_info"), cell.index("google.colab"))
         self.assertNotIn("%pip", cell)
 

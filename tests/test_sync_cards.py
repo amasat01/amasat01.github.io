@@ -996,7 +996,8 @@ class StartHereNotebookColabCell(unittest.TestCase):
         cell = next(c for c in nb["cells"] if c["cell_type"] == "code")
         text = "".join(cell["source"])
         self.assertIn("google.colab", text)
-        self.assertIn('extra = "[cuda12]" if gpu else ""', text)                      # GPU extras only with a GPU
+        self.assertIn('extra = ""', text)                                             # GPU extras only with a GPU
+        self.assertIn('extra = f"[cuda{major}]"', text)
         self.assertIn('f"raptor-hawk{extra}", f"raptor-eagle{extra}"', text)
         self.assertIn("sys.version_info", text)                                        # the Python range is checked up front
         self.assertIn("Runtime \u2192 Change runtime type \u2192 T4 GPU", text)
