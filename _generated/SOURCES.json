@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-15T10:03:58Z",
+  "generated_utc": "2026-10-15T10:16:04Z",
   "sources": [
     {
       "path": "benchmarks/device_names.json",
@@ -97,7 +97,7 @@
   "site_sources": [
     {
       "path": "_data/capabilities.json",
-      "md5": "2dad8ac87da26fbaaefb3c91e5d22237"
+      "md5": "4cdb838668970f7e4074f955f4e5ebc4"
     },
     {
       "path": "_data/radar_qualitative.json",

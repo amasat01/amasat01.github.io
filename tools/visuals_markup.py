@@ -66,29 +66,45 @@ def _link(href, text, cls=""):
     return f'<a{f" class={chr(34)}{cls}{chr(34)}" if cls else ""} href="{ESC(href, quote=True)}">{ESC(text)}</a>'
 
 
-def cm_rows(caps, tool, tools):
-    """The chart: two groups (Simulation, then AI), a row per capability with a three-stop track. The dot sits at the
-    selected tool's stop; ``data-stops`` carries every tool's stop in the legend's order for the script."""
-    out = []
-    for world in ("sim", "ai"):
-        out.append(f'<section class="cm-group cm-{world}"><h4 class="cm-gh">{V.WORLD_NAME[world]}</h4><ul class="cm-rows">')
-        for key in V.BLOCKS_KEYS:
-            b = V.BLOCK[key]
-            if b[4] != world:
-                continue
-            stop = caps.stop(tool, key)
-            stops = ",".join(caps.stop(t, key) or "none" for t, _v in tools)
-            out.append(f'<li class="cm-row{"" if stop else " is-off"}" data-block="{key}" data-stop="{stop or "none"}" data-stops="{stops}" '
-                       f'title="{ESC(caps.needs[key], quote=True)}">'
-                       f'<span class="cm-name">{ESC(b[1])}</span>'
-                       f'<span class="cm-track" aria-hidden="true"><span class="cm-dot"></span></span>'
-                       f'<span class="cm-sr">{ESC(b[1])}: {ESC(_stop_words(stop))}</span></li>')
-        out.append("</ul></section>")
+def cq_svg(Q, ids, uid, tool, aria):
+    """The chart in one width: a soft Simulation-to-AI gradient, the three bands with their names on the left edge, the
+    middle band's faint grid, and one icon per capability (ring, glyph, two-line name) placed at the selected tool's state."""
+    c = Q.c
+    W, H = c["W"], Q.H
+    x0, x1 = c["L"], W - c["R"]
+    out = [f'<svg class="cq-svg cq-{Q.mode}" data-mode="{Q.mode}" viewBox="0 0 {W} {H:.0f}" role="img" aria-label="{ESC(aria, quote=True)}">']
+    out.append(f'<defs><linearGradient id="cqg-{uid}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="var(--cm-sim)" stop-opacity=".30"/>'
+               f'<stop offset="1" stop-color="var(--cm-ai)" stop-opacity=".22"/></linearGradient></defs>')
+    out.append(f'<rect class="cq-bg" x="{x0}" y="{c["head"] - 4}" width="{x1 - x0}" height="{H - c["head"] - 2:.0f}" rx="12" fill="url(#cqg-{uid})"/>')
+    out.append(f'<text class="cq-head" x="{x0 + 10}" y="{c["head"] - 12}" style="font-size:{c["fs"] + 3}px">Simulation</text>'
+               f'<text class="cq-head" text-anchor="end" x="{x1 - 10}" y="{c["head"] - 12}" style="font-size:{c["fs"] + 3}px">AI</text>')
+    for bnd in V.BANDS:
+        t, z = Q.band[bnd]
+        out.append(f'<rect class="cq-band cq-band-{bnd}" x="{x0}" y="{t:.1f}" width="{x1 - x0}" height="{z - t:.1f}"/>')
+        mid = (t + z) / 2
+        words = V.BAND_NAME[bnd].split(" and ") if Q.mode == "narrow" and bnd == "mid" else [V.BAND_NAME[bnd]]
+        lines = [words[0] + (" and" if len(words) > 1 else "")] + ([words[1]] if len(words) > 1 else [])
+        out.append(f'<text class="cq-axis" data-band="{bnd}" text-anchor="end" x="{x0 - 8}" y="{mid - (len(lines) - 1) * 6 + 4:.1f}" style="font-size:{c["fs"] + 1}px">'
+                   + "".join(f'<tspan x="{x0 - 8}" dy="{0 if i == 0 else 12}">{ESC(l)}</tspan>' for i, l in enumerate(lines)) + "</text>")
+    mt, mz = Q.band["mid"]
+    for f in (0.25, 0.5, 0.75):
+        gx = Q.x0 + f * (Q.x1 - Q.x0)
+        out.append(f'<line class="cq-grid" x1="{gx:.1f}" y1="{mt + 3:.1f}" x2="{gx:.1f}" y2="{mz - 3:.1f}"/>')
+    for r in range(1, Q.nrows["mid"]):
+        gy = mt + c["pad"] + r * Q.pitch - 2
+        out.append(f'<line class="cq-grid" x1="{x0 + 4}" y1="{gy:.1f}" x2="{x1 - 4}" y2="{gy:.1f}"/>')
+    isz = round(c["icon"] * 0.62, 1)
+    for k in V.BLOCKS_KEYS:
+        p = Q.pos[tool][k]
+        b = V.BLOCK[k]
+        r = c["icon"] / 2
+        lab = "".join(f'<tspan x="0" dy="{c["fs"] * 0.95 if i == 0 else c["lh"]:.1f}">{ESC(l)}</tspan>' for i, l in enumerate(b[2]))
+        out.append(f'<g class="cq-ic is-{p["kind"]}" data-block="{k}" data-x="{Q.caps.xs[k]}" data-y="{"" if Q.caps.y(tool, k) is None else Q.caps.y(tool, k)}" '
+                   f'style="transform:translate({p["x"]:.1f}px,{p["y"]:.1f}px)">'
+                   f'<circle class="cq-ring" r="{r}"/><g class="ic" transform="translate({-isz / 2} {-isz / 2})"><use href="#{ids}-{b[3]}" width="{isz}" height="{isz}"/></g>'
+                   f'<text class="cq-lab" text-anchor="middle" x="0" y="{r + c["gap"]:.1f}">{lab}</text></g>')
+    out.append("</svg>")
     return "".join(out)
-
-
-def _stop_words(stop):
-    return {"cpu": "CPU only", "both": "CPU and GPU", "gpu": "GPU only", None: "not first-class"}[stop]
 
 
 def cm_list(caps, tool):
@@ -139,19 +155,21 @@ def cm_compare(caps, tools):
             f'<thead><tr><th scope="col">Capability</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div></details>')
 
 
-def capmap_json(caps, tools):
-    """What the script reads: the tools in legend order and every capability's stop for each tool."""
-    return {"tools": [t for t, _v in tools],
-            "stops": {k: {t: caps.stop(t, k) or "none" for t, _v in tools} for k in V.BLOCKS_KEYS}}
+def capmap_json(caps, tools, charts):
+    """What the script reads: for each width, the chart's size, bands and every tool's icon positions (and the no-tool strip)."""
+    return {"tools": [t for t, _v in tools], "modes": {m: q.json() for m, q in charts.items()},
+            "x": {k: caps.xs[k] for k in V.BLOCKS_KEYS},
+            "y": {t: {k: caps.y(t, k) for k in V.BLOCKS_KEYS} for t, _v in tools}}
 
 
 def capmap_block(side, caps, tools, intro, caption, default="raptor"):
-    """The capability map, the same on every device: a tool picker, the chart with one dot per row, the selected tool's
-    sentence and list, the comparison table and the JSON the script reads. Everything the default tool shows is in the
-    page; the script only switches tools. ``side`` namespaces the ids (one copy per hardware panel). ``tools`` =
-    [(name, css var)]."""
+    """The capability chart, the same on every device: a tool picker (tap the chosen tool again to pick none), the chart (a wide
+    and a phone-width drawing), the selected tool's sentence and list, the comparison table and the JSON the script reads.
+    Everything the default tool shows is in the page; the script only switches tools. ``side`` namespaces the ids (one copy per
+    hardware panel). ``tools`` = [(name, css var)]."""
     var = dict(tools)
-    out = [f'<div class="capmap" data-side="{side}" data-tool="{ESC(default, quote=True)}" style="--c:var({var[default]})">']
+    ids = f"wic-{side}"
+    out = [f'<div class="capmap" data-side="{side}" data-tool="{ESC(default, quote=True)}" style="--c:var({var[default]})">', V_sprite(ids)]
     out.append('<div class="cm-chips" role="group" aria-label="Tool">')
     for t, v in tools:
         on = t == default
@@ -159,22 +177,29 @@ def capmap_block(side, caps, tools, intro, caption, default="raptor"):
                    f'aria-pressed="{"true" if on else "false"}" style="--c:var({v})">'
                    f'<span class="chip"></span><span class="nm">{ESC(t)}</span></button>')
     out.append("</div>")
+    charts = {m: V.QuadChart(caps, m) for m in V.QUAD_MODES}
+    aria = ("Where each capability sits: Simulation to AI across, CPU, CPU and GPU, or GPU down. Pick a tool and its capabilities "
+            "light up; the list under the chart gives the same facts as text.")
     out.append('<div class="cm-chart">')
-    out.append('<div class="cm-axis" aria-hidden="true"><span class="cm-ax-l"></span><span class="cm-ax-t"><span>CPU</span><span>both</span><span>GPU</span></span></div>')
-    out.append(cm_rows(caps, default, tools))
+    for m, q in charts.items():
+        out.append(f'<div class="cq-{m}-box">{cq_svg(q, ids, side + m, default, aria)}</div>')
     out.append("</div>")
-    out.append('<p class="cm-legend"><span class="cm-key"><span class="cm-dot-on"></span>first-class</span> '
-               '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a hollow dot at the centre, a greyed label</span></p>')
+    out.append('<p class="cm-legend"><span class="cm-key"><span class="cm-dot-on"></span>first-class: a glowing icon with its name</span> '
+               '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a faint icon on the middle band, no name</span></p>')
     out.append(f'<p class="cm-summary" aria-live="polite" data-none="{ESC(NONE_SENTENCE, quote=True)}">{ESC(caps.summary(default))}</p>')
     for t, _v in tools:
         out.append(f'<div class="cm-tool" data-tool="{ESC(t, quote=True)}"{"" if t == default else " hidden"}>{cm_list(caps, t)}</div>')
     out.append(cm_compare(caps, tools))
     out.append(f'<p class="axis-note cm-caption">{caption}</p>')
     out.append(f'<p class="axis-note cm-note-text">{intro}</p>')
-    j = dict(capmap_json(caps, tools), side=side, summaries={t: caps.summary(t) for t, _v in tools}, none=NONE_SENTENCE)
+    j = dict(capmap_json(caps, tools, charts), side=side, summaries={t: caps.summary(t) for t, _v in tools}, none=NONE_SENTENCE)
     out.append('<script type="application/json" class="cm-json">' + json.dumps(j, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/") + "</script>")
     out.append("</div>")
     return "\n".join(out)
+
+
+def V_sprite(ids):
+    return sprite(ids, sorted(set(b[3] for b in V.BLOCKS)))
 
 
 # --------------------------------------------------------------------------- the feature tables (rosette)

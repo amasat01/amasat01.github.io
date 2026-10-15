@@ -1,8 +1,8 @@
 /* The two coverage visuals of the site: the capability map (.capmap) and the rosette (.rosette).
  *
  * The capability map is drawn on the server with every tool's list and the comparison table in the page; this script only
- * switches tools: the chip row is a single-select picker (arrow keys move it), the dots slide to the stop of the chosen tool
- * (CSS transition, none under reduced motion), and the chosen tool's sentence and list are shown. The rosette is drawn for
+ * switches tools: the chip row is a single-select picker (arrow keys move it), the icons slide up or down to the band of the chosen
+ * tool (CSS transition, none under reduced motion), and the chosen tool's sentence and list are shown. The rosette is drawn for
  * every device and this script shows the one the page's switch selects; a tool's chip or band isolates it, a feature shows
  * its readings, a sector can be focused (on a phone-width column the sector picker shows one sector fanned).
  * Cross-highlight: anything carrying data-feature lights every other element of the same feature on the page while it is
@@ -248,14 +248,23 @@
     }
   }
 
-  /* ---- the capability map: one tool at a time; tapping the chosen chip again picks none ---- */
+  /* ---- the capability chart: one tool at a time; tapping the chosen chip again picks none ---- */
   function mountCapmap(root) {
     var chips = Array.prototype.slice.call(root.querySelectorAll(".cm-chip"));
-    var rows = root.querySelectorAll(".cm-row");
+    var icons = Array.prototype.slice.call(root.querySelectorAll(".cq-ic"));
     var panes = root.querySelectorAll(".cm-tool");
     var summary = root.querySelector(".cm-summary");
     var data = JSON.parse(root.querySelector(".cm-json").textContent);
-    var WORDS = { cpu: "CPU only", both: "CPU and GPU", gpu: "GPU only", none: "not first-class" };
+    /* move every icon to the chosen tool's place (vertical only: x is fixed) and set its look: cov, ghost or neutral */
+    function place(tool, delay) {
+      icons.forEach(function (g, i) {
+        var mode = g.parentNode.getAttribute("data-mode") || g.ownerSVGElement.getAttribute("data-mode");
+        var p = data.modes[mode].pos[tool || "none"][g.getAttribute("data-block")];
+        g.style.transitionDelay = delay ? ((i % 18) * 22) + "ms" : "";
+        g.style.transform = "translate(" + p[0] + "px," + p[1] + "px)";
+        g.setAttribute("class", "cq-ic is-" + p[2]);
+      });
+    }
     function choose(tool, focus) {
       root.setAttribute("data-tool", tool);
       root.classList.toggle("is-neutral", !tool);
@@ -266,14 +275,7 @@
         if (on) { root.style.setProperty("--c", c.style.getPropertyValue("--c")); }
         if (on && focus) { c.focus(); }
       });
-      for (var i = 0; i < rows.length; i++) {
-        var key = rows[i].getAttribute("data-block");
-        var stop = tool ? data.stops[key][tool] : "none";
-        rows[i].setAttribute("data-stop", tool ? stop : "neutral");
-        rows[i].classList.toggle("is-off", !!tool && stop === "none");
-        var sr = rows[i].querySelector(".cm-sr");
-        if (sr) { sr.textContent = rows[i].querySelector(".cm-name").textContent + ": " + (tool ? WORDS[stop] : "no tool selected"); }
-      }
+      place(tool, false);
       for (var j = 0; j < panes.length; j++) { panes[j].hidden = panes[j].getAttribute("data-tool") !== tool; }
       if (summary) { summary.textContent = tool ? data.summaries[tool] : data.none; }
     }
@@ -290,22 +292,24 @@
       });
     });
     root.classList.add("cm-js");
-    /* entrance: the first time the chart is seen, the dots start on the centre line and slide out to the chosen tool, once */
+    /* entrance: the first time the chart is seen, every icon starts on the middle band (no tool) and slides to the chosen tool, once */
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var chart = root.querySelector(".cm-chart");
     if (reduce || !chart || !("IntersectionObserver" in window)) { return; }
     var io = new IntersectionObserver(function (es) {
       if (!es.some(function (e) { return e.isIntersecting; })) { return; }
       io.disconnect();
-      if (root.classList.contains("is-neutral")) { return; }
-      root.classList.add("is-neutral", "cm-enter");
+      var tool = root.getAttribute("data-tool");
+      if (!tool) { return; }
+      root.classList.add("is-neutral", "cm-enter", "cm-snap");
+      place("", false);
       void root.offsetWidth;
-      for (var i = 0; i < rows.length; i++) { rows[i].querySelector(".cm-dot").style.transitionDelay = (i * 22) + "ms"; }
-      root.classList.remove("is-neutral");
+      root.classList.remove("cm-snap", "is-neutral");
+      place(tool, true);
       setTimeout(function () {
         root.classList.remove("cm-enter");
-        for (var k = 0; k < rows.length; k++) { rows[k].querySelector(".cm-dot").style.transitionDelay = ""; }
-      }, 1200);
+        icons.forEach(function (g) { g.style.transitionDelay = ""; });
+      }, 1400);
     }, { threshold: 0.35 });
     io.observe(chart);
   }

@@ -114,6 +114,11 @@ class Capabilities:
         self.tools = list(data["tools"])
         self.needs = dict(data["blocks"])
         self.cells = data["cells"]
+        self.xs = {k: float(v["x"]) for k, v in data["x"].items()}
+
+    def y(self, tool, block):
+        """The stored vertical position of a tool on a capability: -1 CPU only, 0 both, +1 GPU only, None not first-class."""
+        return self.cells[tool][block]["y"]
 
     def cell(self, tool, block, device):
         return self.cells[tool][block][device]
@@ -182,6 +187,104 @@ def text_width(text, size, bold=False):
     f = _FONTS[key]
     w = f.getlength(text) / 4.0 if f else 0.62 * size * len(text)
     return w * (1.06 if bold else 1.0)
+
+
+# --------------------------------------------------------------------------- the capability chart
+#: Chart constants per width: viewBox width, left margin (axis labels), right margin, icon size, label font and line height,
+#: gap icon->label, band padding, header height.
+QUAD_MODES = {
+    "wide": {"W": 920, "L": 104, "R": 12, "icon": 28, "fs": 11, "lh": 13, "gap": 4, "pad": 8, "head": 34, "cell_gap": 6},
+    "narrow": {"W": 390, "L": 56, "R": 6, "icon": 22, "fs": 9.5, "lh": 11, "gap": 2, "pad": 4, "head": 28, "cell_gap": 2},
+}
+BANDS = ("cpu", "mid", "gpu")
+BAND_NAME = {"cpu": "CPU", "mid": "CPU and GPU", "gpu": "GPU"}
+BAND_OF_Y = lambda y: "cpu" if y <= -0.5 else "gpu" if y >= 0.5 else "mid"  # noqa: E731
+
+
+class QuadChart:
+    """The capability chart in one width: Simulation (left) to AI (right) across, CPU / CPU and GPU / GPU down. A capability's
+    x is fixed; its band is the selected tool's stored y. Icons sit in cells of a fixed deterministic packing (by x order, the
+    first sub-row where the cell does not touch the one before it), so nothing overlaps by construction; the number of
+    sub-rows per band is the most any tool (or the no-tool strip) needs, so the chart never changes height."""
+
+    def __init__(self, caps, mode):
+        self.caps, self.mode = caps, mode
+        c = self.c = QUAD_MODES[mode]
+        self.lines = {k: BLOCK[k][2] for k in BLOCKS_KEYS}
+        self.lab_w = {k: max(text_width(l, c["fs"]) for l in self.lines[k]) for k in BLOCKS_KEYS}
+        self.cell_w = {k: max(c["icon"] + 6, self.lab_w[k] + 8) for k in BLOCKS_KEYS}
+        self.m = max(self.cell_w.values()) / 2.0
+        self.x0, self.x1 = c["L"] + self.m, c["W"] - c["R"] - self.m
+        self.pitch = c["icon"] + c["gap"] + 2 * c["lh"] + 6
+        self.states = {None: self._plan(None)}
+        for t in caps.tools:
+            self.states[t] = self._plan(t)
+        rows = {b: max(self._rows(s_)[b] for s_ in self.states.values()) for b in BANDS}
+        self.nrows = {"cpu": max(rows["cpu"], rows["gpu"], 1), "gpu": max(rows["cpu"], rows["gpu"], 1)}
+        self.nrows["mid"] = max(rows["mid"], self.nrows["cpu"] + 1)
+        top = c["head"]
+        self.band = {}
+        for b in BANDS:
+            h = self.nrows[b] * self.pitch + 2 * c["pad"]
+            self.band[b] = (top, top + h)
+            top += h
+        self.H = top + 6
+        self.pos = {t: self._place(plan) for t, plan in self.states.items()}
+
+    def px(self, block):
+        return self.x0 + self.caps.xs[block] * (self.x1 - self.x0)
+
+    def _plan(self, tool):
+        """{block: (band, kind, sub-row)}: kind cov (a labelled icon in its band), ghost or neutral (a bare icon on the middle band)."""
+        items = {b: [] for b in BANDS}
+        for k in BLOCKS_KEYS:
+            y = self.caps.y(tool, k) if tool else None
+            if tool and y is not None:
+                items[BAND_OF_Y(y)].append((k, "cov", self.cell_w[k]))
+            else:
+                items["mid"].append((k, "ghost" if tool else "neutral", self.c["icon"] + 6))
+        plan = {}
+        for b in BANDS:
+            rights = []
+            for k, kind, w in sorted(items[b], key=lambda it: (self.caps.xs[it[0]], BLOCKS_KEYS.index(it[0]))):
+                cx = self.px(k)
+                for r, right in enumerate(rights):
+                    if cx - w / 2 >= right + self.c["cell_gap"]:
+                        rights[r] = cx + w / 2
+                        break
+                else:
+                    r = len(rights)
+                    rights.append(cx + w / 2)
+                plan[k] = (b, kind, r)
+        return plan
+
+    @staticmethod
+    def _rows(plan):
+        out = {b: 0 for b in BANDS}
+        for b, _k, r in plan.values():
+            out[b] = max(out[b], r + 1)
+        return out
+
+    def _place(self, plan):
+        """{block: {x, y, band, kind, icon box, label box or None}} in viewBox coordinates (the icon centre is (x, y))."""
+        c = self.c
+        out = {}
+        for k, (b, kind, r) in plan.items():
+            cx = self.px(k)
+            cy = self.band[b][0] + c["pad"] + r * self.pitch + c["icon"] / 2
+            ic = (cx - c["icon"] / 2, cy - c["icon"] / 2, cx + c["icon"] / 2, cy + c["icon"] / 2)
+            lab = None
+            if kind == "cov":
+                t0 = cy + c["icon"] / 2 + c["gap"]
+                lab = (cx - self.lab_w[k] / 2, t0, cx + self.lab_w[k] / 2, t0 + len(self.lines[k]) * c["lh"])
+            out[k] = {"x": cx, "y": cy, "band": b, "kind": kind, "icon": ic, "label": lab}
+        return out
+
+    def json(self):
+        r = lambda v: round(v, 1)  # noqa: E731
+        return {"size": [self.c["W"], round(self.H, 1)], "plot": [r(self.x0), r(self.x1)], "icon": self.c["icon"],
+                "bands": {b: [r(a), r(z)] for b, (a, z) in self.band.items()},
+                "pos": {(t or "none"): {k: [r(p["x"]), r(p["y"]), p["kind"]] for k, p in st.items()} for t, st in self.pos.items()}}
 
 
 # --------------------------------------------------------------------------- label gaps (the rosette's checks)

@@ -3433,7 +3433,7 @@ CAPABILITIES = pathlib.Path("_data") / "capabilities.json"
 CAPMAP_TOOLS = (("raptor", "--tool-raptor"), ("NVIDIA Warp", "--tool-warp"), ("JAX", "--tool-jax"), ("PyTorch", "--tool-pytorch"),
                 ("CuPy", "--tool-cupy"), ("Numba", "--tool-numba"), ("NumPy", "--tool-numpy"))
 CAPMAP_CAPTION = ("What each tool has a documented, first-class way to do, on CPU and on GPU; speed is in the bars and the radar.")
-CAPMAP_NOTE = ("A dot sits on a row only when the tool's own documentation shows a designed feature or API for it; a workaround "
+CAPMAP_NOTE = ("An icon lights up only when the tool's own documentation shows a designed feature or API for it; a workaround "
                "(masking every lane, raw CUDA strings, running the slowest sample to the end) does not count. Every covered cell "
                "links to its source. The tools are complementary; overlap is not a ranking.")
 ROSETTE_NOTE = ("Every radar major fanned open at once, in the radar's order, plus the batches that thin out. A tool's band encloses the "

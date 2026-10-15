@@ -63,9 +63,11 @@ def _cm_json(block):
     return json.loads(re.search(r'<script type="application/json" class="cm-json">(.*?)</script>', block, re.S).group(1).replace("<\\/", "</"))
 
 
-def _row_stops(block):
-    """{block key: (data-stop, data-stops list)} of the rows as rendered."""
-    return {k: (st, ss.split(",")) for k, st, ss in re.findall(r'<li class="cm-row[^"]*" data-block="([^"]+)" data-stop="([^"]+)" data-stops="([^"]+)"', block)}
+def _icons(block, mode):
+    """{block key: (x px, y px, class)} of the chart icons of one width as rendered in the page."""
+    svg = re.search(rf'<svg class="cq-svg cq-{mode}".*?</svg>', block, re.S).group(0)
+    return {k: (float(x), float(y), cl) for cl, k, x, y in re.findall(
+        r'<g class="cq-ic (is-\w+)" data-block="([^"]+)" data-x="[^"]*" data-y="[^"]*" style="transform:translate\(([\d.]+)px,([\d.]+)px\)"', svg)}
 
 
 @functools.lru_cache(maxsize=None)
@@ -138,7 +140,7 @@ class TestCapabilityData(unittest.TestCase):
         for t in caps.tools:
             self.assertEqual(set(caps.cells[t]), set(V.BLOCKS_KEYS), t)
             for b in V.BLOCKS_KEYS:
-                self.assertEqual(set(caps.cells[t][b]), {d for d, _n in V.DEVICES}, (t, b))
+                self.assertEqual(set(caps.cells[t][b]), {d for d, _n in V.DEVICES} | {"y"}, (t, b))
                 for d, _n in V.DEVICES:
                     c = caps.cell(t, b, d)
                     self.assertIsInstance(c["covered"], bool, (t, b, d))
@@ -161,6 +163,20 @@ class TestCapabilityData(unittest.TestCase):
             self.assertIsNone(caps.stop("Numba", b), b)
         self.assertIsNone(caps.stop("NVIDIA Warp", "deploy"))
 
+    def test_stored_y_agrees_with_the_cells(self):
+        caps = _caps()
+        for t in caps.tools:
+            for b in V.BLOCKS_KEYS:
+                cpu, gpu = caps.covered(t, b, "cpu"), caps.covered(t, b, "gpu")
+                self.assertEqual(caps.y(t, b), 0 if cpu and gpu else -1 if cpu else 1 if gpu else None, (t, b))
+
+    def test_every_capability_has_an_x_and_a_reason(self):
+        caps = _caps()
+        self.assertEqual(set(caps.data["x"]), set(V.BLOCKS_KEYS))
+        for b, v in caps.data["x"].items():
+            self.assertTrue(0 <= v["x"] <= 1, b)
+            self.assertTrue(v["why"].strip() and "\n" not in v["why"], b)
+
 
 def _tool_pane(block, tool):
     m = re.search(rf'<div class="cm-tool" data-tool="{re.escape(html.escape(tool, quote=True))}"[^>]*>(.*?)</ul>(.*?)</div>', block, re.S)
@@ -168,42 +184,86 @@ def _tool_pane(block, tool):
 
 
 class TestOneToolAtATime(unittest.TestCase):
-    """Rows are the capabilities; the dot of each row sits where the selected tool's coverage says, for every tool."""
+    """One icon per capability; its x is fixed by the data and its band is the selected tool's stored y, for every tool, at both widths."""
 
-    def test_rows_are_the_capabilities_in_two_groups(self):
-        caps = _caps()
+    def test_one_icon_per_capability_in_the_page(self):
         for side, block in _map_page().items():
-            rows = _row_stops(block)
-            self.assertEqual(sorted(rows), sorted(V.BLOCKS_KEYS), side)
-            self.assertEqual(len(rows), len(caps.needs))
-            groups = re.findall(r'<h4 class="cm-gh">([^<]+)</h4>', block)
-            self.assertEqual(groups, ["Simulation", "AI"])
-            sim, ai = block.split('<section class="cm-group cm-ai">')
+            for mode in ("wide", "narrow"):
+                self.assertEqual(sorted(_icons(block, mode)), sorted(V.BLOCKS_KEYS), (side, mode))
             for k in V.BLOCKS_KEYS:
-                self.assertEqual(f'data-block="{k}" data-stop' in sim.split('<section class="cm-group cm-sim">')[1], V.BLOCK[k][4] == "sim", k)
+                self.assertEqual(len(re.findall(rf'data-block="{k}" data-x', block)), 2)
+            ids = set(re.findall(r'<symbol id="([^"]+)"', block))
+            for href in set(re.findall(r'<use href="#([^"]+)"', block)):
+                self.assertIn(href, ids)
+            self.assertEqual(re.findall(r'<h4', block), [])
 
-    def test_every_dot_stop_matches_the_data_for_every_tool(self):
+    def test_every_icon_position_matches_the_data_for_every_tool(self):
         caps = _caps()
-        tools = [t for t, _v in sc.CAPMAP_TOOLS]
         for side, block in _map_page().items():
-            rows = _row_stops(block)
             j = _cm_json(block)
-            self.assertEqual(j["tools"], tools)
-            default = re.search(r'class="capmap" data-side="\w+" data-tool="([^"]+)"', block).group(1)
-            self.assertEqual(default, "raptor")
-            for k in V.BLOCKS_KEYS:
-                st, per = rows[k]
-                self.assertEqual(st, caps.stop(default, k) or "none", (k, "default"))
-                for t, shown in zip(tools, per):
-                    want = caps.stop(t, k) or "none"
-                    self.assertEqual(shown, want, (t, k))
-                    self.assertEqual(j["stops"][k][t], want, (t, k))
+            self.assertEqual(j["tools"], [t for t, _v in sc.CAPMAP_TOOLS])
+            for mode in ("wide", "narrow"):
+                m = j["modes"][mode]
+                x0, x1 = m["plot"]
+                for tool in caps.tools + ["none"]:
+                    for k in V.BLOCKS_KEYS:
+                        x, y, kind = m["pos"][tool][k]
+                        self.assertAlmostEqual(x, x0 + caps.xs[k] * (x1 - x0), delta=0.11, msg=(mode, tool, k, "x"))
+                        yy = None if tool == "none" else caps.y(tool, k)
+                        band = "mid" if yy is None else "cpu" if yy < 0 else "gpu" if yy > 0 else "mid"
+                        lo, hi = m["bands"][band]
+                        self.assertTrue(lo <= y <= hi, (mode, tool, k, "band"))
+                        self.assertEqual(kind, "neutral" if tool == "none" else "ghost" if yy is None else "cov", (mode, tool, k))
+                self.assertEqual(j["y"]["raptor"]["fixed"], 0)
+                # the page as served is raptor's final state
+                for k, (x, y, cl) in _icons(block, mode).items():
+                    px, py, kind = m["pos"]["raptor"][k]
+                    self.assertEqual((x, y, cl), (px, py, "is-" + kind), (mode, k))
+
+    def test_bands_order_and_middle_is_the_tallest(self):
+        for mode in ("wide", "narrow"):
+            q = V.QuadChart(_caps(), mode)
+            h = {b: q.band[b][1] - q.band[b][0] for b in V.BANDS}
+            self.assertGreater(h["mid"], h["cpu"])
+            self.assertGreater(h["mid"], h["gpu"])
+            self.assertLessEqual(q.band["cpu"][1], q.band["mid"][0] + 1e-9)
+            self.assertLessEqual(q.band["mid"][1], q.band["gpu"][0] + 1e-9)
+
+    def test_nothing_overlaps_for_every_tool_at_both_widths(self):
+        """Icons and the names of the covered icons (and the ghosts) are pairwise disjoint and inside the chart, every state."""
+        caps = _caps()
+        for mode in ("wide", "narrow"):
+            q = V.QuadChart(caps, mode)
+            W = q.c["W"]
+            for tool, st in q.pos.items():
+                boxes = []
+                for k, p in st.items():
+                    boxes.append((k, "icon", p["icon"]))
+                    if p["label"]:
+                        boxes.append((k, "label", p["label"]))
+                for k, what, b in boxes:
+                    self.assertTrue(0 <= b[0] and b[2] <= W and 0 <= b[1] and b[3] <= q.H, (mode, tool, k, what, "outside"))
+                for i, (k1, w1, a) in enumerate(boxes):
+                    for k2, w2, b in boxes[i + 1:]:
+                        if k1 == k2:
+                            continue
+                        self.assertGreaterEqual(V._box_gap(a, b), 1.0, (mode, tool, k1, w1, k2, w2))
+                # a label is drawn from the same width the generator measured
+                for k, p in st.items():
+                    if p["label"]:
+                        self.assertAlmostEqual(p["label"][2] - p["label"][0], q.lab_w[k], places=3)
+
+    def test_the_icon_order_inside_a_band_is_deterministic(self):
+        a = V.QuadChart(_caps(), "wide").json()
+        b = V.QuadChart(_caps(), "wide").json()
+        self.assertEqual(a, b)
 
     def test_rendered_default_is_raptor_and_the_picker_is_one_choice(self):
         for block in _map_page().values():
             self.assertEqual(len(re.findall(r'<button type="button" class="cm-chip', block)), len(sc.CAPMAP_TOOLS))
             self.assertEqual(len(re.findall(r'aria-pressed="true"', block)), 1)
             self.assertRegex(block, r'class="cm-chip is-on" data-tool="raptor"')
+            self.assertEqual(len(re.findall(r'<g class="cq-ic is-cov"', block)), 2 * len(_caps().covered_blocks("raptor")))
 
     def test_summary_counts_match_the_data(self):
         caps = _caps()
@@ -275,18 +335,21 @@ class TestOneToolAtATime(unittest.TestCase):
     def test_neutral_state_and_deselect_sentence_exist(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
-        self.assertIn(".capmap.is-neutral .cm-row .cm-dot", css)
+        self.assertIn(".capmap.is-neutral .cm-dot-on", css)
+        self.assertIn(".cq-ic.is-neutral", css)
         self.assertIn("IntersectionObserver", js)
-        self.assertIn("is-neutral", js)
         for block in _map_page().values():
             self.assertIn("Pick a tool to see where each capability runs.", block)
             self.assertEqual(_cm_json(block)["none"], "Pick a tool to see where each capability runs.")
-            self.assertNotIn("is-neutral", block)      # at rest the page shows raptor's final positions
+            self.assertNotIn('class="capmap is-neutral', block)      # at rest the page shows raptor's final positions
+            for mode in ("wide", "narrow"):
+                kinds = {v[2] for v in _cm_json(block)["modes"][mode]["pos"]["none"].values()}
+                self.assertEqual(kinds, {"neutral"})
 
     def test_both_panels_carry_the_same_map(self):
         pages = _map_page()
         self.assertEqual(set(pages), {"gpu", "cpu"})
-        norm = {side: b.replace(f'data-side="{side}"', "").replace(f'"side":"{side}"', "") for side, b in pages.items()}
+        norm = {side: b.replace(f'data-side="{side}"', "").replace(f'"side":"{side}"', "").replace(f"wic-{side}", "wic").replace(f"cqg-{side}", "cqg") for side, b in pages.items()}
         self.assertEqual(norm["gpu"], norm["cpu"])
         self.assertNotIn("data-slug", pages["gpu"])
 
@@ -295,13 +358,13 @@ class TestOneToolAtATime(unittest.TestCase):
         self.assertNotIn("popover", block)
         self.assertNotIn("role=\"tooltip\"", block)
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
-        cm = css[css.index("The capability map (.capmap"):]
+        cm = css[css.index("The capability chart (.capmap"):]
         self.assertNotIn(":hover ~", cm)
         self.assertNotIn(".cm-note { display: none", cm)
 
     def test_motion_and_focus(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
-        self.assertIn("transition: left 0.3s", css)
+        self.assertIn(".cq-ic { transition: transform 0.35s", css)
         self.assertIn("prefers-reduced-motion: reduce) { * { transition: none", css)
         self.assertIn(".cm-chip:focus-visible", css)
         js = (SITE_ROOT / "_static" / "js" / "visuals.js").read_text()
@@ -427,8 +490,9 @@ class TestPhoneLayout(unittest.TestCase):
     def test_the_map_scrolls_only_inside_its_own_box(self):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
         self.assertIn(".cm-scroll { overflow-x: auto; max-width: 100%;", css)
-        self.assertIn("@container (max-width: 520px)", css)
-        self.assertIn("minmax(0, 46%)", css)
+        self.assertIn(".cq-wide-box { display: none; }", css)
+        self.assertIn(".cq-narrow-box { display: block; }", css)
+        self.assertIn(".cq-svg { display: block; width: 100%; height: auto;", css)
 
     def test_rosette_has_a_sector_picker(self):
         for side, b in _rosette_page().items():
