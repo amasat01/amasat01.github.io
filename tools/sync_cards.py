@@ -1187,13 +1187,13 @@ def eff_info(pool, card, arm, n, v, entry):
         _tab_device(card),
         f"N = {n:,}, up to {WHY_CONFIG['max_steps']:,} steps, samples stopping at different steps",
         f"measured: {_fmt_rate(v['spread'])} sample-steps per second",
-        f"FP64 speed of light: {_fmt_rate(v['sol'])} sample-steps per second ({entry.get('source')} reference)",
+        f"Top FP64 speed of this device: {_fmt_rate(v['sol'])} sample-steps per second ({entry.get('source')} reference)",
         f"{_fmt_eff(v['fraction'])} of it",
         _card_stamp(card)) if x]
 
 
-EFF_NOTE = ("Share of this device's FP64 speed of light a tool reaches when samples stop at different times. "
-            "100% = every FP64 unit busy with useful work.")
+EFF_NOTE = ("Share of this device's top FP64 speed a tool reaches when samples stop at different times. "
+            "100% = every FP64 unit doing useful work all the time.")
 EFF_PENDING = "Reference measurement pending for this device."
 EAGLE_MECHANISM_EFF = "https://amasat01.github.io/eagle/content/performance/mechanism.html#efficiency-on-uneven-batches"
 
