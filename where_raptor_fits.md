@@ -199,13 +199,13 @@ We have not benchmarked against Triton yet. Triton is built for tiled operators 
 
 ## How they combine
 
-Arrays cross the boundary through **DLPack**, zero-copy, with explicit stream ordering: the producer's work is ordered
-before the consumer's by a CUDA event, never by a device-wide synchronize. Every view reports who owns the memory,
+Arrays cross the boundary through **DLPack**, zero-copy and in stream order. Every view reports who owns the memory,
 which library produced it, and whether it may be written.
 
-- **Supported today**: CuPy, PyTorch and Warp, certified row by row in raptor's interop matrix; numpy too,
-  certified separately by an executable cuda-free dispatch test rather than a matrix row.
-- **Foreseen** (same protocol, certification rows to come): JAX, TensorFlow/Keras and any other DLPack-capable library.
+- **Supported today**: CuPy, PyTorch, NVIDIA Warp and JAX, certified row by row in raptor's interop matrix (JAX on
+  Python 3.12 and newer, the releases JAX publishes); NumPy too, certified separately by an executable cuda-free
+  dispatch test rather than a matrix row.
+- **Foreseen** (same protocol, certification rows to come): TensorFlow/Keras and any other DLPack-capable library.
 
 See [raptor's interoperability protocols](https://amasat01.github.io/raptor/content/interop_protocols.html) for the
 full, cited statement of what is certified today versus foreseen, and
