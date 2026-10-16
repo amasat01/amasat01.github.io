@@ -45,12 +45,32 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: documented numbers match the committed cards
+      # the chart layout measures text with Pillow and DejaVu Sans (tools/visuals.py); without them it falls back to
+      # an estimate and lays the charts out differently from the committed pages
+      - name: text measuring for the chart layout
         run: |
-          if ! python tools/sync_cards.py eagle && git diff --exit-code -I'"generated_utc"' -- _generated; then
-            echo "::error::The documented performance numbers are out of date with the committed cards. Regenerate them locally with: python tools/sync_cards.py <path to an eagle checkout> -- then commit the result."
-            exit 1
+          python -m pip install --quiet pillow==12.3.0
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf || sudo apt-get install -y -q fonts-dejavu-core
+      - name: regenerate the pages from the cards
+        run: |
+          if [ ! -d eagle/benchmarks ]; then
+            echo "::error::generator or companion missing: eagle/benchmarks not found: check out the paired eagle branch into eagle"
+            exit 4
           fi
+          python tools/sync_cards.py eagle && rc=0 || rc=$?
+          if [ "$rc" -eq 2 ]; then
+            echo "::error::generator usage error (rc 2): tools/sync_cards.py was called with bad arguments"
+          elif [ "$rc" -ne 0 ]; then
+            echo "::error::generator crashed (rc $rc): see the traceback above, a card the pages cite may be unreadable"
+          fi
+          exit "$rc"
+      - name: generated pages match the committed ones
+        run: |
+          git diff --exit-code -I'"generated_utc"' -- _generated && rc=0 || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::_generated out of date: regenerate with: python tools/sync_cards.py <eagle checkout>, then commit the result"
+          fi
+          exit "$rc"
   build:
     needs: docs-fresh
     runs-on: ubuntu-latest
@@ -61,7 +81,7 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --quiet -r requirements.txt
       - run: make strict
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _build/html
 
@@ -77,4 +97,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

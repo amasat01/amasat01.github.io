@@ -76,12 +76,12 @@
     "cpu": {
      "covered": true,
      "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
-     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp and NumPy."
+     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp, JAX and NumPy."
     },
     "gpu": {
      "covered": true,
      "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
-     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp and NumPy."
+     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp, JAX and NumPy."
     },
     "y": 0
    },
