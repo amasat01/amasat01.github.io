@@ -62,13 +62,13 @@
    "deriv": {
     "cpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/hawk/content/tutorials/04_gradients_backward.html",
-     "note": "Every hawk kernel carries generated forward- and reverse-mode derivatives."
+     "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
+     "note": "Generated forward- and reverse-mode derivatives, read by jax.grad, torch autograd and wp.Tape."
     },
     "gpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/hawk/content/tutorials/04_gradients_backward.html",
-     "note": "Every hawk kernel carries generated forward- and reverse-mode derivatives."
+     "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
+     "note": "Generated forward- and reverse-mode derivatives, read by jax.grad, torch autograd and wp.Tape."
     },
     "y": 0
    },
@@ -76,12 +76,12 @@
     "cpu": {
      "covered": true,
      "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
-     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp, JAX and NumPy."
+     "note": "Runs inside your JAX, PyTorch, Warp, CuPy and NumPy programs, and theirs inside its batches; DLPack hand-over certified with all five."
     },
     "gpu": {
      "covered": true,
      "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
-     "note": "DLPack hand-over, certified with CuPy, PyTorch, NVIDIA Warp, JAX and NumPy."
+     "note": "Runs inside your JAX, PyTorch, Warp, CuPy and NumPy programs, and theirs inside its batches; DLPack hand-over certified with all five."
     },
     "y": 0
    },
@@ -214,12 +214,12 @@
    "hybrid": {
     "cpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/raptor/content/examples/two_body_hybrid.html",
+     "source": "https://amasat01.github.io/hawk/content/examples/two_body_hybrid.html",
      "note": "A network and a physics model in one differentiable program."
     },
     "gpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/raptor/content/examples/two_body_hybrid.html",
+     "source": "https://amasat01.github.io/hawk/content/examples/two_body_hybrid.html",
      "note": "A network and a physics model in one differentiable program."
     },
     "y": 0

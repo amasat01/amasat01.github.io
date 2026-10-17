@@ -21,6 +21,11 @@ what it is not, and the same task in five tools, side by side.
 4. **Works with the code you already have.** Arrays cross without copies through DLPack (a standard, framework-neutral
    way for one library to hand another an array without copying it), and a compiled kernel
    deploys into any program that can load its [manifest](https://amasat01.github.io/raptor/content/glossary.html) (the family's shared words are in one glossary).
+   Both directions work: a hawk kernel runs inside your [JAX](https://amasat01.github.io/eagle/content/interop/jax.html),
+   [PyTorch](https://amasat01.github.io/eagle/content/interop/torch.html),
+   [Warp](https://amasat01.github.io/eagle/content/interop/warp.html) or
+   [CuPy and NumPy](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html) program, on CPU and GPU, and your code
+   runs as a step inside an eagle batch.
 
 ## The shape of it
 
@@ -186,14 +191,14 @@ two results checked to agree — is
 
 | Tool | Choose it when… | Use it with RAPTOR by… |
 |---|---|---|
-| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy (DLPack / array interface) |
-| **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream |
-| **PyTorch** | you train neural networks or need its ecosystem of models and operators | handing tensors over DLPack; a RAPTOR kernel can feed or consume a torch model |
-| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | exchanging arrays over DLPack (not among the certified crossings today; see below) |
+| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy (DLPack / array interface); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
+| **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
+| **PyTorch** | you train neural networks or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/torch.html)) |
+| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan`, on CPU and GPU and on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/jax.html)) |
 | **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (not among the certified crossings today) |
 | **Numba** | you want to JIT (just-in-time compile — turn a Python function into machine code the first time it runs) ordinary Python loops on the CPU, or write CUDA kernels in Python's CUDA dialect | either side can consume the other's arrays |
 | **Triton** | you are writing high-performance dense GPU operators, especially for machine learning | composing at the array level |
-| **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways; see {ref}`hawk-next-to-warp` for what each makes easier |
+| **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways, a kernel on your `wp.Tape` and inside your CUDA graph, and your Warp kernels as steps inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/warp.html)); see {ref}`hawk-next-to-warp` for what each makes easier |
 
 We have not benchmarked against Triton yet. Triton is built for tiled operators over dense tensors, while raptor targets many independent samples that each stop at their own step, the job every tool on our performance cards also does. A measured comparison with Triton is planned and will land shortly.
 
@@ -203,9 +208,11 @@ Arrays cross the boundary through **DLPack**, zero-copy and in stream order. Eve
 which library produced it, and whether it may be written.
 
 - **Supported today**: CuPy, PyTorch, NVIDIA Warp and JAX, certified row by row in raptor's interop matrix (JAX on
-  Python 3.12 and newer, the releases JAX publishes); NumPy too, certified separately by an executable cuda-free
+  Python 3.12 and newer, the releases JAX publishes), each with a guide that runs it in both directions; NumPy too, certified separately by an executable cuda-free
   dispatch test rather than a matrix row.
 - **Foreseen** (same protocol, certification rows to come): TensorFlow/Keras and any other DLPack-capable library.
+
+Each guide ends with its Limits, one line each.
 
 See [raptor's interoperability protocols](https://amasat01.github.io/raptor/content/interop_protocols.html) for the
 full, cited statement of what is certified today versus foreseen, and
