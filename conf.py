@@ -36,7 +36,7 @@ templates_path = ["_templates"]
 # _generated/*.md are card-derived MyST include files (tools/sync_cards.py):
 # {include}-d into index.md / where_raptor_fits.md, never a toctree entry of
 # their own, so Sphinx must not treat them as standalone documents.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "README.md", "_generated/*.md"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "README.md", "CONTRIBUTING.md", "_generated/*.md"]
 
 # notebooks/raptor_start_here.ipynb (start_here.md's trial notebook) is not a
 # Sphinx source document (no myst_nb/nbsphinx here -- see conf.py's own note

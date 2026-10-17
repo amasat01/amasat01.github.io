@@ -39,7 +39,7 @@ class FamilyVisualsBundle(unittest.TestCase):
                     self.assertIsNone(banned.search(data.decode()), f"{profile}/{name}")
 
     def test_check_finds_a_changed_byte(self):
-        with tempfile.TemporaryDirectory(dir="/local/scratch/amasat/tmp") as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             repo = pathlib.Path(tmp)
             (repo / "docs").mkdir()
             self.assertEqual(S.main(["--site-root", str(SITE_ROOT), "--target", f"raptor={repo}"]), 0)

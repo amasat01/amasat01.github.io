@@ -1,10 +1,10 @@
 # amasat01.github.io
 
 Source for the RAPTOR family landing site, published at
-<https://amasat01.github.io/>. A GitHub user site: a single Sphinx page
-(`index.md`) introducing the family — [aether](https://github.com/amasat01/aether),
-[raptor](https://github.com/amasat01/raptor), [eagle](https://github.com/amasat01/eagle)
-and [hawk](https://github.com/amasat01/hawk) — plus a short `about.md`.
+<https://amasat01.github.io/>. A GitHub user site: a few Sphinx pages
+(`index.md`, `start_here.md`, `where_raptor_fits.md` and others) introducing the family —
+[aether](https://github.com/amasat01/aether), [raptor](https://github.com/amasat01/raptor),
+[eagle](https://github.com/amasat01/eagle) and [hawk](https://github.com/amasat01/hawk).
 
 <p align="center">
   <a href="https://amasat01.github.io/"><b>The RAPTOR family</b></a><br>
