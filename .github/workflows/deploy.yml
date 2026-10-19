@@ -1,0 +1,49 @@
+# Copyright 2026 Alessandro Masat
+# SPDX-License-Identifier: Apache-2.0
+#
+# Deploy the site to GitHub Pages on push to main. pages.yml built and checked
+# it on the pull request and stored it under the git tree hash; this workflow
+# fetches that artifact and deploys it, never rebuilds. `workflow_dispatch`
+# redeploys the current main tree.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch the site built for this tree
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/ci_fetch_artifact.sh site "$(git rev-parse 'HEAD^{tree}')" site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+          retention-days: 7
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: fetch
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
