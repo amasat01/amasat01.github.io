@@ -4,7 +4,8 @@
 Simulation (left) to AI (right) and CPU / CPU and GPU / GPU (down).
 
 It reads a static, sourced table (``_data/capabilities.json``): tool x block x device -> covered or not, with the source
-page and a one-line note for every covered cell, a fixed x per capability and a stored y per tool. It is the same on every
+page and a one-line note for every covered cell, a grade from 0 to 5 per tool and capability (with its reason and source),
+a fixed x per capability and a stored y per tool. It is the same on every
 device and carries no measurement; performance lives in the bars and the radar.
 
 Geometry is computed here, in final drawing coordinates, so the overlap checks the tests run read the same numbers the
@@ -72,6 +73,10 @@ class Capabilities:
     def y(self, tool, block):
         """The stored vertical position of a tool on a capability: -1 CPU only, 0 both, +1 GPU only, None not first-class."""
         return self.cells[tool][block]["y"]
+
+    def grade(self, tool, block):
+        """The tool's grade on a capability: {g: 0-5, reason, source, kind}, or None when no source confirms one."""
+        return self.cells[tool][block]["g"]
 
     def cell(self, tool, block, device):
         return self.cells[tool][block][device]
@@ -146,8 +151,8 @@ def text_width(text, size, bold=False):
 #: Chart constants per width: viewBox width, left margin (axis labels), right margin, icon size, label font and line height,
 #: gap icon->label, band padding, header height.
 QUAD_MODES = {
-    "wide": {"W": 720, "L": 92, "R": 12, "icon": 28, "fs": 11.5, "lh": 13.5, "gap": 6, "pad": 8, "head": 34, "cell_gap": 8, "vpad": 6},
-    "narrow": {"W": 340, "L": 52, "R": 4, "icon": 22, "fs": 11, "lh": 12.5, "gap": 4, "pad": 4, "head": 26, "cell_gap": 4, "vpad": 5},
+    "wide": {"W": 720, "L": 92, "R": 12, "icon": 28, "fs": 11.5, "lh": 13.5, "gsz": 6.5, "gap": 6, "pad": 8, "head": 34, "cell_gap": 8, "vpad": 6},
+    "narrow": {"W": 340, "L": 52, "R": 4, "icon": 22, "fs": 11, "lh": 12.5, "gsz": 6, "gap": 4, "pad": 4, "head": 26, "cell_gap": 4, "vpad": 5},
 }
 BANDS = ("cpu", "mid", "gpu")
 BAND_NAME = {"cpu": "CPU", "mid": "CPU and GPU", "gpu": "GPU"}

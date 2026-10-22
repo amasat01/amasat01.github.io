@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raptor-docs"
+version = "0"
+description = "Shared docs tooling for the RAPTOR family: Sphinx skin, notebook gates, freshness check, capability map"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = ["nbformat", "nbclient"]
+
+[tool.setuptools]
+packages = ["raptor_docs", "raptor_docs.nb"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+raptor_docs = ["_static/*.css", "_static/fonts/*"]
+"raptor_docs.nb" = ["hosted_env/*"]

@@ -203,8 +203,8 @@ print("shares memory on this machine:", same_memory)
 ```
 
 A CUDA array crossing this way is raptor's certified `T-IN-CUDA-ALIAS` row
-— zero-copy by contract for CUDA tensors; a plain NumPy one isn't a certified crossing at all, so
-the notebook *checks* rather than assumes it.
+— zero-copy by contract for CUDA tensors. A NumPy array crossing on the CPU is certified too
+(zero-copy is host-only), and the notebook still *checks* rather than assumes it.
 
 **Build a tiny model around `step`.** `Ballistic` unrolls `step` from step 3
 over a flight; its one learned value is `log(cd)`, not `cd` itself, so

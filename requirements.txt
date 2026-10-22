@@ -8,3 +8,6 @@ sphinx-book-theme==1.2.0
 myst-parser==5.0.0
 sphinx-design==0.7.0
 sphinx-copybutton==0.5.2
+# the raptor_docs package tests (pyproject.toml)
+nbformat==5.10.4
+nbclient==0.10.4

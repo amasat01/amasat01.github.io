@@ -14,8 +14,8 @@ Two kinds of checks live here:
   that was never run through sync_cards.py). This also needs no real eagle.
 - One optional check that re-hashes the real eagle source files SOURCES.json
   recorded, gated on the RAPTOR_EAGLE_ROOT environment variable; it is
-  skipped (not failed) when that is unset, which is the normal case in CI
-  (the site's CI must never clone eagle).
+  skipped (not failed) when that is unset, which is the normal case on a
+  site-only checkout.
 """
 import json
 import pathlib

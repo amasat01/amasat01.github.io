@@ -56,7 +56,7 @@ class TestCapabilityData(unittest.TestCase):
         for t in caps.tools:
             self.assertEqual(set(caps.cells[t]), set(V.BLOCKS_KEYS), t)
             for b in V.BLOCKS_KEYS:
-                self.assertEqual(set(caps.cells[t][b]), {d for d, _n in V.DEVICES} | {"y"}, (t, b))
+                self.assertEqual(set(caps.cells[t][b]), {d for d, _n in V.DEVICES} | {"y", "g"}, (t, b))
                 for d, _n in V.DEVICES:
                     c = caps.cell(t, b, d)
                     self.assertIsInstance(c["covered"], bool, (t, b, d))
@@ -66,6 +66,43 @@ class TestCapabilityData(unittest.TestCase):
                         self.assertNotIn("\n", c["note"])
                     else:
                         self.assertNotIn("source", c, (t, b, d))
+
+    def test_grades_are_sourced_and_agree_with_coverage(self):
+        """g is 0-5 or null (no confirming source, shown blank); a graded cell has a reason and a source; covered means 3 or
+        more and not covered 2 or less."""
+        caps = _caps()
+        for t in caps.tools:
+            for b in V.BLOCKS_KEYS:
+                g = caps.grade(t, b)
+                if g is None:
+                    continue
+                self.assertEqual(set(g), {"g", "reason", "source", "kind"}, (t, b))
+                self.assertIn(g["g"], range(6), (t, b))
+                self.assertTrue(g["reason"].strip() and "\n" not in g["reason"], (t, b))
+                self.assertRegex(g["source"], r"^(https://[^\s\"<>]+|repo: \S.*)$", (t, b))
+                self.assertIn(g["kind"], ("doc", "scope", "repo"), (t, b))
+                if t != "raptor":
+                    self.assertRegex(g["source"], r"^https://", (t, b))
+                if g["kind"] == "scope":
+                    self.assertEqual(g["g"], 0, (t, b))
+                covered = bool(caps.stop(t, b))
+                self.assertEqual(g["g"] >= 3, covered, (t, b, g["g"]))
+
+    def test_the_grade_is_on_the_map_for_every_tool(self):
+        caps = _caps()
+        for block in _map_page().values():
+            cards = _cm_json(block)["cards"]
+            for k in V.BLOCKS_KEYS:
+                for t in caps.tools:
+                    g, want = cards[k]["t"][t]["g"], caps.grade(t, k)
+                    self.assertEqual(g and (g["v"], g["r"], g["s"]), want and (want["g"], want["reason"], want["source"]), (k, t))
+            for k in V.BLOCKS_KEYS:     # the default tool's grade is in the page's own markup, blank when null
+                want = caps.grade("raptor", k)
+                for mode in ("wide", "narrow"):
+                    svg = re.search(rf'<svg class="cq-svg cq-{mode}".*?</svg>', block, re.S).group(0)
+                    ic = re.search(rf'<g class="cq-ic [^"]*" data-block="{k}"[^>]*? data-g="(\d?)"', svg)
+                    self.assertEqual(ic.group(1), "" if want is None else str(want["g"]), (k, mode))
+            self.assertIn("cm-g", block)
 
     def test_the_measured_rule_is_gone_from_the_map(self):
         block = _map_page()["gpu"]
@@ -77,7 +114,14 @@ class TestCapabilityData(unittest.TestCase):
         caps = _caps()
         for b in ("divergent", "events"):
             self.assertIsNone(caps.stop("Numba", b), b)
-        self.assertIsNone(caps.stop("NVIDIA Warp", "deploy"))
+        self.assertEqual(caps.stop("NVIDIA Warp", "deploy"), "both")
+        self.assertEqual(caps.stop("CuPy", "handtuned"), "gpu")
+        self.assertEqual(caps.stop("CuPy", "half"), "gpu")
+        self.assertNotIn("float8", caps.cell("JAX", "half", "gpu")["note"] + caps.cell("JAX", "inference", "gpu")["note"])
+        for t in caps.tools:
+            for b in V.BLOCKS_KEYS:
+                for d, _n in V.DEVICES:
+                    self.assertNotIn(caps.cell(t, b, d)["note"], ("CuPy runs on GPUs.", "NumPy runs on the CPU."))
 
     def test_stored_y_agrees_with_the_cells(self):
         caps = _caps()
@@ -294,7 +338,7 @@ class TestOneToolAtATime(unittest.TestCase):
             for (st, inner), t in zip(cells, caps.tools):
                 text = re.sub(r"<[^>]+>", "", inner).split()
                 if st == "none":
-                    self.assertEqual(inner, "")
+                    self.assertEqual(re.sub(r"<[^>]+>", "", inner), str(caps.grade(t, b)["g"]) if caps.grade(t, b) else "")
                 else:
                     self.assertEqual(text[0], V.STOP_NAME[st], (b, t))
 

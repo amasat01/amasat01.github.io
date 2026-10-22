@@ -28,6 +28,8 @@ linkcheck:
 
 # The site's own gate: the generated-content tests (tests/test_sync_cards.py,
 # self-contained -- no eagle checkout needed) plus a 0-warning strict build.
+# The raptor_docs package tests (tests/test_raptor_docs_*.py) are in the same
+# discovery: they need Python 3.11+, nbformat and nbclient (pyproject.toml).
 # Does NOT re-run tools/sync_cards.py (that is maintenance-time, against a
 # real eagle checkout); it checks the _generated/ output already committed.
 check:

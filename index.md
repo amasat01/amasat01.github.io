@@ -177,6 +177,7 @@ compare
 :caption: The family
 :hidden:
 
+how_it_fits
 build_from_source
 about
 eagle docs <https://amasat01.github.io/eagle/>
