@@ -26,6 +26,15 @@ def _link(href, text, cls=""):
     return f'<a{f" class={chr(34)}{cls}{chr(34)}" if cls else ""} href="{ESC(href, quote=True)}">{ESC(text)}</a>'
 
 
+def _g_link(grade, text=None):
+    """A grade as a link to its source (plain text for a repo path), the reason as its tooltip."""
+    text = text or str(grade["g"])
+    src = grade["source"]
+    if not src.startswith("https://"):
+        return f'<span class="cm-g" title="{ESC(grade["reason"], quote=True)}">{ESC(text)}</span>'
+    return f'<a class="cm-g" href="{ESC(src, quote=True)}" title="{ESC(grade["reason"], quote=True)}">{ESC(text)}</a>'
+
+
 def cq_svg(Q, ids, uid, tool, aria):
     """The chart in one width: a soft Simulation-to-AI gradient, the three bands with their names on the left edge, the
     middle band's faint grid, and one icon per capability (ring, glyph, two-line name) placed at the selected tool's state."""
@@ -63,12 +72,15 @@ def cq_svg(Q, ids, uid, tool, aria):
         lx = r + c["gap"] if right else -(r + c["gap"])
         y0 = -(n - 1) * c["lh"] / 2 + 0.35 * c["fs"]
         lab = "".join(f'<tspan x="{lx:.1f}" dy="{0 if i == 0 else c["lh"]}">{ESC(l)}</tspan>' for i, l in enumerate(b[2]))
+        gr = Q.caps.grade(tool, k)
+        badge = (f'<g class="cq-g{"" if gr else " is-blank"}" transform="translate({r * 0.72:.1f} {r * 0.72:.1f})"><circle r="{c["gsz"]}"/>'
+                 f'<text y="{0.36 * c["gsz"] * 1.5:.1f}" style="font-size:{c["gsz"] * 1.5:.1f}px">{gr["g"] if gr else ""}</text></g>')
         out.append(f'<g class="cq-ic is-{p["kind"]}" data-block="{k}" data-x="{Q.caps.xs[k]}" data-y="{"" if Q.caps.y(tool, k) is None else Q.caps.y(tool, k)}" '
-                   f'tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="{ESC(b[1], quote=True)}: details" '
+                   f'tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="{ESC(b[1], quote=True)}: details" data-g="{gr["g"] if gr else ""}" '
                    f'style="transform:translate({p["x"]:.1f}px,{p["y"]:.1f}px)">'
                    f'<circle class="cq-hit" r="{r + 5}"/>'
                    f'<circle class="cq-ring" r="{r}"/><g class="ic" transform="translate({-isz / 2} {-isz / 2})"><use href="#{ids}-{b[3]}" width="{isz}" height="{isz}"/></g>'
-                   f'<text class="cq-lab" text-anchor="{"start" if right else "end"}" x="{lx:.1f}" y="{y0:.2f}" style="font-size:{c["fs"]}px">{lab}</text></g>')
+                   f'{badge}<text class="cq-lab" text-anchor="{"start" if right else "end"}" x="{lx:.1f}" y="{y0:.2f}" style="font-size:{c["fs"]}px">{lab}</text></g>')
     out.append("</svg>")
     return "".join(out)
 
@@ -90,6 +102,9 @@ def cm_list(caps, tool):
                     notes.append(c["note"])
             else:
                 ticks.append(f'<span class="cm-tick is-no">{name} \u2013</span>')
+        gr = caps.grade(tool, key)
+        if gr:
+            ticks.append(_g_link(gr, f"grade {gr['g']}/5"))
         items.append(f'<li data-block="{key}"><span class="cm-ln">{ESC(V.BLOCK[key][1])}</span> <span class="cm-ticks">{" ".join(ticks)}</span> '
                      f'<span class="cm-note">{ESC(" ".join(notes))}</span></li>')
     grey = f'<p class="cm-grey">Not first-class: {ESC(", ".join(none))}.</p>' if none else ""
@@ -104,8 +119,10 @@ def cm_compare(caps, tools):
         cells = []
         for t, _v in tools:
             st = caps.stop(t, key)
+            gr = caps.grade(t, key)
+            gl = " " + _g_link(gr) if gr else ""
             if not st:
-                cells.append('<td data-stop="none"></td>')
+                cells.append(f'<td data-stop="none">{gl.strip()}</td>')
                 continue
             devs = [d for d, _n in V.DEVICES if caps.covered(t, key, d)]
             srcs = [caps.cell(t, key, d)["source"] for d in devs]
@@ -113,23 +130,25 @@ def cm_compare(caps, tools):
                 inner = _link(srcs[0], V.STOP_NAME[st])
             else:
                 inner = ESC(V.STOP_NAME[st]) + " " + " ".join(_link(s_, V.DEVICE_NAME[d], "cm-also") for d, s_ in zip(devs, srcs))
-            cells.append(f'<td data-stop="{st}">{inner}</td>')
+            cells.append(f'<td data-stop="{st}">{inner}{gl}</td>')
         rows.append(f'<tr data-block="{key}"><th scope="row">{ESC(V.BLOCK[key][1])}</th>{"".join(cells)}</tr>')
     return ('<details class="cm-compare"><summary>Compare all tools</summary><div class="cm-scroll" tabindex="0" role="region" aria-label="All tools, side by side">'
             '<table class="cm-table"><caption>Where each tool has a documented, first-class way to do each capability: CPU, GPU or both. '
-            'An empty cell is not first-class. Every filled cell links to its source.</caption>'
+            'An empty cell is not first-class. Every filled cell links to its source. The small number is the grade, 0 to 5; a blank means no source confirms one.</caption>'
             f'<thead><tr><th scope="col">Capability</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div></details>')
 
 
 def cards_json(caps, tools):
     """What the details card shows, per capability: its name, what counts, and for every tool the CPU and GPU cells
-    ({c: covered, n: the note, s: the source link when covered})."""
+    ({c: covered, n: the note, s: the source link when covered}) and the grade ({v, r: reason, s: source}, or null)."""
     out = {}
     for k in V.BLOCKS_KEYS:
         per = {}
         for t, _v in tools:
             per[t] = {d: dict({"c": caps.covered(t, k, d), "n": caps.cell(t, k, d)["note"]}, **({"s": caps.cell(t, k, d)["source"]} if caps.covered(t, k, d) else {}))
                       for d, _n in V.DEVICES}
+            gr = caps.grade(t, k)
+            per[t]["g"] = {"v": gr["g"], "r": gr["reason"], "s": gr["source"]} if gr else None
         out[k] = {"l": V.BLOCK[k][1], "needs": caps.needs[k], "t": per}
     return out
 
@@ -165,7 +184,8 @@ def capmap_block(side, caps, tools, intro, caption, default="raptor"):
     out.append('<div class="cq-card" role="group" aria-label="Capability details" hidden></div>')
     out.append("</div>")
     out.append('<p class="cm-legend"><span class="cm-key"><span class="cm-dot-on"></span>first-class: a glowing icon with its name</span> '
-               '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a faint icon on the middle band, no name</span></p>')
+               '<span class="cm-key"><span class="cm-dot-off"></span>not first-class: a faint icon on the middle band, no name</span> '
+               '<span class="cm-key">number: the grade, 0 to 5; blank when no source confirms one</span></p>')
     out.append(f'<p class="cm-summary" aria-live="polite" data-none="{ESC(NONE_SENTENCE, quote=True)}">{ESC(caps.summary(default))}</p>')
     out.append('<details class="cm-details"><summary>Show details</summary>')
     for t, _v in tools:

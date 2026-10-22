@@ -147,8 +147,8 @@
           "reason": "Operators and a few custom-kernel hooks; launches are left to the framework."
         },
         "raptor": {
-          "score": 2,
-          "reason": "By design hawk and eagle decide threads, launches and scheduling, so compaction can adapt to uneven batches; for hand-tuned thread-level kernels, Warp or Numba is the right choice."
+          "score": 3,
+          "reason": "Per-sample indexing (sample_index, split_index), reads of any sample and accumulating writes across samples (all_samples); launch shape, shared memory and synchronisation stay with hawk and eagle, so compaction can adapt to uneven batches. For hand-tuned thread-level kernels, Warp or Numba is the right choice."
         },
         "NumPy": {
           "score": 1,
@@ -236,7 +236,7 @@
         },
         "raptor": {
           "score": 5,
-          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives, on GPU and CPU."
+          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives on GPU and CPU, including through parameter-dependent branches (jump=), events and, with the 0.6.4 rolled reverse pass, a Dispatch inside a loop; second order is written jvp(vjp)."
         },
         "NumPy": {
           "score": 1,
@@ -275,7 +275,7 @@
         },
         "raptor": {
           "score": 4,
-          "reason": "Zero-copy through DLPack with a certified matrix (CuPy, PyTorch, Warp and NumPy today, not JAX)."
+          "reason": "Zero-copy through DLPack with a certified matrix (CuPy, PyTorch, Warp, JAX and NumPy)."
         },
         "NumPy": {
           "score": 4,
@@ -305,8 +305,8 @@
           "reason": "Compiled XLA programs can be exported and run from other runtimes."
         },
         "NVIDIA Warp": {
-          "score": 2,
-          "reason": "Kernels run inside Python; modules can be compiled ahead of time but need the Warp runtime."
+          "score": 3,
+          "reason": "Captured graphs and compiled modules replay from a standalone C++ program on CUDA and on the CPU device; the Warp runtime is still needed."
         },
         "CuPy": {
           "score": 1,

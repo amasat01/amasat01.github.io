@@ -24,13 +24,15 @@ LEGACY = ("#ee4c2c", "#1a9a8c", "#00a3e0", "#518d05", "#306101", "#4d77cf", "#76
 SKIP_DIRS = {"_build", ".git", "__pycache__", "tests", "notebooks"}
 #: Generated figures that draw tools: they are checked against the tokens, not scanned.
 GENERATED_FIGURES = {"what_you_write_light.svg", "what_you_write_dark.svg"}
+#: The family kit's own token file (shipped by raptor_docs): the palette is defined there, so it is not scanned.
+KIT_TOKENS = {"raptor-tokens.css"}
 
 
 def _sources():
     for p in sorted(SITE_ROOT.rglob("*")):
         if not p.is_file() or SKIP_DIRS & set(p.relative_to(SITE_ROOT).parts):
             continue
-        if p.suffix in {".py", ".md", ".css", ".js", ".html", ".svg", ".json", ".yml"} and p.name not in GENERATED_FIGURES:
+        if p.suffix in {".py", ".md", ".css", ".js", ".html", ".svg", ".json", ".yml"} and p.name not in GENERATED_FIGURES | KIT_TOKENS:
             yield p
 
 

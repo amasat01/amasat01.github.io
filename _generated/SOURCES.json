@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-17T08:03:40Z",
+  "generated_utc": "2026-10-21T16:45:54Z",
   "sources": [
     {
       "path": "benchmarks/device_names.json",
@@ -97,11 +97,11 @@
   "site_sources": [
     {
       "path": "_data/capabilities.json",
-      "md5": "ca2c9bc4d4d9a9f4dcd90bea24c1702e"
+      "md5": "ac191a96c2e47781fd3fe7a338f3970d"
     },
     {
       "path": "_data/radar_qualitative.json",
-      "md5": "98898785bc463c3175293c749fe366e9"
+      "md5": "01db35506330d78ed4197d182329d269"
     }
   ],
   "uneven_efficiency": {

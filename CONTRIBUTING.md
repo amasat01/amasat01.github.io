@@ -29,6 +29,19 @@ make linkcheck    # every external link
 `make check` is what `.github/workflows/pages.yml` runs. It does not re-run `tools/sync_cards.py`: that script reads a real eagle
 checkout when the cards change, and `make check` verifies the committed `_generated/` output against it.
 
+## The shared docs package
+
+`raptor_docs/` is the docs tooling every repo in the family uses: the Sphinx extension (theme, stylesheets, `llms.txt`), the
+notebook runner and checker, and the freshness check. Each repo keeps one settings file, `docs/raptor_docs.toml`, including the
+`fresh` list of generator commands. From a repo root:
+
+```bash
+python -m raptor_docs.fresh --check    # exit 1 if any generated page is out of date; writes nothing
+python -m raptor_docs.fresh --write    # regenerate every generated page, then commit the result
+```
+
+Its tests are `tests/test_raptor_docs_*.py` and run under `make check` (Python 3.11+, `nbformat`, `nbclient`).
+
 ## What a PR here must show
 
 - **The voice.** The reader has a working JAX, PyTorch, CuPy/NumPy or Warp program and decides in ten seconds whether to stay.

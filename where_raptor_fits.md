@@ -179,9 +179,9 @@ way of working:
 Warp is the better choice when you want its built-in geometry, mesh and simulation library, or reverse-mode
 gradients of a whole simulation recorded on its **tape** (a runtime-recorded log of operations that a
 reverse-mode pass replays backward). The two work together: arrays pass between them zero-copy in
-both directions, with writes seen in the order they were issued — certified by three rows in
+both directions, with writes seen in the order they were issued — certified by four rows in
 [raptor's interoperability matrix](https://amasat01.github.io/raptor/content/interop_protocols.html)
-(`WP-IN-CUDA-ALIAS`, `WP-OUT-CUDA-ALIAS`, `STREAM-WARP-PRODUCER-ORDER` — the matrix names and defines what each row id
+(`WP-IN-CUDA-ALIAS`, `WP-OUT-CUDA-ALIAS`, `STREAM-WARP-PRODUCER-ORDER`, and `WP-GRAD-TAPE` for a kernel on your tape — the matrix names and defines what each row id
 means). A side-by-side
 notebook — the same per-sample problem, with early termination, written in both and executed on the GPU, with the
 two results checked to agree — is
@@ -191,10 +191,10 @@ two results checked to agree — is
 
 | Tool | Choose it when… | Use it with RAPTOR by… |
 |---|---|---|
-| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy (DLPack / array interface); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
+| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy on the host (DLPack / array interface; a GPU run copies them in); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
 | **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
 | **PyTorch** | you train neural networks or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/torch.html)) |
-| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan`, on CPU and GPU and on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/jax.html)) |
+| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan` (row `JX-GRAD-TRANSFORMS`; the CPU leg is certified, the GPU leg awaits a run on a GPU build of JAX), on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/jax.html)) |
 | **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (not among the certified crossings today) |
 | **Numba** | you want to JIT (just-in-time compile — turn a Python function into machine code the first time it runs) ordinary Python loops on the CPU, or write CUDA kernels in Python's CUDA dialect | either side can consume the other's arrays |
 | **Triton** | you are writing high-performance dense GPU operators, especially for machine learning | composing at the array level |
@@ -208,11 +208,24 @@ Arrays cross the boundary through **DLPack**, zero-copy and in stream order. Eve
 which library produced it, and whether it may be written.
 
 - **Supported today**: CuPy, PyTorch, NVIDIA Warp and JAX, certified row by row in raptor's interop matrix (JAX on
-  Python 3.12 and newer, the releases JAX publishes), each with a guide that runs it in both directions; NumPy too, certified separately by an executable cuda-free
-  dispatch test rather than a matrix row.
+  Python 3.12 and newer, the releases JAX publishes), each with a guide that runs it in both directions. NumPy and CuPy crossings are certified rows too
+  (`NP-HOST-ALIAS`, `NP-IN-CPU-COPY`, `CP-IN-ALIAS`, `CP-OUT-ALIAS`); NumPy zero-copy is host-only.
 - **Foreseen** (same protocol, certification rows to come): TensorFlow/Keras and any other DLPack-capable library.
 
 Each guide ends with its Limits, one line each.
+
+Three ways the tools combine, each with a guide that runs it:
+
+- **Gradients through your framework.** A kernel's generated derivatives are read by `jax.grad`, `jacfwd` and
+  `vmap`, by torch `backward` and `torch.func`, and by `wp.Tape`, certified as `JX-GRAD-TRANSFORMS`, `T-GRAD-AUTOGRAD`,
+  `T-GRAD-FUNC` and `WP-GRAD-TAPE`. Write the physics once, train or optimise with the framework you already use
+  ([JAX](https://amasat01.github.io/eagle/content/interop/jax.html),
+  [PyTorch](https://amasat01.github.io/eagle/content/interop/torch.html),
+  [Warp](https://amasat01.github.io/eagle/content/interop/warp.html)).
+- **CPU deploy from a hawk-built bundle.** hawk can write a bundle with a host (CPU) kernel and its manifest; eagle loads it
+  in a C++ program with no Python and no GPU ([embedding a kernel](https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html)).
+- **Hand your framework's graph to eagle as a child.** A CUDA graph captured by torch or Warp can run as a step inside
+  an eagle graph, so eagle schedules it with the rest of the batch (see the Warp and PyTorch guides above).
 
 See [raptor's interoperability protocols](https://amasat01.github.io/raptor/content/interop_protocols.html) for the
 full, cited statement of what is certified today versus foreseen, and

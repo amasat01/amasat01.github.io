@@ -46,6 +46,11 @@
         g.style.transitionDelay = delay ? ((i % 18) * 22) + "ms" : "";
         g.style.transform = "translate(" + p[0] + "px," + p[1] + "px)";
         g.setAttribute("class", "cq-ic is-" + p[2]);
+        var gr = tool ? data.cards[g.getAttribute("data-block")].t[tool].g : null;
+        var badge = g.querySelector(".cq-g");
+        badge.setAttribute("class", gr ? "cq-g" : "cq-g is-blank");
+        badge.querySelector("text").textContent = gr ? gr.v : "";
+        g.setAttribute("data-g", gr ? gr.v : "");
       });
     }
     /* ---- the details card of one capability: opens on tap, click or focus; one at a time ---- */
@@ -67,6 +72,7 @@
         row.appendChild(el("span", "cc-tool", t));
         row.appendChild(tick(d.t[t].cpu, "CPU"));
         row.appendChild(tick(d.t[t].gpu, "GPU"));
+        if (d.t[t].g) { row.appendChild(el("span", "cm-g", d.t[t].g.v + "/5")); }
         return row;
       }
       if (tool) {
@@ -74,6 +80,10 @@
         var notes = [];
         ["cpu", "gpu"].forEach(function (k) { if (notes.indexOf(d.t[tool][k].n) < 0) { notes.push(d.t[tool][k].n); } });
         card.appendChild(el("div", "cc-s", notes.join(" ")));
+        var gr = d.t[tool].g;
+        var gl = el("div", "cc-s", gr ? "Grade " + gr.v + " of 5: " + gr.r + " " : "No grade: no source confirms one.");
+        if (gr && /^https:/.test(gr.s)) { var a = el("a", "cm-g", "Source"); a.href = gr.s; gl.appendChild(a); }
+        card.appendChild(gl);
         if (!d.t[tool].cpu.c && !d.t[tool].gpu.c) { card.appendChild(el("div", "cc-s", "Not first-class for " + tool + ".")); }
       } else {
         data.tools.forEach(function (t) { if (d.t[t].cpu.c || d.t[t].gpu.c) { card.appendChild(line(t)); } });

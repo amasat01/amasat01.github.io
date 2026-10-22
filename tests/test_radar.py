@@ -133,8 +133,8 @@ class Qualitative(unittest.TestCase):
                                                     "raptor": 5, "NumPy": 1, "Numba": 1})
         self.assertEqual(scores("arrays"), {"PyTorch": 4, "JAX": 4, "NVIDIA Warp": 4, "CuPy": 5,
                                             "raptor": 4, "NumPy": 4, "Numba": 3})
-        self.assertIn("NumPy today, not JAX", axes["arrays"]["scores"]["raptor"]["reason"])
-        self.assertEqual(scores("deploy"), {"PyTorch": 4, "JAX": 4, "NVIDIA Warp": 2, "CuPy": 1,
+        self.assertIn("CuPy, PyTorch, Warp, JAX and NumPy", axes["arrays"]["scores"]["raptor"]["reason"])
+        self.assertEqual(scores("deploy"), {"PyTorch": 4, "JAX": 4, "NVIDIA Warp": 3, "CuPy": 1,
                                             "raptor": 4, "NumPy": 1, "Numba": 2})
         self.assertEqual(scores("extensible"), {"JAX": 4, "PyTorch": 4, "raptor": 3, "Numba": 3,
                                                 "NumPy": 3, "NVIDIA Warp": 2, "CuPy": 2})
@@ -148,7 +148,7 @@ class Qualitative(unittest.TestCase):
         self.assertEqual(axes["single_thread"]["label"], "Single-thread abstraction")
         self.assertIn("5 = you write one sample and nothing else.", axes["single_thread"]["rubric"])
         self.assertEqual(scores("control"), {"NVIDIA Warp": 5, "Numba": 5, "JAX": 3, "CuPy": 3,
-                                             "PyTorch": 2, "raptor": 2, "NumPy": 1})
+                                             "PyTorch": 2, "raptor": 3, "NumPy": 1})
         for k in ("array_style", "half_precision", "control", "single_thread"):
             self.assertIn("Scores are the author's judgement.", axes[k]["rubric"])
             self.assertEqual(axes[k]["scale"], [1, 5])
