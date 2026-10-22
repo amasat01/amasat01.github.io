@@ -86,9 +86,12 @@ def clean_env(**extra):
 
 
 def prebuilt_eagle_wheel(py, directory):
-    """The raptor-eagle wheel in ``directory`` that matches the interpreter ``py``'s CPython tag."""
-    tag = subprocess.check_output([str(py), "-c", "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')"], text=True).strip()
-    found = sorted(pathlib.Path(directory).glob(f"raptor_eagle-*-{tag}-{tag}-*.whl"))
+    """The raptor-eagle wheel in ``directory`` that matches the interpreter ``py``'s CPython tag and platform."""
+    probe = "import platform, sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}', sys.platform, platform.machine())"
+    tag, system, machine = subprocess.check_output([str(py), "-c", probe], text=True).split()
+    family = "macosx" if system == "darwin" else "linux"  # the wheels are manylinux_* and macosx_*
+    found = sorted(w for w in pathlib.Path(directory).glob(f"raptor_eagle-*-{tag}-{tag}-*.whl")
+                   if family in w.name and w.name.endswith(f"_{machine}.whl"))
     if len(found) != 1:
         raise SystemExit(f"nb_hosted: --eagle-wheels {directory} holds {len(found)} raptor-eagle wheels for {tag}, need exactly one")
     return found[0]
