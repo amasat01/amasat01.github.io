@@ -141,6 +141,10 @@ def plan(nb, nb_path: pathlib.Path) -> dict:
     helpers = helper_modules()
     files = [helpers[m] for m in sorted(anywhere & set(helpers))]
     # a helper's own unconditional imports are the notebook's too
+    for rel in files:  # a helper's helpers too (the list grows while it is walked)
+        for dep in sorted(_imports((ROOT / rel).read_text(encoding="utf-8"), "all") & set(helpers)):
+            if helpers[dep] not in files:
+                files.append(helpers[dep])
     for rel in list(files):
         anywhere |= _imports((ROOT / rel).read_text(encoding="utf-8"), "top") | set(HELPER_NEEDS.get(rel, ()))
     text = "\n".join(sources)

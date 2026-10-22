@@ -16,7 +16,8 @@ them. Only rendered OUTPUT is scanned, not cell source. A stored Python
 warning (``UserWarning:`` and the like) is refused too: it is noise from the
 machine that ran the notebook, and it usually carries such a path.
 
-Finally, refuses a stored image larger than the repo's image budget: the docs show the
+Refuses a picture that is not a light/dark pair (``raptor_docs.themed_figure``: an html output of two data images, only-light and
+only-dark; a bare image output has no dark partner). Finally, refuses a stored image larger than the repo's image budget: the docs show the
 stored plots (nothing re-executes at build), so a runaway figure would bloat
 the repository.
 """
@@ -68,10 +69,39 @@ def _output_leaks(cell) -> list[str]:
     return leaks
 
 
+_DATA_IMG = re.compile(r'<img\b[^>]*\bsrc="data:image/[^"]*"[^>]*>')
+
+
+def _image_sizes(cell) -> list[int]:
+    """Bytes of every stored image of a code cell: an image output, or a ``data:`` image inside an html output."""
+    sizes = []
+    for out in cell.get("outputs", []):
+        data = out.get("data", {})
+        sizes += [len(_text_of(data[mime])) for mime in ("image/png", "image/jpeg") if mime in data]
+        if "text/html" in data:
+            sizes += [len(m.group(0)) for m in _DATA_IMG.finditer(_text_of(data["text/html"]))]
+    return sizes
+
+
 def _oversized_images(cell, budget) -> list[int]:
-    return [len(_text_of(out["data"][mime])) for out in cell.get("outputs", [])
-            for mime in ("image/png", "image/jpeg")
-            if mime in out.get("data", {}) and len(_text_of(out["data"][mime])) > budget]
+    return [size for size in _image_sizes(cell) if size > budget]
+
+
+def _unpaired_images(cell) -> list[str]:
+    """A picture a page shows in both themes is two images, ``only-light`` and ``only-dark`` (``raptor_docs.themed_figure``).
+    Names each image output that is not: a bare image output, or an html output whose data images are not in matching pairs."""
+    bad = []
+    for out in cell.get("outputs", []):
+        data = out.get("data", {})
+        if any(mime in data for mime in ("image/png", "image/jpeg")):
+            bad.append("a bare image output (use themed_figure.show)")
+        if "text/html" in data:
+            tags = _DATA_IMG.findall(_text_of(data["text/html"]))
+            light = sum('only-light' in t for t in tags)
+            dark = sum('only-dark' in t for t in tags)
+            if tags and (light != dark or light + dark != len(tags)):
+                bad.append(f"{light} only-light and {dark} only-dark images among {len(tags)}")
+    return bad
 
 
 def main(argv: list[str]) -> int:
@@ -90,6 +120,7 @@ def main(argv: list[str]) -> int:
     errored = []
     leaked = []
     heavy = []
+    unpaired = []
     for p in notebooks:
         nb = nbformat.read(p, as_version=4)
         unexecuted = [
@@ -109,6 +140,7 @@ def main(argv: list[str]) -> int:
             for pattern in _output_leaks(c):
                 leaked.append((p, i, pattern))
             heavy.extend((p, i, size) for size in _oversized_images(c, budget))
+            unpaired.extend((p, i, why) for why in _unpaired_images(c))
     for p, cells in bad:
         print(f"[nb_check_filled] UNEXECUTED {p}: code cells {cells[:6]}"
               f"{'...' if len(cells) > 6 else ''}")
@@ -119,9 +151,11 @@ def main(argv: list[str]) -> int:
     for p, i, size in heavy:
         print(f"[nb_check_filled] IMAGE OVER BUDGET {p}: code cell {i} image is {size} bytes "
               f"(budget {budget})")
+    for p, i, why in unpaired:
+        print(f"[nb_check_filled] NO DARK PARTNER {p}: code cell {i} has {why}")
     filled = len(notebooks) - len({p for p, _ in bad} | {p for p, _ in errored})
     print(f"[nb_check_filled] {filled}/{len(notebooks)} notebooks fully executed, no errors")
-    return 1 if (bad or errored or leaked or heavy) else 0
+    return 1 if (bad or errored or leaked or heavy or unpaired) else 0
 
 
 if __name__ == "__main__":

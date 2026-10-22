@@ -4,8 +4,8 @@
 filled where the tool's own documentation shows a designed way to do it. Reads the site's ``_data/capabilities.json`` through
 the site's ``tools/visuals.py`` (``Capabilities``), so it can never disagree with the site's chart.
 
-    python -m raptor_docs.capmap [--site DIR] [-o FILE]     # write (default: print)
-    python -m raptor_docs.capmap [--site DIR] -o FILE --check   # exit 1 if FILE differs from a fresh render
+    python -m raptor_docs.capmap [--site DIR] [-o FILE]     # write FILE (light) and FILE-dark (default: print the light one)
+    python -m raptor_docs.capmap [--site DIR] -o FILE --check   # exit 1 if FILE or FILE-dark differs from a fresh render
 
 The site is ``--site``, else ``$RAPTOR_SITE``, else the checkout this package sits in.
 """
@@ -17,10 +17,14 @@ import os
 import pathlib
 import sys
 
+from raptor_docs.themed_svg import LIGHT, write_pair
+
 LABEL_W, COL_W, ROW_H, HEAD_H, SQ = 250, 64, 22, 74, 14
-STYLE = (".t{font:12px sans-serif;fill:#1b2433}.h{font:600 12px sans-serif;fill:#1b2433}.on{fill:#6d4aff}"
-         ".off{fill:none;stroke:#aab4c8;stroke-width:1}.g{stroke:#e9edf5}"
-         "@media (prefers-color-scheme:dark){.t,.h{fill:#e6ebf5}.on{fill:#a99bff}.off{stroke:#5b667c}.g{stroke:#2a3347}}")
+
+
+def style(pal) -> str:
+    return (f".t{{font:12px sans-serif;fill:{pal['ink']}}}.h{{font:600 12px sans-serif;fill:{pal['ink']}}}.on{{fill:{pal['on']}}}"
+            f".off{{fill:none;stroke:{pal['off']};stroke-width:1}}.g{{stroke:{pal['grid']}}}")
 
 
 def _capabilities(site):
@@ -30,12 +34,12 @@ def _capabilities(site):
     return mod, mod.Capabilities(json.loads((site / "_data" / "capabilities.json").read_text(encoding="utf-8")))
 
 
-def render(site) -> str:
+def render(site, pal=LIGHT) -> str:
     vis, caps = _capabilities(pathlib.Path(site))
     width, height = LABEL_W + COL_W * len(caps.tools) + 40, HEAD_H + ROW_H * len(vis.BLOCKS) + 8
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" '
            f'aria-labelledby="t d"><title id="t">Capability map</title><desc id="d">Which tool has a documented way to do each block '
-           f'of work, on the CPU (left square) and the GPU (right square).</desc><style>{STYLE}</style>']
+           f'of work, on the CPU (left square) and the GPU (right square).</desc><style>{style(pal)}</style>']
     for j, tool in enumerate(caps.tools):
         x = LABEL_W + COL_W * j + COL_W // 2
         out.append(f'<text class="h" text-anchor="start" transform="translate({x} {HEAD_H - 8}) rotate(-35)">{html.escape(tool)}</text>')
@@ -57,17 +61,10 @@ def main(argv=None) -> int:
     ap.add_argument("-o", "--output")
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args(argv)
-    svg = render(args.site)
     if not args.output:
-        sys.stdout.write(svg)
-    elif args.check:
-        path = pathlib.Path(args.output)
-        if not path.is_file() or path.read_text(encoding="utf-8") != svg:
-            print(f"capmap: {args.output} is out of date", file=sys.stderr)
-            return 1
-    else:
-        pathlib.Path(args.output).write_text(svg, encoding="utf-8")
-    return 0
+        sys.stdout.write(render(args.site))
+        return 0
+    return write_pair(args.output, lambda pal: render(args.site, pal), check=args.check)
 
 
 if __name__ == "__main__":

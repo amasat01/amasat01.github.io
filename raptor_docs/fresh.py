@@ -8,7 +8,8 @@
 Each entry is a command run from the repo root (``python`` is this interpreter); ``--check`` appends ``--check`` to it, and the
 generator exits 0 fresh, 1 stale, 3 a card the docs cite is missing, 4 a tool or companion checkout missing. The site checkout
 is passed to the generators as ``$RAPTOR_SITE`` (default ``site``). Exit status: 0, else 4, 3 or 1 (worst first). A copy of a
-file this package now ships (``SHADOWS``) is stale by itself: ``--check`` names it and exits 1.
+file this package now ships (``SHADOWS``) is stale by itself, and so is a docs SVG with a colour media query or without its
+dark partner (``themed_svg.bad_svgs``): ``--check`` names it and exits 1.
 """
 import argparse
 import importlib.util
@@ -18,7 +19,7 @@ import shlex
 import subprocess
 import sys
 
-from raptor_docs import config
+from raptor_docs import config, themed_svg
 
 #: repo-relative globs of files that moved into this package; a repo that still carries one has a second copy that can drift
 SHADOWS = ("docs/_tools/nb_*.py", "docs/tools/nb_*.py", "docs/_scripts/nb_*.py", "docs/_static/raptor-tokens.css",
@@ -78,6 +79,9 @@ def main(argv=None) -> int:
     if args.check:
         for rel in shadows(root):
             print(f"::error::{rel}: a second copy of a file raptor_docs ships; delete it")
+            codes.append(1)
+        for svg, why in themed_svg.bad_svgs(root / "docs" / "_static"):
+            print(f"::error::{svg.relative_to(root).as_posix()}: {why}")
             codes.append(1)
     env = {**os.environ, "RAPTOR_SITE": str(pathlib.Path(args.site).resolve())}
     codes += [c for _g, c in run(root, cfg["fresh"], "check" if args.check else "write", env)]
