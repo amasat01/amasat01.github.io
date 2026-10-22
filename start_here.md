@@ -17,6 +17,13 @@ matplotlib (see Install below).
 ```{image} _static/figures/start_here/fit.png
 :alt: Two small plots side by side. Left: training loss on a log scale, flat and low from the first LBFGS step. Right: the fitted drag coefficient per LBFGS step, a purple line sitting right on top of the dashed grey line marking the true value.
 :width: 560px
+:class: only-light
+```
+
+```{image} _static/figures/start_here/fit-dark.png
+:alt: ""
+:width: 560px
+:class: only-dark
 ```
 
 *What you will build: a kernel you wrote, trained end to end against noisy data, in about 10 minutes.*
@@ -89,6 +96,13 @@ print(one.status, one.steps, one.r)
 ```{image} _static/figures/start_here/arc.png
 :alt: A single parabolic arc, x from 0 to about 56 metres, z rising to about 11.5 metres before falling back through zero.
 :width: 380px
+:class: only-light
+```
+
+```{image} _static/figures/start_here/arc-dark.png
+:alt: ""
+:width: 380px
+:class: only-dark
 ```
 
 **What just happened:**
@@ -123,6 +137,13 @@ print(f"{many.finished.sum():,} / {n:,} finished, {many.report.launches} launche
 ```{image} _static/figures/start_here/landings.png
 :alt: A histogram of landing ranges over 100,000 throws, peaking around 23 metres and tailing off toward 55 metres.
 :width: 380px
+:class: only-light
+```
+
+```{image} _static/figures/start_here/landings-dark.png
+:alt: ""
+:width: 380px
+:class: only-dark
 ```
 
 **What just happened:**

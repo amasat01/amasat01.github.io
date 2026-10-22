@@ -11,3 +11,5 @@ sphinx-copybutton==0.5.2
 # the raptor_docs package tests (pyproject.toml)
 nbformat==5.10.4
 nbclient==0.10.4
+# the themed_figure helper tests
+matplotlib==3.11.2

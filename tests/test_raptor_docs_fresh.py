@@ -134,5 +134,35 @@ class CapmapGenerator(unittest.TestCase):
         self.assertEqual(run(self.root, "--check")[0], 1)
 
 
+class ThemedSvgRule(unittest.TestCase):
+    """A docs SVG with a colour media query, or without its dark partner, reds and is named."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = make_repo(self._tmp.name)
+        self.static = self.root / "docs" / "_static"
+        self.static.mkdir(parents=True, exist_ok=True)
+
+    def test_media_query_missing_partner_and_brand_exemption(self):
+        (self.static / "a.svg").write_text("<svg/>")
+        (self.static / "a-dark.svg").write_text("<svg/>")
+        self.assertNotIn("a.svg", run(self.root, "--check")[1])
+        (self.static / "b.svg").write_text("<svg/>")
+        rc, out = run(self.root, "--check")
+        self.assertEqual(rc, 1)
+        self.assertIn("b.svg: has no partner b-dark.svg", out)
+        (self.static / "b-dark.svg").write_text("<svg><style>@media (prefers-color-scheme: dark){}</style></svg>")
+        rc, out = run(self.root, "--check")
+        self.assertEqual(rc, 1)
+        self.assertIn("b-dark.svg: contains prefers-color-scheme", out)
+        (self.static / "b-dark.svg").write_text("<svg/>")
+        (self.static / "brand").mkdir()
+        (self.static / "brand" / "logo.svg").write_text("<svg/>")
+        self.assertNotIn("logo.svg", run(self.root, "--check")[1])
+        (self.static / "brand" / "logo.svg").write_text("<svg>prefers-color-scheme</svg>")
+        self.assertIn("logo.svg: contains prefers-color-scheme", run(self.root, "--check")[1])
+
+
 if __name__ == "__main__":
     unittest.main()
