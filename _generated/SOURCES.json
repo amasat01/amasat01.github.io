@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-25T09:42:13Z",
+  "generated_utc": "2026-10-25T13:11:45Z",
   "sources": [
     {
       "path": "benchmarks/device_names.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "benchmarks/rk78_card/rk78_card.py",
-      "md5": "f3e32a7b1c4ea9fe6ff4b12bcd1356a5"
+      "md5": "47f837e7d0704ec8f90552b5e65b443e"
     },
     {
       "path": "benchmarks/sol_reference.json",
