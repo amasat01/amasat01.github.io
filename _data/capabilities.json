@@ -26,6 +26,7 @@
   "events": "A sample stops on its own condition and stops costing work.",
   "adaptive": "Each sample picks its own step size from an embedded error estimate.",
   "deploy": "A compiled program runs from C++ or another runtime, without Python.",
+  "hostgpu": "Host steps and GPU steps in one captured graph, replayed as a unit.",
   "diffsim": "Gradients through a whole simulation, into a training loop.",
   "datagen": "Simulated batches handed to a training framework without copies.",
   "hybrid": "A network and a physics model in one differentiable program.",
@@ -85,7 +86,7 @@
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "Generated forward and reverse derivatives, read by jax.grad, torch autograd and wp.Tape; once the rolled reverse pass (a Dispatch inside a loop body) and JAX forward mode for carried state land, no gap remains.",
+     "reason": "Generated forward and reverse derivatives, read by jax.grad, torch autograd and wp.Tape, including the rolled reverse pass (a Dispatch inside a loop body) and JAX forward mode for carried state; no gap remains.",
      "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
      "kind": "doc"
     }
@@ -123,7 +124,7 @@
     "y": 0,
     "g": {
      "g": 4,
-     "reason": "You write one step of one sample; the batch is launched for you; gap: a call builds for float32 or float64 and mixing the two is refused; per-plane widths come in 0.6.5.",
+     "reason": "You write one step of one sample, on a grid of several axes if the problem has them, with sums and scatters across lanes; the batch is launched for you; gap: a call builds for float32 or float64 and mixing the two is refused; per-plane widths are planned.",
      "source": "https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html",
      "kind": "doc"
     }
@@ -156,10 +157,10 @@
     },
     "y": null,
     "g": {
-     "g": 0,
-     "reason": "Dense algebra is left to the array libraries raptor hands arrays to.",
-     "source": "https://amasat01.github.io/where_raptor_fits.html",
-     "kind": "repo"
+     "g": 2,
+     "reason": "Batched small dense algebra per lane is written in hawk (a matrix-vector product and a quadratic form per element, checked against einsum); large products and solvers are left to the array libraries raptor hands arrays to.",
+     "source": "https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html",
+     "kind": "doc"
     }
    },
    "ensembles": {
@@ -195,7 +196,7 @@
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "Finished samples are compacted out so each launch covers only the samples still running; note: inside jit the loop is XLA's (while_loop, scan), so compaction does not apply there (XLA's design, eagle/docs/content/userguide/tutorials/18_the_eagle_batch_inside_jit.ipynb:488).",
+     "reason": "Finished samples are compacted out so each launch covers only the samples still running, in whole groups of lanes when you set group=; note: inside jit the loop is XLA's (while_loop, scan), so compaction does not apply there (XLA's design, eagle/docs/content/userguide/tutorials/18_the_eagle_batch_inside_jit.ipynb:488).",
      "source": "https://amasat01.github.io/eagle/content/modules/filtering/scan_and_compaction.html",
      "kind": "doc"
     }
@@ -242,18 +243,36 @@
     "cpu": {
      "covered": true,
      "source": "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html",
-     "note": "A compiled kernel is embedded in a C++ program and run there."
+     "note": "A compiled kernel is embedded in a C++ program and run there; hawk's c target also writes standalone MISRA C, with no Python and no eagle."
     },
     "gpu": {
      "covered": true,
      "source": "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html",
-     "note": "A compiled kernel is embedded in a C++ program and run there."
+     "note": "A compiled kernel is embedded in a C++ program and run there; hawk's c target also writes standalone MISRA C, with no Python and no eagle."
     },
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "A compiled kernel manifest is loaded into your own C++ program, on CUDA and on the CPU (eagle::cpu::PluginRegistry::load); limit: the CPU runner executes float64 only (eagle/plugin/host_registry.h:127,158-161).",
+     "reason": "A compiled kernel manifest is loaded into your own C++ program, on CUDA and on the CPU (eagle::cpu::PluginRegistry::load); hawk's c target emits standalone MISRA C (https://amasat01.github.io/hawk/content/embedded.html); limit: the CPU runner executes float64 only (eagle/plugin/host_registry.h:127,158-161).",
      "source": "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html",
+     "kind": "doc"
+    }
+   },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "On the CPU every step is a host step, so there is no mix to capture."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://amasat01.github.io/eagle/content/userguide/graph_across_devices.html",
+     "note": "Host nodes, copies and GPU kernels sit in one eagle graph, captured once and replayed."
+    },
+    "y": 1,
+    "g": {
+     "g": 4,
+     "reason": "Host nodes, copy nodes and GPU kernels sit in one graph that is captured once and replayed; gap: a host step cannot sit inside a device-decided if or while body (CUDA's limit, not ours).",
+     "source": "https://amasat01.github.io/eagle/content/userguide/graph_across_devices.html",
      "kind": "doc"
     }
    },
@@ -309,7 +328,7 @@
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "A trained network evaluated inline in a physics step, on the CPU arm and on the GPU (device 0.036 ms vs host 0.72 ms in the notebook).",
+     "reason": "A trained network evaluated inline in a physics step, on the CPU arm and on the GPU.",
      "source": "https://amasat01.github.io/hawk/content/examples/two_body_hybrid.html",
      "kind": "doc"
     }
@@ -579,6 +598,23 @@
      "g": 3,
      "reason": "Captured graphs and compiled modules are replayed from a standalone C++ program on CUDA and on the CPU device.",
      "source": "https://nvidia.github.io/warp/stable/user_guide/programming_model/cpp_cuda_workflows.html",
+     "kind": "doc"
+    }
+   },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "A Warp capture records GPU launches; a host step runs outside it."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "A Warp capture records GPU launches; a host step runs outside it."
+    },
+    "y": null,
+    "g": {
+     "g": 1,
+     "reason": "A graph capture records GPU launches; host work runs between replays, outside the graph.",
+     "source": "https://nvidia.github.io/warp/stable/user_guide/runtime.html",
      "kind": "doc"
     }
    },
@@ -900,6 +936,25 @@
      "g": 3,
      "reason": "jax.export serialises a computation as StableHLO for another process or runtime; direct C++ use is not described.",
      "source": "https://docs.jax.dev/en/latest/export/export.html",
+     "kind": "doc"
+    }
+   },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "On the CPU every step is a host step."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.jax.dev/en/latest/external-callbacks.html",
+     "note": "io_callback and pure_callback call host Python from inside a jitted program.",
+     "judgement": true
+    },
+    "y": 1,
+    "g": {
+     "g": 3,
+     "reason": "Host callbacks run inside one compiled program; gap: they are callbacks into Python, not host nodes of one captured CUDA graph (judgement).",
+     "source": "https://docs.jax.dev/en/latest/external-callbacks.html",
      "kind": "doc"
     }
    },
@@ -1238,6 +1293,23 @@
      "kind": "doc"
     }
    },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "A CUDA graph captures GPU work only; host work runs between replays."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "A CUDA graph captures GPU work only; host work runs between replays."
+    },
+    "y": null,
+    "g": {
+     "g": 1,
+     "reason": "A CUDA graph captures GPU work only; the host step runs between replays and cannot be part of the capture.",
+     "source": "https://docs.pytorch.org/docs/2.14/notes/cuda.html#cuda-graphs",
+     "kind": "doc"
+    }
+   },
    "diffsim": {
     "cpu": {
      "covered": true,
@@ -1543,6 +1615,25 @@
     },
     "y": null,
     "g": null
+   },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "On the CPU every step is a host step."
+    },
+    "gpu": {
+     "covered": true,
+     "source": "https://docs.cupy.dev/en/stable/reference/generated/cupy.cuda.Stream.html",
+     "note": "Stream capture records launches, and Stream.launch_host_func adds a host function that capture can hold.",
+     "judgement": true
+    },
+    "y": 1,
+    "g": {
+     "g": 3,
+     "reason": "Stream capture records launches and Stream.launch_host_func is capturable, so a host step can sit in the captured graph; you assemble the graph by hand (judgement).",
+     "source": "https://docs.cupy.dev/en/stable/reference/generated/cupy.cuda.Stream.html",
+     "kind": "doc"
+    }
    },
    "diffsim": {
     "cpu": {
@@ -1863,6 +1954,23 @@
      "kind": "doc"
     }
    },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "On the CPU every step is a host step."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "No CUDA graph capture API is documented."
+    },
+    "y": null,
+    "g": {
+     "g": 0,
+     "reason": "No CUDA graph capture is documented, so there is no graph to hold a host step.",
+     "source": "https://nvidia.github.io/numba-cuda/reference/kernel.html",
+     "kind": "scope"
+    }
+   },
    "diffsim": {
     "cpu": {
      "covered": false,
@@ -2173,6 +2281,23 @@
      "kind": "scope"
     }
    },
+   "hostgpu": {
+    "cpu": {
+     "covered": false,
+     "note": "Host only: there is no GPU to mix with."
+    },
+    "gpu": {
+     "covered": false,
+     "note": "Host only: there is no GPU to mix with."
+    },
+    "y": null,
+    "g": {
+     "g": 0,
+     "reason": "NumPy runs on the host only, so there is no host and GPU mix.",
+     "source": "https://numpy.org/doc/stable/",
+     "kind": "scope"
+    }
+   },
    "diffsim": {
     "cpu": {
      "covered": false,
@@ -2323,6 +2448,10 @@
   "deploy": {
    "x": 0.56,
    "why": "Running outside Python serves simulation runs and trained models alike."
+  },
+  "hostgpu": {
+   "x": 0.15,
+   "why": "Mixing a host loader or check with GPU kernels is a simulation-pipeline need."
   },
   "datagen": {
    "x": 0.56,

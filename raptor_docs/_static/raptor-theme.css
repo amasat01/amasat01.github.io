@@ -177,3 +177,30 @@ code, pre, kbd {
   font-variation-settings: var(--rpt-v-code);
   font-size: var(--rpt-code-size);
 }
+
+/* ---- light/dark picture pairs (raptor_docs.themed_svg) ----
+ * A picture is two files, name.svg with class only-light and name-dark.svg with class only-dark. The theme's own toggle
+ * (html[data-theme], which the theme sets in auto mode too) picks one; the media query is only the fallback for a page
+ * that has no data-theme at all. */
+html[data-theme="dark"] .only-light,
+html[data-theme="light"] .only-dark { display: none !important; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) .only-light { display: none !important; }
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .only-dark { display: none !important; }
+}
+
+/* ---- notebook charts (raptor_docs.themed_figure) ----
+ * One output holds two images: the light one (only-light) and the dark one (only-dark, display:none inline so a plain
+ * Jupyter page shows the light one). The dark one is shown under the dark theme; !important beats the inline style. The
+ * theme paints a panel behind every notebook-output image and html output in dark mode: not behind these, whose
+ * transparent background is drawn for the page itself. */
+.themed-figure img { max-width: 100%; height: auto; }
+html[data-theme="dark"] .themed-figure img.only-dark { display: inline !important; }
+html[data-theme="dark"] .bd-content div.cell_output .themed-figure img {
+  background-color: transparent !important; padding: 0 !important; filter: none !important;
+}
+html[data-theme="dark"] .bd-content div.cell_output .text_html:has(.themed-figure) {
+  background-color: transparent !important; padding: 0 !important;
+}

@@ -30,6 +30,7 @@ BLOCKS = (
     ("events", "Events and early exit", ("Events,", "early exit"), "thinning", "sim"),
     ("adaptive", "Adaptive ODEs, embedded pairs", ("Adaptive ODEs,", "embedded pairs"), "adaptive", "sim"),
     ("deploy", "Deployment outside Python", ("Deploy outside", "Python"), "deploy", "sim"),
+    ("hostgpu", "Host and GPU steps in one graph", ("Host and GPU", "in one graph"), "arrays", "sim"),
     ("diffsim", "Differentiable simulation into learning", ("Differentiable", "simulation"), "app-diffsim", "sim"),
     ("datagen", "Ensemble data for training", ("Ensemble data", "for training"), "app-datagen", "sim"),
     ("hybrid", "Hybrid, physics-informed models", ("Hybrid, physics-", "informed"), "app-hybrid", "ai"),

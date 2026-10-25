@@ -31,7 +31,8 @@
         },
         "raptor": {
           "score": 2,
-          "reason": "Built for per-sample kernels and ensembles; for dense tensor work it hands arrays to PyTorch or JAX zero-copy."
+          "reason": "Batched small dense algebra per lane; large products, solvers and tuned libraries go to PyTorch/JAX zero-copy.",
+          "evidence": ["https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html", "https://amasat01.github.io/hawk/content/across_lanes.html"]
         },
         "Numba": {
           "score": 3,
@@ -148,7 +149,8 @@
         },
         "raptor": {
           "score": 3,
-          "reason": "Per-sample indexing (sample_index, split_index), reads of any sample and accumulating writes across samples (all_samples); launch shape, shared memory and synchronisation stay with hawk and eagle, so compaction can adapt to uneven batches. For hand-tuned thread-level kernels, Warp or Numba is the right choice."
+          "reason": "Per-sample indexing (sample_index, split_index), reads of any sample (.at) and sums and scatters across samples (hawk.sum, hawk.scatter); launch shape, shared memory and kernel-level synchronisation stay with hawk and eagle, while graph-level ordering (forks, waits, device-side branches and loops) is yours, so compaction can adapt to uneven batches. For hand-tuned thread-level kernels, Warp or Numba is the right choice.",
+          "evidence": ["https://amasat01.github.io/hawk/content/across_lanes.html", "https://amasat01.github.io/eagle/content/modules/filtering/scan_and_compaction.html", "https://amasat01.github.io/eagle/content/userguide/graph_model.html"]
         },
         "NumPy": {
           "score": 1,
@@ -181,7 +183,8 @@
       "scores": {
         "raptor": {
           "score": 5,
-          "reason": "You write one step of one sample; hawk and eagle handle threads, launches, stopping and compaction."
+          "reason": "You write one step of one sample, on a grid of several axes if the problem has them; hawk and eagle handle threads, launches, stopping and compaction, including compaction in groups.",
+          "evidence": ["https://amasat01.github.io/hawk/content/across_lanes.html", "https://amasat01.github.io/hawk/content/vocabulary/09_heat_diffusion.html"]
         },
         "JAX": {
           "score": 4,
@@ -236,7 +239,8 @@
         },
         "raptor": {
           "score": 5,
-          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives on GPU and CPU, including through parameter-dependent branches (jump=), events and, with the 0.6.4 rolled reverse pass, a Dispatch inside a loop; second order is written jvp(vjp)."
+          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives on GPU and CPU, including through parameter-dependent branches (jump=), events and, with the rolled reverse pass, a Dispatch inside a loop and a graph builder's device branches and loops (skippable, repeat_while); second order is written jvp(vjp).",
+          "evidence": ["https://amasat01.github.io/eagle/content/userguide/autodiff.html"]
         },
         "NumPy": {
           "score": 1,
@@ -314,7 +318,8 @@
         },
         "raptor": {
           "score": 4,
-          "reason": "A compiled kernel runs from any program that can load its manifest; today eagle is the loader."
+          "reason": "A compiled kernel runs from any program that can load its manifest (eagle is the loader today), and hawk's c target writes standalone MISRA C with no Python and no eagle.",
+          "evidence": ["https://amasat01.github.io/hawk/content/embedded.html", "https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html"]
         },
         "NumPy": {
           "score": 1,
@@ -345,7 +350,8 @@
         },
         "raptor": {
           "score": 3,
-          "reason": "A plugin registry and a protocol spine; two backends today (CUDA and CPU threads), no second vendor yet."
+          "reason": "A plugin registry and a protocol spine; two execution backends today (CUDA and CPU threads) and a third hawk target, standalone C; no second vendor yet. Adding a target (a row in hawk's target table) or an execution backend (a C seam of seven required functions) is a documented path, so the extension work is written down.",
+          "evidence": ["https://amasat01.github.io/hawk/content/contributing/add_a_target.html", "https://amasat01.github.io/eagle/content/devguide/add_an_execution_backend.html"]
         },
         "Numba": {
           "score": 3,

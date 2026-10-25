@@ -85,6 +85,33 @@ def clean_env(**extra):
     return env
 
 
+def checkout_version(root):
+    """The version of the checkout at ``root``, read the way each repo's cmake/GitVersion.cmake reads it
+    (``vX.Y.Z[rcN]`` on HEAD, else the next patch as ``.devN+g<sha>``); None where it is not a git clone."""
+    r = subprocess.run(["git", "-C", str(root), "describe", "--tags", "--match", "v[0-9]*", "--long"],
+                       capture_output=True, text=True)
+    m = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)(rc\d+)?-(\d+)-g([0-9a-f]+)", r.stdout.strip())
+    if r.returncode or not m:
+        return None
+    major, minor, patch, rc, ahead, sha = m.groups()
+    if ahead == "0":
+        return f"{major}.{minor}.{patch}{rc or ''}"
+    return f"{major}.{minor}.{int(patch) + 1}.dev{ahead}+g{sha}"
+
+
+def version_env(roots):
+    """The copies in ws/ carry no .git, so each build gets its checkout's version from the environment:
+    setuptools-scm's per-distribution pretend variable, and ``<REPO>_VERSION`` for cmake/GitVersion.cmake."""
+    dists = {"aether": "AETHER_DSC", "raptor": "RAPTOR_CORE", "eagle": "RAPTOR_EAGLE", "hawk": "RAPTOR_HAWK"}
+    env = {}
+    for repo, dist in dists.items():
+        version = checkout_version(roots[repo]) if repo in roots else None
+        if version:
+            env[f"SETUPTOOLS_SCM_PRETEND_VERSION_FOR_{dist}"] = version
+            env[f"{repo.upper()}_VERSION"] = version
+    return env
+
+
 def prebuilt_eagle_wheel(py, directory):
     """The raptor-eagle wheel in ``directory`` that matches the interpreter ``py``'s CPython tag and platform."""
     probe = "import platform, sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}', sys.platform, platform.machine())"
@@ -116,9 +143,9 @@ def build_wheels(py, uv, roots, work, rebuild, gpu=None, eagle_wheels=None):
     sh([uv, "venv", "--seed", "--python", py, builder])
     bpy = builder / "bin" / "python"
     sh([uv, "pip", "install", "--python", bpy, "build", "scikit-build-core>=0.10", "nanobind>=3.1,<4", "ninja", "cmake",
-        "setuptools>=61", "wheel", "cuda-bindings>=12.6,<13", "nvidia-cuda-nvrtc-cu12>=12.6,<13",
+        "setuptools>=61", "setuptools-scm>=8", "wheel", "cuda-bindings>=12.6,<13", "nvidia-cuda-nvrtc-cu12>=12.6,<13",
         "nvidia-cuda-cccl-cu12>=12.6,<13"])
-    env = clean_env(PATH=f"{builder / 'bin'}:{os.environ['PATH']}", CMAKE_BUILD_PARALLEL_LEVEL=4)
+    env = clean_env(PATH=f"{builder / 'bin'}:{os.environ['PATH']}", CMAKE_BUILD_PARALLEL_LEVEL=4, **version_env(roots))
     # aether-dsc: seal this checkout's headers (the NVRTC-clean gate runs; no GPU needed), then wheel it
     print("[nb_hosted] sealing and building aether-dsc", flush=True)
     sh([bpy, "-m", "aether_dsc.seal"], env={**env, "PYTHONPATH": str(ws / "aether" / "dsc")}, cwd=ws / "aether" / "dsc")

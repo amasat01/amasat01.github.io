@@ -52,10 +52,17 @@ class Check(unittest.TestCase):
         self.assertIn("LEAKED OUTPUT", self.check(outputs=[stream("UserWarning: hmm\n")])[1])
 
     def test_image_over_the_toml_budget_is_refused(self):
-        png = {"output_type": "display_data", "metadata": {}, "data": {"image/png": "A" * 1001}}
-        self.assertIn("IMAGE OVER BUDGET", self.check(outputs=[png])[1])
-        png["data"]["image/png"] = "A" * 1000
-        self.assertEqual(self.check(outputs=[png])[0], 0)
+        def pair(n):
+            tag = '<img class="only-%s" src="data:image/png;base64,' + "A" * n + '">'
+            return {"output_type": "display_data", "metadata": {}, "data": {"text/html": tag % "light" + tag % "dark"}}
+        self.assertIn("IMAGE OVER BUDGET", self.check(outputs=[pair(1001)])[1])
+        self.assertEqual(self.check(outputs=[pair(900)])[0], 0)
+
+    def test_a_bare_image_output_has_no_dark_partner(self):
+        png = {"output_type": "display_data", "metadata": {}, "data": {"image/png": "A" * 10}}
+        rc, text = self.check(outputs=[png])
+        self.assertEqual(rc, 1)
+        self.assertIn("NO DARK PARTNER", text)
 
 
 class Discovery(unittest.TestCase):
