@@ -42,6 +42,50 @@
 <script>RaptorThread.mount(document.getElementById("thread"), { desktopSamples: 150, phoneSamples: 60, seed: 20261001 });</script>
 ```
 
+(story)=
+## Versatile, lean, performant
+
+Three words first. A **sample** is one independent simulation, or one element of work. A **lane** is one run of the
+kernel body; lanes can form a grid of several axes, as the cells of a heat stencil that read their neighbours. A
+**card** is a measured performance record for one device, published and linked, and every number below comes from one.
+
+**Versatile.** One kernel, many fields and devices. You write one step once, in Python, and it runs on CPU threads or
+a GPU. Lanes can sit in a grid (a mesh, a plate of cells, a batch of small matrices), add up across lanes or scatter
+into shared bins, and host steps and GPU steps can sit in one graph. The [gallery](gallery.md) shows five fields.
+
+**Lean** means two things. *Small installs*: the C++ underneath is header-only, so there is nothing extra to link.
+*Low memory*: a million samples fit in the memory shown in the third card below. Features you don't use cost nothing:
+your existing kernels compile to the same code and launch just as fast, and tests check both against the previous
+release. One kernel serves the CPU and the GPU, so there is no second program to keep.
+
+**Performant.** The cards below name their device. The headline speedups are for samples that finish at different
+times. When every sample runs the same steps there is nothing to reclaim, and the fastest hand-written per-thread
+kernel ties; the line under the cards says so.
+
+```{include} _generated/hero_strip.md
+```
+
+**Where it ties, and what that means:**
+
+```{include} _generated/honest_box.md
+```
+
+### Good for, and hands off to others
+
+- **Good for:** many independent per-element updates, or per-element updates coupled on a grid; ensembles whose
+  samples stop early; stencils; finite-element assembly; binning; graphs that mix host steps and GPU steps.
+- **Hands off:** large dense tensor work and deep-learning training go to PyTorch or JAX, with arrays crossing in
+  both directions without a copy. Sparse direct solvers are not covered.
+- **Not shown in the docs yet:** runs across several GPUs or several MPI ranks. The cards and tutorials are for one
+  device in one process.
+
+### The four libraries, in one line each
+
+- **hawk**: write the kernel for one sample, in Python.
+- **eagle**: launch it, compose graphs and loops, and drop finished samples.
+- **aether**: the C++ maths underneath (arrays and numerics that run the same on GPU or CPU threads).
+- **raptor**: the shared contracts (manifests, schemas and the certification matrix) that let the libraries, and your own code, plug into each other.
+
 (how-it-compares)=
 ## How it compares
 
@@ -104,9 +148,9 @@ print(result.status, result.steps, result.x[:3])
 
 Pass the kernel's arguments as you would call it; give an array where each sample has its own value.
 
-eagle ran the whole step loop on the GPU, choosing the launch for the batch size, so one call did all the launching.
+eagle ran the whole step loop on the GPU. It chooses how to launch from the batch size: one launch that runs every step, a set of persistent workers that pick up samples as they free up, or launches of a few steps each, whichever it times as faster. One call did all the launching.
 
-Samples that finished were dropped from the next launch, so the batch shrank as it ran.
+Samples that finished were dropped from the next launch: eagle keeps an active set, the list of samples still running, and each launch covers only that list, so the batch shrank as it ran. The card measures what this saves and where it does not pay.
 
 Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
 :::
@@ -168,6 +212,7 @@ for any use, commercial or not, with attribution. See each repository's own `LIC
 :hidden:
 
 start_here
+gallery
 where_raptor_fits
 compare
 ```

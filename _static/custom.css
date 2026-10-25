@@ -527,3 +527,12 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
   .cq-wide-box { display: none; }
   .cq-narrow-box { display: block; }
 }
+
+/* The domain gallery (gallery.md): one card per field; light/dark image pairs swap with the theme's own classes. */
+.rpt-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; margin: 24px 0 32px; }
+.rpt-card { margin: 0; background: var(--rpt-panel); border: 1px solid var(--rpt-border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+.rpt-card img { display: block; width: 100%; height: auto; background: var(--rpt-surface); }
+.rpt-card figcaption { padding: 14px 16px 16px; }
+.rpt-card h3 { font-size: var(--s1); margin: 0 0 6px; color: var(--rpt-ink); }
+.rpt-card p { margin: 0 0 10px; font-size: 15px; line-height: 1.5; color: var(--rpt-ink-secondary); }
+.rpt-card .links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: 14px; }

@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-21T16:45:54Z",
+  "generated_utc": "2026-10-25T09:42:13Z",
   "sources": [
     {
       "path": "benchmarks/device_names.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "benchmarks/rk78_card/rk78_card.py",
-      "md5": "47f837e7d0704ec8f90552b5e65b443e"
+      "md5": "f3e32a7b1c4ea9fe6ff4b12bcd1356a5"
     },
     {
       "path": "benchmarks/sol_reference.json",
@@ -97,11 +97,11 @@
   "site_sources": [
     {
       "path": "_data/capabilities.json",
-      "md5": "ac191a96c2e47781fd3fe7a338f3970d"
+      "md5": "419cd53673d5f4a501f6017eb93e7a6b"
     },
     {
       "path": "_data/radar_qualitative.json",
-      "md5": "01db35506330d78ed4197d182329d269"
+      "md5": "57efff8f5a616dbb3d84fbfe40b1f2ad"
     }
   ],
   "uneven_efficiency": {
