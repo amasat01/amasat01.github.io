@@ -116,7 +116,7 @@ def build_wheels(py, uv, roots, work, rebuild, gpu=None, eagle_wheels=None):
     sh([uv, "venv", "--seed", "--python", py, builder])
     bpy = builder / "bin" / "python"
     sh([uv, "pip", "install", "--python", bpy, "build", "scikit-build-core>=0.10", "nanobind>=3.1,<4", "ninja", "cmake",
-        "setuptools>=61", "wheel", "cuda-bindings>=12.6,<13", "nvidia-cuda-nvrtc-cu12>=12.6,<13",
+        "setuptools>=61", "setuptools-scm>=8", "wheel", "cuda-bindings>=12.6,<13", "nvidia-cuda-nvrtc-cu12>=12.6,<13",
         "nvidia-cuda-cccl-cu12>=12.6,<13"])
     env = clean_env(PATH=f"{builder / 'bin'}:{os.environ['PATH']}", CMAKE_BUILD_PARALLEL_LEVEL=4)
     # aether-dsc: seal this checkout's headers (the NVRTC-clean gate runs; no GPU needed), then wheel it
