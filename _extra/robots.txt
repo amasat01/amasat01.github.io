@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://amasat01.github.io/sitemap.xml
+Sitemap: https://amasat01.github.io/hawk/sitemap.xml
+Sitemap: https://amasat01.github.io/eagle/sitemap.xml
+Sitemap: https://amasat01.github.io/aether/sitemap.xml
+Sitemap: https://amasat01.github.io/raptor/sitemap.xml

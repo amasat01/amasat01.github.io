@@ -21,10 +21,10 @@ what it is not, and the same task in five tools, side by side.
 4. **Works with the code you already have.** Arrays cross without copies through DLPack (a standard, framework-neutral
    way for one library to hand another an array without copying it), and a compiled kernel
    deploys into any program that can load its [manifest](https://amasat01.github.io/raptor/content/glossary.html) (the family's shared words are in one glossary).
-   Both directions work: a hawk kernel runs inside your [JAX](https://amasat01.github.io/eagle/content/interop/jax.html),
-   [PyTorch](https://amasat01.github.io/eagle/content/interop/torch.html),
-   [Warp](https://amasat01.github.io/eagle/content/interop/warp.html) or
-   [CuPy and NumPy](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html) program, on CPU and GPU, and your code
+   Both directions work: a hawk kernel runs inside your [JAX](https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html),
+   [PyTorch](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html),
+   [Warp](https://amasat01.github.io/eagle/content/interop/use_eagle_with_warp.html) or
+   [CuPy and NumPy](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html) program, on CPU and GPU, and your code
    runs as a step inside an eagle batch.
 
 ## The shape of it
@@ -53,8 +53,7 @@ eagle and hawk.*
 
 aether lays out arrays and provides the device-safe vector-algebra vocabulary; eagle launches and captures what
 runs on top of it; raptor is the dependency-free foundation that defines the manifest and protocol contracts eagle and
-hawk both build to without depending on each other; hawk authors and compiles the kernels eagle deploys. A neural
-runtime built on this family is in development and not yet public.
+hawk both build to without depending on each other; hawk authors and compiles the kernels eagle deploys.
 
 ## Why it matters: keeping the GPU busy
 
@@ -185,20 +184,20 @@ both directions, with writes seen in the order they were issued — certified by
 means). A side-by-side
 notebook — the same per-sample problem, with early termination, written in both and executed on the GPU, with the
 two results checked to agree — is
-[`04_hawk_next_to_warp`](https://amasat01.github.io/hawk/content/examples/04_hawk_next_to_warp.html).
+[`nvidia_warp_side_by_side`](https://amasat01.github.io/hawk/content/examples/nvidia_warp_side_by_side.html).
 
 ## When another tool is the better choice
 
 | Tool | Choose it when… | Use it with RAPTOR by… |
 |---|---|---|
-| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy on the host (DLPack / array interface; a GPU run copies them in); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
-| **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream ([guide](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html)) |
-| **PyTorch** | you train neural networks or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/torch.html)) |
-| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan` (row `JX-GRAD-TRANSFORMS`; the CPU leg is certified, the GPU leg awaits a run on a GPU build of JAX), on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/jax.html)) |
+| **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy on the host (DLPack / array interface; a GPU run copies them in); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html)) |
+| **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html)) |
+| **PyTorch** | you train neural networks or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html)) |
+| **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan` (row `JX-GRAD-TRANSFORMS`; the CPU leg is certified, the GPU leg awaits a run on a GPU build of JAX), on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html)) |
 | **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (not among the certified crossings today) |
 | **Numba** | you want to JIT (just-in-time compile — turn a Python function into machine code the first time it runs) ordinary Python loops on the CPU, or write CUDA kernels in Python's CUDA dialect | either side can consume the other's arrays |
 | **Triton** | you are writing high-performance dense GPU operators, especially for machine learning | composing at the array level |
-| **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways, a kernel on your `wp.Tape` and inside your CUDA graph, and your Warp kernels as steps inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/warp.html)); see {ref}`hawk-next-to-warp` for what each makes easier |
+| **Warp** | you want differentiable simulation kernels from Python for graphics, robotics or physics, with its rich built-in geometry and simulation library; it already offers one source for CPU and CUDA, reverse-mode kernel autodiff, CUDA-graph capture and DLPack | passing `wp.array`s zero-copy both ways, a kernel on your `wp.Tape` and inside your CUDA graph, and your Warp kernels as steps inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_warp.html)); see {ref}`hawk-next-to-warp` for what each makes easier |
 
 We have not benchmarked against Triton yet. Triton is built for tiled operators over dense tensors, while raptor targets many independent samples that each stop at their own step, the job every tool on our performance cards also does. A measured comparison with Triton is planned and will land shortly.
 
@@ -219,9 +218,9 @@ Three ways the tools combine, each with a guide that runs it:
 - **Gradients through your framework.** A kernel's generated derivatives are read by `jax.grad`, `jacfwd` and
   `vmap`, by torch `backward` and `torch.func`, and by `wp.Tape`, certified as `JX-GRAD-TRANSFORMS`, `T-GRAD-AUTOGRAD`,
   `T-GRAD-FUNC` and `WP-GRAD-TAPE`. Write the physics once, train or optimise with the framework you already use
-  ([JAX](https://amasat01.github.io/eagle/content/interop/jax.html),
-  [PyTorch](https://amasat01.github.io/eagle/content/interop/torch.html),
-  [Warp](https://amasat01.github.io/eagle/content/interop/warp.html)).
+  ([JAX](https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html),
+  [PyTorch](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html),
+  [Warp](https://amasat01.github.io/eagle/content/interop/use_eagle_with_warp.html)).
 - **CPU deploy from a hawk-built bundle.** hawk can write a bundle with a host (CPU) kernel and its manifest; eagle loads it
   in a C++ program with no Python and no GPU ([embedding a kernel](https://amasat01.github.io/eagle/content/userguide/cpp/c4_embed_a_kernel.html)).
 - **Hand your framework's graph to eagle as a child.** A CUDA graph captured by torch or Warp can run as a step inside
@@ -247,3 +246,28 @@ page above.
 
 ```{include} _generated/same_task_full.md
 ```
+
+## How the family fits together
+
+**Four libraries, one direction of dependency.** aether lays out arrays, eagle launches and replays kernels, hawk writes and compiles them, and raptor holds the shared contracts. Dependencies point one way; raptor never imports the others.
+
+### What crosses between them
+
+**Files.** hawk compiles a kernel and writes a manifest and a sidecar next to it; eagle reads them and launches the kernel. Neither imports the other for this: both follow raptor's schema.
+
+**Buffers.** Arrays cross by DLPack, the standard way for one library to hand another an array without copying it. That is how a kernel runs inside a JAX, PyTorch, Warp or CuPy program, and how your code runs as a step in an eagle batch.
+
+### Where each question is answered
+
+| You want to know | Read | Repository |
+|---|---|---|
+| How to add a native math function | [Add a native function](https://amasat01.github.io/hawk/content/contributing/add_a_native_function.html) | hawk |
+| How a graph is recorded, instantiated and replayed | [Capture and replay](https://amasat01.github.io/eagle/content/devguide/graph_capture_replay.html) | eagle |
+| How eagle is built, tested and organised | [Developer guide](https://amasat01.github.io/eagle/content/devguide/dev_guide.html) | eagle |
+| What the manifest and sidecar contain | [Plugin schema](https://amasat01.github.io/raptor/content/devguide/plugin_schema.html) | raptor |
+| What each contract pins, and which test | [Concepts](https://amasat01.github.io/raptor/content/concepts.html) | raptor |
+| How an interop crossing is certified | [Contributing a certification row](https://amasat01.github.io/raptor/content/devguide/contributing_a_certification_row.html) | raptor |
+
+<!-- add: hawk contributing chapters once they land -->
+
+To build all four from source, see [Building from source](build_from_source.md). To contribute, start at the repository's own Contributing page: [eagle](https://amasat01.github.io/eagle/content/contributing.html), [hawk](https://amasat01.github.io/hawk/content/contributing.html), [raptor](https://amasat01.github.io/raptor/content/contributing.html) or [aether](https://amasat01.github.io/aether/).

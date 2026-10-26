@@ -1783,8 +1783,9 @@ def _stamp_html(stamp):
     m = re.search(r"script [0-9a-f]+", str(stamp))
     if not href or not m:
         return text
+    # the card is pinned to the release it was measured on, so the link says which release that is
     return text.replace(m.group(0), f'<a href="{html.escape(href, quote=True)}" target="_blank" '
-                                    f'rel="noopener">{m.group(0)}</a>')
+                                    f'rel="noopener">{EAGLE_CARD_TAG.lstrip("v")} card, {m.group(0)}</a>')
 
 
 def _kernel_ver(cuda_int):
@@ -2270,7 +2271,7 @@ def card_date_phrase(pool, card):
 def adaptive_host_note(pool, card):
     """One short line under the adaptive-ODE list: one host, the CPU arm's threads, PyTorch's fastest arm."""
     soft, method = card.get("software") or {}, card.get("method") or {}
-    bits = [f"All arms ran in one host" + (f" ({soft['cpu']})" if soft.get("cpu") else "") + "."]
+    bits = ["All arms ran in one host" + (f" ({soft['cpu']})" if soft.get("cpu") else "") + "."]
     threads = method.get("cpu_threads") or soft.get("omp_num_threads")
     if threads:
         bits.append(f"The CPU arm used {threads} threads.")

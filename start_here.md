@@ -5,9 +5,9 @@ sample, run it for a million, get its derivatives for free, then hand it to
 PyTorch to learn the drag coefficient from noisy landings.
 
 Not on PyTorch? The same kernel drops into your
-[JAX](https://amasat01.github.io/eagle/content/interop/jax.html) (`jit`, `grad`, `vmap`, CPU and GPU),
-[Warp](https://amasat01.github.io/eagle/content/interop/warp.html) or
-[CuPy and NumPy](https://amasat01.github.io/eagle/content/interop/cupy_numpy.html) program as one changed line, and your
+[JAX](https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html) (`jit`, `grad`, `vmap`, CPU and GPU),
+[Warp](https://amasat01.github.io/eagle/content/interop/use_eagle_with_warp.html) or
+[CuPy and NumPy](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html) program as one changed line, and your
 own code can run as a step inside an eagle batch.
 
 **Time:** about 10 minutes (a 3-minute path: steps 1 and 2 only) · **Runs on:** CPU (GPU: the
@@ -204,7 +204,7 @@ With CUDA tensors the same `step` runs on the GPU, on torch's current stream, wi
 - A terminated sample gets exactly zero gradient — it never corrects a
   later step.
 
-**Limits:** a `hawk.raw_device` block can't be differentiated, and `torch.func.vmap` over a batch of `Param` values costs one launch per entry; the [PyTorch guide](https://amasat01.github.io/eagle/content/interop/torch.html) lists the rest.
+**Limits:** a `hawk.raw_device` block can't be differentiated, and `torch.func.vmap` over a batch of `Param` values costs one launch per entry; the [PyTorch guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html) lists the rest.
 
 ## 4. Hand it to PyTorch
 

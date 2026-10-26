@@ -44,7 +44,7 @@ larger one. The pictures here are from those notebooks; nothing on this page is 
   <img class="only-light" src="_static/gallery/monte_carlo_light.gif" alt="Projectile paths ending one by one, with a count of the paths still running falling beside them, animated">
   <img class="only-dark" src="_static/gallery/monte_carlo_dark.gif" alt="" aria-hidden="true">
   <figcaption>
-    <h3>Monte Carlo trajectories</h3>
+    <h3>Monte Carlo</h3>
     <p>An ensemble of projectiles, each stopping at its own impact; finished ones leave the launch.</p>
     <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/12_monte_carlo_ensemble.html">Write the kernel</a>
     <a href="https://amasat01.github.io/eagle/content/userguide/tutorials/21_monte_carlo_early_termination.html">Compose the flow</a></p>

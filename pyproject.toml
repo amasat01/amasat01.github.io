@@ -17,3 +17,15 @@ include-package-data = true
 [tool.setuptools.package-data]
 raptor_docs = ["_static/*.css", "_static/fonts/*"]
 "raptor_docs.nb" = ["hosted_env/*"]
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["*.ipynb"]
+
+# a dev tool run under the docs interpreter, newer than the package floor
+[tool.ruff.per-file-target-version]
+"tools/generate_what_you_write_svg.py" = "py312"
+
+[tool.ruff.lint]
+select = ["F"]
+ignore = ["F841"]

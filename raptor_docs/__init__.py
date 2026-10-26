@@ -7,7 +7,7 @@ Each repo keeps one data file, ``docs/raptor_docs.toml``; ``config()`` reads it.
 import pathlib
 import tomllib
 
-DEFAULTS = {"repo": "", "helper_dirs": [], "helper_needs": {}, "preinstalled": ["numpy", "IPython"], "image_budget": 80_000,
+DEFAULTS = {"repo": "", "helper_dirs": [], "helper_needs": {}, "preinstalled": ["numpy", "IPython"], "image_budget": 500_000,
             "nb_roots": ["docs/content"], "jax_floor": "", "fresh": []}
 
 

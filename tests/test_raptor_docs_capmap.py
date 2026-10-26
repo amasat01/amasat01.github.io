@@ -56,10 +56,12 @@ class Capmap(unittest.TestCase):
             out = f"{tmp}/m.svg"
             self.assertEqual(capmap.main(["--site", str(SITE_ROOT), "-o", out]), 0)
             self.assertEqual(capmap.main(["--site", str(SITE_ROOT), "-o", out, "--check"]), 0)
-            open(out, "a").write(" ")
+            with open(out, "a") as f:
+                f.write(" ")
             self.assertEqual(capmap.main(["--site", str(SITE_ROOT), "-o", out, "--check"]), 1)
             capmap.main(["--site", str(SITE_ROOT), "-o", out])
-            open(f"{tmp}/m-dark.svg", "a").write(" ")  # the dark half is checked too
+            with open(f"{tmp}/m-dark.svg", "a") as f:  # the dark half is checked too
+                f.write(" ")
             self.assertEqual(capmap.main(["--site", str(SITE_ROOT), "-o", out, "--check"]), 1)
 
 
