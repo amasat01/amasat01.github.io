@@ -3,7 +3,7 @@
 ```{raw} html
 <header class="rpt-bar">
   <a class="rpt-brand" href="#"><img src="_static/brand/family_raptor.svg" alt=""><span>RAPTOR</span></a>
-  <nav aria-label="Main"><a href="start_here.html">Start here</a><details class="rpt-docs"><summary>Docs</summary><div class="rpt-docs-list"><a href="https://amasat01.github.io/eagle/">eagle<small>launch, graphs, compaction</small></a><a href="https://amasat01.github.io/hawk/">hawk<small>write the kernel</small></a><a href="https://amasat01.github.io/raptor/">raptor<small>the shared contracts</small></a><a href="https://amasat01.github.io/aether/">aether<small>the C++ underneath</small></a></div></details><a href="compare.html">Compare</a><a href="https://github.com/amasat01">GitHub</a>
+  <nav aria-label="Main"><a href="start_here.html">Start here</a><details class="rpt-docs"><summary>Docs</summary><div class="rpt-docs-list"><a href="https://amasat01.github.io/eagle/">eagle<small>launch, graphs, compaction</small></a><a class="rpt-sub" href="https://amasat01.github.io/eagle/content/userguide/tutorials_python.html">eagle Tutorials</a><a class="rpt-sub" href="https://amasat01.github.io/eagle/content/userguide/howto.html">eagle How-to guides</a><a class="rpt-sub" href="https://amasat01.github.io/eagle/content/performance.html">eagle Performance</a><a href="https://amasat01.github.io/hawk/">hawk<small>write the kernel</small></a><a class="rpt-sub" href="https://amasat01.github.io/hawk/content/tutorials.html">hawk Tutorials</a><a class="rpt-sub" href="https://amasat01.github.io/hawk/content/examples.html">hawk How-to guides</a><a class="rpt-sub" href="https://amasat01.github.io/hawk/content/domains.html">hawk Domains</a><a href="https://amasat01.github.io/raptor/">raptor<small>the shared contracts</small></a><a class="rpt-sub" href="https://amasat01.github.io/raptor/content/tutorials.html">raptor Tutorials</a><a class="rpt-sub" href="https://amasat01.github.io/raptor/content/howto.html">raptor How-to guides</a><a href="https://amasat01.github.io/aether/">aether<small>the C++ underneath</small></a><a class="rpt-sub" href="https://amasat01.github.io/aether/content/tutorials.html">aether Tutorials</a><a class="rpt-sub" href="https://amasat01.github.io/aether/content/examples.html">aether How-to guides</a></div></details><a href="compare.html">Compare</a><a href="https://github.com/amasat01">GitHub</a>
   <script>
   document.write(`
     <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button rpt-theme-toggle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -42,49 +42,104 @@
 <script>RaptorThread.mount(document.getElementById("thread"), { desktopSamples: 150, phoneSamples: 60, seed: 20261001 });</script>
 ```
 
+```{raw} html
+<p class="rpt-why"><b>Let mathematics reveal the structure of physics. Let modern computing carry the computational burden.</b> <a href="why.html">Why RAPTOR is built this way</a></p>
+```
+
 (story)=
 ## Versatile, lean, performant
 
-Three words first. A **sample** is one independent simulation, or one element of work. A **lane** is one run of the
-kernel body; lanes can form a grid of several axes, as the cells of a heat stencil that read their neighbours. A
-**card** is a measured performance record for one device, published and linked, and every number below comes from one.
+```{raw} html
+<ol class="rpt-words" aria-label="Three words used on this page">
+  <li>
+    <svg viewBox="0 0 96 64" role="img" aria-label="One dot"><circle cx="48" cy="32" r="9" class="f-raptor"/></svg>
+    <b>sample</b><span>one independent simulation</span>
+  </li>
+  <li>
+    <svg viewBox="0 0 96 64" role="img" aria-label="A grid of cells, one dot in each"><g class="s-muted"><rect x="18" y="8" width="60" height="48" rx="3"/><path d="M38 8v48M58 8v48M18 24h60M18 40h60"/></g><g class="f-raptor"><circle cx="28" cy="16" r="3.5"/><circle cx="48" cy="16" r="3.5"/><circle cx="68" cy="16" r="3.5"/><circle cx="28" cy="32" r="3.5"/><circle cx="48" cy="32" r="3.5"/><circle cx="68" cy="32" r="3.5"/><circle cx="28" cy="48" r="3.5"/><circle cx="48" cy="48" r="3.5"/><circle cx="68" cy="48" r="3.5"/></g></svg>
+    <b>lane</b><span>one run of the kernel body, on a line or a grid</span>
+  </li>
+  <li>
+    <svg viewBox="0 0 96 64" role="img" aria-label="A card with a small bar chart"><rect x="22" y="6" width="52" height="52" rx="6" class="s-muted card-bg"/><g class="f-raptor"><rect x="31" y="34" width="8" height="16"/><rect x="44" y="22" width="8" height="28"/><rect x="57" y="14" width="8" height="36"/></g></svg>
+    <b>card</b><span>a measured record for one device</span>
+  </li>
+</ol>
+```
 
-**Versatile.** One kernel, many fields and devices. You write one step once, in Python, and it runs on CPU threads or
-a GPU. Lanes can sit in a grid (a mesh, a plate of cells, a batch of small matrices), add up across lanes or scatter
-into shared bins, and host steps and GPU steps can sit in one graph. The [gallery](gallery.md) shows five fields.
+### Versatile
 
-**Lean** means two things. *Small installs*: the C++ underneath is header-only, so there is nothing extra to link.
-*Low memory*: a million samples fit in the memory shown in the third card below. Features you don't use cost nothing:
-your existing kernels compile to the same code and launch just as fast, and tests check both against the previous
-release. One kernel serves the CPU and the GPU, so there is no second program to keep.
+```{raw} html
+<p class="rpt-line">One kernel, many fields. Pick one to see a worked case, on a CPU and on a GPU.</p>
+<div class="rpt-domains">
+  <a href="https://amasat01.github.io/hawk/content/domains.html#mechanics-and-fluids"><svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="16" rx="13" ry="7" class="s-ink" transform="rotate(-25 16 16)"/><circle cx="16" cy="16" r="3" class="f-raptor"/><circle cx="26" cy="10" r="2" class="f-ink"/></svg><b>Mechanics and fluids</b><span>orbits, heat, water, metal</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#particles-and-radiation"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26C10 24 12 8 18 8s6 14 10 16" class="s-ink" fill="none"/><circle cx="8" cy="22" r="2" class="f-raptor"/><circle cx="18" cy="8" r="2" class="f-raptor"/><circle cx="26" cy="22" r="2" class="f-raptor"/></svg><b>Particles and radiation</b><span>bins, histories, tracks</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#reactions-and-life-sciences"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M13 4h6M14 4v9L7 26a2 2 0 0 0 2 3h14a2 2 0 0 0 2-3l-7-13V4" class="s-ink" fill="none"/><circle cx="14" cy="23" r="1.8" class="f-raptor"/><circle cx="19" cy="20" r="1.4" class="f-raptor"/></svg><b>Reactions and life sciences</b><span>reactors, enzymes, epidemics</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#energy-finance-and-control"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M18 3L7 18h8l-2 11 11-15h-8z" class="s-ink f-raptor-soft"/></svg><b>Energy, finance and control</b><span>grids, options, servos</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#signals-and-data"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 16c3-12 6-12 9 0s6 12 9 0 5-8 10-4" class="s-raptor" fill="none"/><path d="M2 16h28" class="s-muted" fill="none"/></svg><b>Signals and data</b><span>small matrices, filters</span></a>
+</div>
+<ul class="rpt-chips" aria-label="Also built in">
+  <li>per-lane linear algebra</li><li>broadcasting</li><li>grids</li><li>keyed sums and scatters</li><li>derivatives through loops and branches</li><li>embedded C</li><li>graphs mixing host and GPU steps</li>
+</ul>
+<a class="rpt-thumbs" href="gallery.html" aria-label="The gallery: five fields in pictures">
+  <span><img class="only-light" src="_static/figures/landing/fem_light.png" alt="A triangle mesh shaded by a source field" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fem_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/heat_light.png" alt="A plate with heat spreading from a hot patch" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/heat_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/fluids_light.png" alt="Waves on a shallow pool" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fluids_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/monte_carlo_light.png" alt="Projectile paths ending one by one" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/monte_carlo_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/binning_light.png" alt="Histograms of particle count and mass per bin" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/binning_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <em>See the gallery</em>
+</a>
+```
 
-**Performant.** The cards below name their device. The headline speedups are for samples that finish at different
-times. When every sample runs the same steps there is nothing to reclaim, and the fastest hand-written per-thread
-kernel ties; the line under the cards says so.
+### Lean
+
+```{raw} html
+<div class="rpt-lean">
+  <div><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 12l11-7 11 7v10l-11 7-11-7z" class="s-raptor" fill="none"/><path d="M5 12l11 7 11-7M16 19v10" class="s-muted" fill="none"/></svg><b>Header-only C++</b><span>Nothing extra to link.</span></div>
+  <div><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="12" width="24" height="8" rx="2" class="s-ink" fill="none"/><rect x="6" y="14" width="9" height="4" class="f-raptor"/></svg><b>Low memory</b><span>A million samples sit close to the bare minimum state (third card below).</span></div>
+  <div><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="s-raptor" fill="none"/><path d="M10 16.5l4 4 8-9" class="s-ink" fill="none"/></svg><b>Unused features cost nothing</b><span>Same code, same launch speed; tests check it against the previous release.</span></div>
+</div>
+```
+
+### Performant
 
 ```{include} _generated/hero_strip.md
 ```
 
-**Where it ties, and what that means:**
+**[Where it ties](compare.md):**
 
 ```{include} _generated/honest_box.md
 ```
 
-### Good for, and hands off to others
-
-- **Good for:** many independent per-element updates, or per-element updates coupled on a grid; ensembles whose
-  samples stop early; stencils; finite-element assembly; binning; graphs that mix host steps and GPU steps.
-- **Hands off:** large dense tensor work and deep-learning training go to PyTorch or JAX, with arrays crossing in
-  both directions without a copy. Sparse direct solvers are not covered.
-- **Not shown in the docs yet:** runs across several GPUs or several MPI ranks. The cards and tutorials are for one
-  device in one process.
-
-### The four libraries, in one line each
-
-- **hawk**: write the kernel for one sample, in Python.
-- **eagle**: launch it, compose graphs and loops, and drop finished samples.
-- **aether**: the C++ maths underneath (arrays and numerics that run the same on GPU or CPU threads).
-- **raptor**: the shared contracts (manifests, schemas and the certification matrix) that let the libraries, and your own code, plug into each other.
+```{raw} html
+<div class="rpt-fit">
+  <div class="rpt-good">
+    <h4>Good for</h4>
+    <ul>
+      <li>independent per-element updates</li>
+      <li>grids and stencils</li>
+      <li>ensembles whose samples stop early</li>
+      <li>assembly and binning</li>
+      <li>graphs mixing host and GPU steps</li>
+    </ul>
+  </div>
+  <div class="rpt-hands">
+    <h4>Hands off to others</h4>
+    <ul>
+      <li>dense tensors and training: PyTorch or JAX, arrays cross without a copy</li>
+      <li>sparse direct solvers: not covered</li>
+      <li>several GPUs or MPI ranks: not in the docs yet</li>
+    </ul>
+  </div>
+</div>
+<div class="rpt-libs" aria-label="The four libraries">
+  <a class="rpt-lib hawk" href="https://amasat01.github.io/hawk/"><img src="_static/brand/glyph_hawk.svg" alt=""><b>hawk</b><span>write the kernel, in Python</span><small>Start here</small></a>
+  <span class="rpt-arrow" aria-hidden="true"></span>
+  <a class="rpt-lib eagle" href="https://amasat01.github.io/eagle/"><img src="_static/brand/glyph_eagle.svg" alt=""><b>eagle</b><span>launch, graphs, drop finished samples</span><small>Start here</small></a>
+  <span class="rpt-arrow" aria-hidden="true"></span>
+  <a class="rpt-lib aether" href="https://amasat01.github.io/aether/"><img src="_static/brand/glyph_aether.svg" alt=""><b>aether</b><span>the C++ maths, on GPU or CPU threads</span><small>Start here</small></a>
+  <a class="rpt-lib raptor" href="https://amasat01.github.io/raptor/"><img src="_static/brand/glyph_raptor.svg" alt=""><b>raptor</b><span>the shared contracts that let the libraries, and your code, plug together</span><small>Start here</small></a>
+</div>
+```
 
 (how-it-compares)=
 ## How it compares
@@ -167,6 +222,15 @@ No GPU? The same kernel with NumPy arrays (a thousand samples), run with no GPU 
 :file: _static/ecosystem/ecosystem_cards_family.html
 ```
 
+Straight to a section:
+
+| | Tutorials | How-to guides | Explanation | Reference |
+|---|---|---|---|---|
+| **hawk** | [Tutorials](https://amasat01.github.io/hawk/content/tutorials.html) | [How-to guides](https://amasat01.github.io/hawk/content/examples.html), [Domains](https://amasat01.github.io/hawk/content/domains.html) | [Explanation](https://amasat01.github.io/hawk/content/explanation.html) | [Reference](https://amasat01.github.io/hawk/content/api/index.html) |
+| **eagle** | [Tutorials](https://amasat01.github.io/eagle/content/userguide/tutorials_python.html) | [How-to guides](https://amasat01.github.io/eagle/content/userguide/howto.html), [build a graph](https://amasat01.github.io/eagle/content/userguide/graph_forms.html) | [Explanation](https://amasat01.github.io/eagle/content/userguide/concepts.html), [Performance](https://amasat01.github.io/eagle/content/performance.html) | [Reference](https://amasat01.github.io/eagle/content/api/api_reference.html) |
+| **raptor** | [Tutorials](https://amasat01.github.io/raptor/content/tutorials.html) | [How-to guides](https://amasat01.github.io/raptor/content/howto.html) | [Explanation](https://amasat01.github.io/raptor/content/explanation.html) | [Plugin schema](https://amasat01.github.io/raptor/content/devguide/plugin_schema.html) |
+| **aether** | [Tutorials](https://amasat01.github.io/aether/content/tutorials.html) | [How-to guides](https://amasat01.github.io/aether/content/examples.html) | [Explanation](https://amasat01.github.io/aether/content/concepts.html) | [Reference](https://amasat01.github.io/aether/content/api/api_reference.html) |
+
 (install)=
 ````{dropdown} Install
 ```bash
@@ -213,8 +277,6 @@ for any use, commercial or not, with attribution. See each repository's own `LIC
 
 start_here
 gallery
-where_raptor_fits
-compare
 ```
 
 ```{toctree}
@@ -222,11 +284,13 @@ compare
 :caption: The family
 :hidden:
 
-how_it_fits
+where_raptor_fits
+why
+compare
 build_from_source
 about
-eagle docs <https://amasat01.github.io/eagle/>
-hawk docs <https://amasat01.github.io/hawk/>
-aether docs <https://amasat01.github.io/aether/>
-raptor docs <https://amasat01.github.io/raptor/>
+eagle docs <https://amasat01.github.io/eagle/content/userguide/tutorials_python.html>
+hawk docs <https://amasat01.github.io/hawk/content/tutorials.html>
+aether docs <https://amasat01.github.io/aether/content/tutorials.html>
+raptor docs <https://amasat01.github.io/raptor/content/tutorials.html>
 ```

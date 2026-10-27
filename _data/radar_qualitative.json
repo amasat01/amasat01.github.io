@@ -31,8 +31,8 @@
         },
         "raptor": {
           "score": 2,
-          "reason": "Batched small dense algebra per lane; large products, solvers and tuned libraries go to PyTorch/JAX zero-copy.",
-          "evidence": ["https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html", "https://amasat01.github.io/hawk/content/across_lanes.html"]
+          "reason": "NumPy broadcasting inside a kernel and per-lane linear algebra (solve, inv, det, Cholesky, eigh, lstsq, mvn_sample), all differentiable; large products, solvers and tuned libraries go to PyTorch/JAX zero-copy.",
+          "evidence": ["https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html", "https://amasat01.github.io/hawk/content/across_lanes.html", "https://amasat01.github.io/hawk/content/broadcasting.html", "https://amasat01.github.io/hawk/content/linear_algebra.html"]
         },
         "Numba": {
           "score": 3,
@@ -75,7 +75,7 @@
         },
         "raptor": {
           "score": 2,
-          "reason": "A per-sample kernel language by design: you write one step of one sample, and whole-array code is left to array libraries, with which raptor exchanges arrays zero-copy."
+          "reason": "A per-sample kernel language by design: you write one step of one sample, with NumPy-style broadcasting between its arrays, and whole-array code is left to array libraries, with which raptor exchanges arrays zero-copy."
         }
       }
     },
@@ -239,7 +239,7 @@
         },
         "raptor": {
           "score": 5,
-          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives on GPU and CPU, including through parameter-dependent branches (jump=), events and, with the rolled reverse pass, a Dispatch inside a loop and a graph builder's device branches and loops (skippable, repeat_while); second order is written jvp(vjp).",
+          "reason": "Every kernel written in hawk's own vocabulary carries generated forward- and reverse-mode derivatives on GPU and CPU, including through parameter-dependent branches (jump=), events, nested loops, dispatch gathers and element fills, and, with the rolled reverse pass, a Dispatch inside a loop and a graph builder's device branches and loops (skippable, repeat_while); second order is written jvp(vjp).",
           "evidence": ["https://amasat01.github.io/eagle/content/userguide/autodiff.html"]
         },
         "NumPy": {
@@ -279,7 +279,7 @@
         },
         "raptor": {
           "score": 4,
-          "reason": "Zero-copy through DLPack with a certified matrix (CuPy, PyTorch, Warp, JAX and NumPy)."
+          "reason": "Zero-copy through DLPack with a certified matrix (CuPy, PyTorch, Warp, JAX and NumPy); aether's own arrays need only NumPy, with no CuPy."
         },
         "NumPy": {
           "score": 4,

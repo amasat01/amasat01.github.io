@@ -13,7 +13,21 @@
 project = "RAPTOR family"
 copyright = "2026, Alessandro Masat"
 author = "Alessandro Masat"
-version = release = "1.0"
+import pathlib as _pathlib
+import sys as _sys
+
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent / "tools"))
+import docs_version  # noqa: E402
+
+# the family version: the newest raptor release, the spine every other package is released in step with (tools/docs_version.py)
+version = release = docs_version.family_version()
+html_baseurl = "https://amasat01.github.io/"
+sitemap_url_scheme = "{link}"
+try:
+    import sphinx_sitemap  # noqa: F401
+    _SITEMAP = True
+except ImportError:   # requirements.txt installs it; an offline local build goes without
+    _SITEMAP = False
 
 # -- General configuration ---------------------------------------------------
 
@@ -46,7 +60,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "README.md", "CONTRIBUTI
 # this one). Sphinx flattens a single-level extra_path directory's contents
 # to the site root, so the served copy lands at
 # amasat01.github.io/raptor_start_here.ipynb, not .../notebooks/....
-html_extra_path = ["notebooks"]
+html_extra_path = ["notebooks", "_redirects", "_extra"]   # _extra holds robots.txt
 
 # -----------------------------------------------------------------------------
 # HTML output
@@ -88,3 +102,10 @@ html_title = "RAPTOR family"
 # carry the brand in the tab/header chrome.
 html_logo = "_static/brand/wide_family_raptor_light.png"
 html_favicon = "_static/brand/favicon_32.png"
+
+if _SITEMAP:
+    extensions.append("sphinx_sitemap")
+
+
+def setup(app):
+    app.connect("build-finished", docs_version.sitemap_lastmod)   # each page's lastmod, from git, into sitemap.xml

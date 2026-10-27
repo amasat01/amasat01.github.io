@@ -3,7 +3,6 @@
 """A notebook chart is one output of two images (light and dark); the notebook check names a picture that is not."""
 import base64
 import io
-import json
 import pathlib
 import re
 import tempfile

@@ -73,6 +73,11 @@ jobs:
             echo "::error::_generated out of date: regenerate with: python tools/sync_cards.py <eagle checkout>, then commit the result"
           fi
           exit "$rc"
+      # the paired eagle checkout sits inside the workspace: it is linted by its own repo
+      - name: ruff, pyflakes rules (repo config)
+        run: |
+          python -m pip install --quiet --only-binary=:all: ruff==0.15.18
+          ruff check --extend-exclude eagle
   build:
     needs: docs-fresh
     runs-on: ubuntu-latest

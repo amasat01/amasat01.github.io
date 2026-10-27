@@ -9,7 +9,6 @@ Needs eagle, hawk, torch, matplotlib, nbclient and ipykernel.
     python tools/start_here_figures.py
 """
 import base64
-import json
 import pathlib
 import re
 import sys
@@ -21,6 +20,8 @@ SITE = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SITE))
 #: the notebook's charts in order of appearance
 NAMES = ("arc", "landings", "fit")
+#: the page shows them at 560 and 380 px wide; 160 dpi gives about twice that many pixels (2x)
+DPI = 160
 
 
 def main() -> int:
@@ -29,7 +30,7 @@ def main() -> int:
     if len(shown) != len(NAMES):
         sys.exit(f"expected {len(NAMES)} charts, found {len(shown)}")
     for c in shown:
-        c.source = "from raptor_docs.themed_figure import show\n" + c.source.replace("plt.show()", "show()")
+        c.source = f"import raptor_docs.themed_figure as _tf; _tf.DPI = {DPI}\nfrom raptor_docs.themed_figure import show\n" + c.source.replace("plt.show()", "show()")
     NotebookClient(nb, timeout=900, kernel_name=nb.metadata.get("kernelspec", {}).get("name", "python3"),
                    resources={"metadata": {"path": str(SITE / "notebooks")}}).execute()
     out = SITE / "_static" / "figures" / "start_here"

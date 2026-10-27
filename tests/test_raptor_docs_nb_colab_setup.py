@@ -55,6 +55,32 @@ class ColabSetup(unittest.TestCase):
         self.nb["cells"] = [c for c in self.nb["cells"] if gen.TAG not in c.get("metadata", {}).get("tags", [])]
         self.assertTrue(gen.apply(self.nb, self.path))
 
+    def with_intro(self):
+        """The notebook with its setup cells removed and a markdown intro in front, as an authored notebook starts."""
+        intro = {"cell_type": "markdown", "id": "intro", "metadata": {}, "source": ["# Title\n"]}
+        rest = [c for c in self.nb["cells"] if gen.TAG not in c.get("metadata", {}).get("tags", [])]
+        self.nb["cells"] = [intro] + rest
+
+    def ids(self):
+        return [c["id"] for c in self.nb["cells"]]
+
+    def test_the_intro_stays_first_and_the_setup_follows_it(self):
+        self.with_intro()
+        self.assertTrue(gen.apply(self.nb, self.path))
+        self.assertEqual(self.ids()[:3], ["intro", gen.NOTE_ID, gen.CELL_ID])
+        self.assertEqual(self.nb["cells"][0]["cell_type"], "markdown")
+
+    def test_a_setup_cell_in_front_of_the_intro_is_moved_not_duplicated(self):
+        self.with_intro()
+        gen.apply(self.nb, self.path)
+        cells = self.nb["cells"]
+        cells[:] = cells[1:3] + cells[:1] + cells[3:]
+        self.assertEqual(self.ids()[2], "intro")
+        self.assertTrue(gen.apply(self.nb, self.path))
+        self.assertEqual(self.ids()[:3], ["intro", gen.NOTE_ID, gen.CELL_ID])
+        self.assertEqual(self.ids().count(gen.CELL_ID) + self.ids().count(gen.NOTE_ID), 2)
+        self.assertFalse(gen.apply(self.nb, self.path))
+
     def test_every_third_party_import_is_installed_by_the_cell(self):
         helpers = gen.helper_modules()
         imported = set()

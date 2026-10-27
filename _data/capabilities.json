@@ -75,19 +75,19 @@
    "deriv": {
     "cpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
+     "source": "https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html",
      "note": "Generated forward- and reverse-mode derivatives, read by jax.grad, torch autograd and wp.Tape."
     },
     "gpu": {
      "covered": true,
-     "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
+     "source": "https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html",
      "note": "Generated forward- and reverse-mode derivatives, read by jax.grad, torch autograd and wp.Tape."
     },
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "Generated forward and reverse derivatives, read by jax.grad, torch autograd and wp.Tape, including the rolled reverse pass (a Dispatch inside a loop body) and JAX forward mode for carried state; no gap remains.",
-     "source": "https://amasat01.github.io/eagle/content/interop/jax.html",
+     "reason": "Generated forward and reverse derivatives, read by jax.grad, torch autograd and wp.Tape, including the rolled reverse pass (a Dispatch inside a loop body), nested loops, dispatch gathers, element fills, jump=, keyed-sum read-back and JAX forward mode for carried state; no gap remains.",
+     "source": "https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html",
      "kind": "doc"
     }
    },
@@ -105,7 +105,7 @@
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "DLPack hand-over with an explicit stream contract, certified with CuPy, torch, Warp, JAX and NumPy.",
+     "reason": "DLPack hand-over with an explicit stream contract, certified with CuPy, torch, Warp, JAX and NumPy; aether's own CPU and GPU arrays (https://amasat01.github.io/aether/content/python/arrays.html) need only NumPy, with no CuPy.",
      "source": "https://amasat01.github.io/raptor/content/interop_protocols.html",
      "kind": "doc"
     }
@@ -124,7 +124,7 @@
     "y": 0,
     "g": {
      "g": 4,
-     "reason": "You write one step of one sample, on a grid of several axes if the problem has them, with sums and scatters across lanes; the batch is launched for you; gap: a call builds for float32 or float64 and mixing the two is refused; per-plane widths are planned.",
+     "reason": "You write one step of one sample, on a grid of several axes if the problem has them, with sums and scatters across lanes, a first axis sized at run time, and if: break to leave a loop early; the batch is launched for you; gap: a call builds for float32 or float64 and mixing the two is refused; per-plane widths are planned.",
      "source": "https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html",
      "kind": "doc"
     }
@@ -158,7 +158,7 @@
     "y": null,
     "g": {
      "g": 2,
-     "reason": "Batched small dense algebra per lane is written in hawk (a matrix-vector product and a quadratic form per element, checked against einsum); large products and solvers are left to the array libraries raptor hands arrays to.",
+     "reason": "Batched small dense algebra per lane is written in hawk (products, solve, inverse, determinant, Cholesky, eigh, lstsq and mvn_sample, all differentiable, checked against einsum and LAPACK-style references); large products and solvers are left to the array libraries raptor hands arrays to.",
      "source": "https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html",
      "kind": "doc"
     }
@@ -196,7 +196,7 @@
     "y": 0,
     "g": {
      "g": 5,
-     "reason": "Finished samples are compacted out so each launch covers only the samples still running, in whole groups of lanes when you set group=; note: inside jit the loop is XLA's (while_loop, scan), so compaction does not apply there (XLA's design, eagle/docs/content/userguide/tutorials/18_the_eagle_batch_inside_jit.ipynb:488).",
+     "reason": "Finished samples are compacted out so each launch covers only the samples still running, in whole groups of lanes when you set group=; note: inside jit the loop is XLA's (while_loop, scan), so compaction does not apply there (XLA's design, eagle/docs/content/userguide/tutorials/jax_eagle_batch_inside_jit.ipynb:488).",
      "source": "https://amasat01.github.io/eagle/content/modules/filtering/scan_and_compaction.html",
      "kind": "doc"
     }
@@ -379,7 +379,7 @@
     "y": null,
     "g": {
      "g": 0,
-     "reason": "A per-sample kernel language; whole-array code stays in NumPy, CuPy or PyTorch.",
+     "reason": "A per-sample kernel language with NumPy-style broadcasting between a kernel's arrays (including at deploy and for matrix inputs); whole-array code stays in NumPy, CuPy or PyTorch.",
      "source": "https://amasat01.github.io/where_raptor_fits.html",
      "kind": "repo"
     }

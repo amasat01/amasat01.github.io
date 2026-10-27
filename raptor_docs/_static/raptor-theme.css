@@ -196,7 +196,11 @@ html[data-theme="light"] .only-dark { display: none !important; }
  * Jupyter page shows the light one). The dark one is shown under the dark theme; !important beats the inline style. The
  * theme paints a panel behind every notebook-output image and html output in dark mode: not behind these, whose
  * transparent background is drawn for the page itself. */
-.themed-figure img { max-width: 100%; height: auto; }
+.themed-figure img, .bd-article img.only-light, .bd-article img.only-dark { width: 100%; max-width: 100%; height: auto; }
+/* An animation fills the column too; a tall one is held to 75% of the window and centred (its background is the page colour). */
+.bd-article img.only-light[src$=".gif"], .bd-article img.only-dark[src$=".gif"] { max-height: 75vh; object-fit: contain; }
+/* A square or tall animation (height/width >= 0.8) takes `:class: only-light narrow` on its `{image}`: 60% of the column, centred. */
+.bd-article img.narrow { max-width: 60%; display: block; margin-left: auto; margin-right: auto; }
 html[data-theme="dark"] .themed-figure img.only-dark { display: inline !important; }
 html[data-theme="dark"] .bd-content div.cell_output .themed-figure img {
   background-color: transparent !important; padding: 0 !important; filter: none !important;

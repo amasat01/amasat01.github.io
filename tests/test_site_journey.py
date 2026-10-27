@@ -25,7 +25,7 @@ class CardsAreAuditable(unittest.TestCase):
         self.assertGreater(len(infos), 40)
         for info in infos:
             if "script " in info:
-                self.assertRegex(info, rf'<a href="{re.escape(TAG_URL)}[^"]+\.json"[^>]*>script [0-9a-f]{{8}}</a>')
+                self.assertRegex(info, rf'<a href="{re.escape(TAG_URL)}[^"]+\.json"[^>]*>[0-9.]+ card, script [0-9a-f]{{8}}</a>')
 
     def test_each_card_caption_records_the_machine_and_the_tools(self):
         switch = (GENERATED / "perf_switch.md").read_text()
