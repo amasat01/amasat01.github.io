@@ -127,6 +127,8 @@ def run_leg(path: pathlib.Path, leg: str, kernel: str) -> str:
     import nbformat
     from nbclient import NotebookClient
 
+    from raptor_docs.nb import local_kernel
+
     nb = nbformat.read(path, as_version=4)
     reason = skip_reason(nb, leg)
     if reason:
@@ -139,8 +141,8 @@ def run_leg(path: pathlib.Path, leg: str, kernel: str) -> str:
     try:
         NotebookClient(
             nb,
+            km=local_kernel(kernel),
             timeout=TIMEOUT_S,
-            kernel_name=kernel,
             resources={"metadata": {"path": str(path.parent)}},
             allow_errors=False,
         ).execute()

@@ -21,6 +21,7 @@ import nbformat
 from nbclient import NotebookClient
 
 from raptor_docs import config
+from raptor_docs.nb import local_kernel
 
 TIMEOUT_S = 3600
 
@@ -42,8 +43,8 @@ def execute(path: pathlib.Path) -> bool:
     nb = nbformat.read(path, as_version=4)
     client = NotebookClient(
         nb,
+        km=local_kernel(nb.metadata.get("kernelspec", {}).get("name", "python3")),
         timeout=TIMEOUT_S,
-        kernel_name=nb.metadata.get("kernelspec", {}).get("name", "python3"),
         resources={"metadata": {"path": str(path.parent)}},
         allow_errors=False,
     )
