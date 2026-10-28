@@ -9,8 +9,11 @@ COMMANDS = ("check", "execute", "run_gate", "colab_setup", "hosted")
 
 def local_kernel(name):
     """A kernel manager on local IPC sockets: a notebook run needs no network, and ipykernel warns about plain TCP."""
+    import tempfile
+
     from jupyter_client import KernelManager
-    return KernelManager(kernel_name=name, transport="ipc")
+    # an absolute socket path: the kernel starts in the notebook's directory, the client stays where it was
+    return KernelManager(kernel_name=name, transport="ipc", ip=tempfile.mkdtemp(prefix="nb-") + "/k")
 
 
 def discover(roots):
