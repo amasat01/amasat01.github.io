@@ -7,6 +7,15 @@ import sys
 COMMANDS = ("check", "execute", "run_gate", "colab_setup", "hosted")
 
 
+def local_kernel(name):
+    """A kernel manager on local IPC sockets: a notebook run needs no network, and ipykernel warns about plain TCP."""
+    import tempfile
+
+    from jupyter_client import KernelManager
+    # an absolute socket path: the kernel starts in the notebook's directory, the client stays where it was
+    return KernelManager(kernel_name=name, transport="ipc", ip=tempfile.mkdtemp(prefix="nb-") + "/k")
+
+
 def discover(roots):
     """Every notebook of each checkout, by glob (see ``run_gate.discover``); Kaggle's driver imports it from here."""
     from raptor_docs.nb import run_gate
