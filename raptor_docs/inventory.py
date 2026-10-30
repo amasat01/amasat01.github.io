@@ -2,13 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Fail when a public name has no page in the built documentation.
 
-    python tools/docs_inventory_check.py <objects.inv> <package> [<package> ...]
+    python -m raptor_docs.inventory <objects.inv> <package> [<package> ...]
 
-For every package given, each name in its `__all__` (and each public submodule's, when the package lists its
-submodules with `--submodules`) must appear in the Python domain of the inventory: either as `package.name`
-or under a submodule of the package. A glossary term of the same name does not count. The same file is
-shared by hawk, eagle, raptor and aether; `--allow name,name` lists names that are documented elsewhere on
-purpose.
+For every package given, each name in its `__all__` must appear in the Python domain of the inventory: either
+as `package.name` or under a submodule of the package. A glossary term of the same name does not count.
+`--allow name,name` lists names that are documented elsewhere on purpose.
 """
 import argparse
 import importlib
