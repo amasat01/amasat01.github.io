@@ -20,7 +20,7 @@ concurrency:
 jobs:
   docs-fresh:
     # Freshness check, never a commit: the generator re-renders the pages and fails on any difference.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: manifesto copy matches raptor
@@ -80,7 +80,7 @@ jobs:
           ruff check --extend-exclude eagle
   build:
     needs: docs-fresh
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
