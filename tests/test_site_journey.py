@@ -59,7 +59,7 @@ class HeroAndDense(unittest.TestCase):
     def test_the_hero_carries_the_cpu_line_and_the_platform_limit(self):
         index = (SITE_ROOT / "index.md").read_text()
         self.assertIn("pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU", index)
-        self.assertIn("Wheels are Linux x86_64; macOS and Windows", index)
+        self.assertIn("macOS on Apple silicon; Windows", index)
 
     def test_download_and_colab_point_at_the_same_notebook_path(self):
         for name in ("index.md", "start_here.md"):
@@ -97,7 +97,7 @@ class StartHere(unittest.TestCase):
         text = (SITE_ROOT / "start_here.md").read_text()
         install = text.split("## Install", 1)[1].split("\n## ", 1)[0]
         self.assertIn("pip install raptor-hawk raptor-eagle torch matplotlib", install)
-        self.assertIn("Linux x86_64", install)
+        self.assertIn("macOS on Apple silicon", install)
 
     def test_the_page_does_not_claim_the_timing_came_from_the_page_builder(self):
         for text in ((SITE_ROOT / "start_here.md").read_text(),

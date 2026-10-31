@@ -1,6 +1,6 @@
 # In your field
 
-The same kernel language, five fields. A *lane* is one run of the kernel body, and a *sample* is one independent element of work. Each card links two ways in: **write the kernel** in hawk, or **compose the flow**
+The same kernel language, many fields. A *lane* is one run of the kernel body, and a *sample* is one independent element of work. Each card links two ways in: **write the kernel** in hawk, or **compose the flow**
 around it in eagle (graphs, loops, copies, early stop). Every example runs on a CPU at a small size and on a GPU at a
 larger one. The pictures here are from those notebooks; nothing on this page is a timing.
 
@@ -62,8 +62,60 @@ larger one. The pictures here are from those notebooks; nothing on this page is 
   </figcaption>
 </figure>
 
+<figure class="rpt-card">
+  <img class="only-light" src="_static/gallery/combustion_light.gif" alt="Reactor traces ending at ignition, animated" loading="lazy">
+  <img class="only-dark" src="_static/gallery/combustion_dark.gif" alt="" aria-hidden="true" loading="lazy">
+  <figcaption>
+    <h3>Combustion</h3>
+    <p>A reactor stopped the moment it ignites, with the delay swept over start temperature and fuel mix.</p>
+    <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/13_combustion.html">Write the kernel</a></p>
+  </figcaption>
+</figure>
+
+<figure class="rpt-card">
+  <img class="only-light" src="_static/gallery/nuclear_light.gif" alt="Neutron histories through a slab, animated" loading="lazy">
+  <img class="only-dark" src="_static/gallery/nuclear_dark.gif" alt="" aria-hidden="true" loading="lazy">
+  <figcaption>
+    <h3>Nuclear</h3>
+    <p>One lane per neutron history: scatter, absorb or leave, checked against a deterministic solution.</p>
+    <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/14_nuclear.html">Write the kernel</a></p>
+  </figcaption>
+</figure>
+
+<figure class="rpt-card">
+  <img class="only-light" src="_static/gallery/biochemistry_light.gif" alt="Enzyme progress curves converging on the data, animated" loading="lazy">
+  <img class="only-dark" src="_static/gallery/biochemistry_dark.gif" alt="" aria-hidden="true" loading="lazy">
+  <figcaption>
+    <h3>Biochemistry</h3>
+    <p>An enzyme rate law fitted to noisy data by gradients through the integration.</p>
+    <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/15_biochemistry.html">Write the kernel</a></p>
+  </figcaption>
+</figure>
+
+<figure class="rpt-card">
+  <img class="only-light" src="_static/gallery/control_light.gif" alt="Servo step responses over many gains, animated" loading="lazy">
+  <img class="only-dark" src="_static/gallery/control_dark.gif" alt="" aria-hidden="true" loading="lazy">
+  <figcaption>
+    <h3>Control</h3>
+    <p>One servo joint under a grid of gains: settling time, overshoot and a tuned controller.</p>
+    <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/21_control.html">Write the kernel</a></p>
+  </figcaption>
+</figure>
+
+<figure class="rpt-card">
+  <img class="only-light" src="_static/gallery/signal_light.gif" alt="Telemetry channels and a detected tone, animated" loading="lazy">
+  <img class="only-dark" src="_static/gallery/signal_dark.gif" alt="" aria-hidden="true" loading="lazy">
+  <figcaption>
+    <h3>Signal processing</h3>
+    <p>A Kalman filter per telemetry channel, a spectral bin per lane and a tone detector.</p>
+    <p class="links"><a href="https://amasat01.github.io/hawk/content/vocabulary/23_signal_processing.html">Write the kernel</a></p>
+  </figcaption>
+</figure>
+
 </div>
 ```
+
+More worked cases: [Orbits](https://amasat01.github.io/hawk/content/vocabulary/06_orbits.html), [Solid mechanics](https://amasat01.github.io/hawk/content/vocabulary/19_solid_mechanics.html), [Molecular dynamics](https://amasat01.github.io/hawk/content/vocabulary/22_molecular_dynamics.html), [Particle physics](https://amasat01.github.io/hawk/content/vocabulary/17_particle_physics.html), [Epidemiology](https://amasat01.github.io/hawk/content/vocabulary/20_epidemiology.html), [Energy](https://amasat01.github.io/hawk/content/vocabulary/16_energy.html), [Finance](https://amasat01.github.io/hawk/content/vocabulary/18_finance.html), [Line of sight](https://amasat01.github.io/hawk/content/vocabulary/24_line_of_sight.html).
 
 Not your field? These are the same few words: a grid of lanes, a read of a neighbour, a sum or a scatter across lanes.
 [Batched small matrices](https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html) shows the

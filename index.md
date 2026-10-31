@@ -30,14 +30,14 @@
   <a class="quiet" href="https://github.com/amasat01/amasat01.github.io/raw/main/notebooks/raptor_start_here.ipynb">Download the notebook</a>
   <a class="quiet" href="https://colab.research.google.com/github/amasat01/amasat01.github.io/blob/main/notebooks/raptor_start_here.ipynb">Open in Colab</a>
   <code>pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"</code>
-  <span class="rpt-cpu"><code>pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU (the CPU route). Wheels are Linux x86_64; macOS and Windows <a href="build_from_source.html">build from source</a>.</span>
+  <span class="rpt-cpu"><code>pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU (the CPU route). Wheels: Linux x86_64 and aarch64, macOS on Apple silicon; Windows <a href="build_from_source.html">builds from source</a>.</span>
 </div>
 ```
 
 ```{raw} html
 <figure class="rpt-thread">
-  <svg id="thread" role="img" aria-label="One ink stroke splits into many thin lines, one per sample; each line stops at its own length and ends in a drop, and most stop early."></svg>
-  <figcaption>Each line is a sample; each drop is where it finished.</figcaption>
+  <svg id="thread" role="img" aria-label="One ink stroke splits into many thin lines, one per sample, each ending in a drop; the lines then become five kinds of case: rays on a mesh, an FFT spectrum, a factorised matrix, a scatter histogram and an ODE fan."></svg>
+  <figcaption>Each line is a sample, each drop where it finished; then the cases they become.</figcaption>
 </figure>
 <script>RaptorThread.mount(document.getElementById("thread"), { desktopSamples: 150, phoneSamples: 60, seed: 20261001 });</script>
 ```
@@ -69,23 +69,23 @@
 ### Versatile
 
 ```{raw} html
-<p class="rpt-line">One kernel, many fields. Pick one to see a worked case, on a CPU and on a GPU.</p>
+<p class="rpt-line">One kernel, many fields. Pick one for a worked case.</p>
 <div class="rpt-domains">
-  <a href="https://amasat01.github.io/hawk/content/domains.html#mechanics-and-fluids"><svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="16" rx="13" ry="7" class="s-ink" transform="rotate(-25 16 16)"/><circle cx="16" cy="16" r="3" class="f-raptor"/><circle cx="26" cy="10" r="2" class="f-ink"/></svg><b>Mechanics and fluids</b><span>orbits, heat, water, metal</span></a>
-  <a href="https://amasat01.github.io/hawk/content/domains.html#particles-and-radiation"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26C10 24 12 8 18 8s6 14 10 16" class="s-ink" fill="none"/><circle cx="8" cy="22" r="2" class="f-raptor"/><circle cx="18" cy="8" r="2" class="f-raptor"/><circle cx="26" cy="22" r="2" class="f-raptor"/></svg><b>Particles and radiation</b><span>bins, histories, tracks</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#mechanics-and-fluids"><svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="16" rx="13" ry="7" class="s-ink" transform="rotate(-25 16 16)"/><circle cx="16" cy="16" r="3" class="f-raptor"/><circle cx="26" cy="10" r="2" class="f-ink"/></svg><b>Mechanics and fluids</b><span>orbits, heat, water, metal, atoms</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#particles-and-radiation"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26C10 24 12 8 18 8s6 14 10 16" class="s-ink" fill="none"/><circle cx="8" cy="22" r="2" class="f-raptor"/><circle cx="18" cy="8" r="2" class="f-raptor"/><circle cx="26" cy="22" r="2" class="f-raptor"/></svg><b>Particles and radiation</b><span>bins, neutrons, tracks</span></a>
   <a href="https://amasat01.github.io/hawk/content/domains.html#reactions-and-life-sciences"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M13 4h6M14 4v9L7 26a2 2 0 0 0 2 3h14a2 2 0 0 0 2-3l-7-13V4" class="s-ink" fill="none"/><circle cx="14" cy="23" r="1.8" class="f-raptor"/><circle cx="19" cy="20" r="1.4" class="f-raptor"/></svg><b>Reactions and life sciences</b><span>reactors, enzymes, epidemics</span></a>
   <a href="https://amasat01.github.io/hawk/content/domains.html#energy-finance-and-control"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M18 3L7 18h8l-2 11 11-15h-8z" class="s-ink f-raptor-soft"/></svg><b>Energy, finance and control</b><span>grids, options, servos</span></a>
-  <a href="https://amasat01.github.io/hawk/content/domains.html#signals-and-data"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 16c3-12 6-12 9 0s6 12 9 0 5-8 10-4" class="s-raptor" fill="none"/><path d="M2 16h28" class="s-muted" fill="none"/></svg><b>Signals and data</b><span>small matrices, filters</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#signals-and-data"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 16c3-12 6-12 9 0s6 12 9 0 5-8 10-4" class="s-raptor" fill="none"/><path d="M2 16h28" class="s-muted" fill="none"/></svg><b>Signals and data</b><span>matrices, filters, spectra</span></a>
+  <a href="https://amasat01.github.io/hawk/content/domains.html#geometry-and-visibility"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 26L12 14l8 8 9-12" class="s-muted" fill="none"/><path d="M4 6l14 14" class="s-raptor" fill="none"/><circle cx="18" cy="20" r="2" class="f-raptor"/></svg><b>Geometry and visibility</b><span>rays, eclipse, line of sight</span></a>
 </div>
 <ul class="rpt-chips" aria-label="Also built in">
-  <li>per-lane linear algebra</li><li>broadcasting</li><li>grids</li><li>keyed sums and scatters</li><li>derivatives through loops and branches</li><li>embedded C</li><li>graphs mixing host and GPU steps</li>
-</ul>
-<a class="rpt-thumbs" href="gallery.html" aria-label="The gallery: five fields in pictures">
-  <span><img class="only-light" src="_static/figures/landing/fem_light.png" alt="A triangle mesh shaded by a source field" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fem_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
-  <span><img class="only-light" src="_static/figures/landing/heat_light.png" alt="A plate with heat spreading from a hot patch" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/heat_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
-  <span><img class="only-light" src="_static/figures/landing/fluids_light.png" alt="Waves on a shallow pool" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fluids_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
-  <span><img class="only-light" src="_static/figures/landing/monte_carlo_light.png" alt="Projectile paths ending one by one" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/monte_carlo_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
-  <span><img class="only-light" src="_static/figures/landing/binning_light.png" alt="Histograms of particle count and mass per bin" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/binning_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+    <li><a href="https://amasat01.github.io/hawk/content/linear_algebra.html">linear algebra up to 4096</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/23_signal_processing.html">FFT</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/24_line_of_sight.html">rays and geometry</a></li><li><a href="https://amasat01.github.io/hawk/content/howto_index_set.html">lane sets</a></li><li><a href="https://amasat01.github.io/hawk/content/tutorials/06_lookups_scatters_and_sums.html">ordered scatters, keyed sums</a></li><li><a href="https://amasat01.github.io/hawk/content/interop.html">interop</a></li><li><a href="https://amasat01.github.io/hawk/content/derivatives.html">derivatives through loops and branches</a></li><li><a href="https://amasat01.github.io/hawk/content/domains.html">the domain series</a></li>
+  </ul><a class="rpt-thumbs" href="gallery.html" aria-label="The gallery">
+  <span><img class="only-light" src="_static/figures/landing/fem_light.png" alt="A shaded mesh" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fem_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/heat_light.png" alt="Heat on a plate" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/heat_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/fluids_light.png" alt="Pool waves" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fluids_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/monte_carlo_light.png" alt="Projectile paths" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/monte_carlo_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
+  <span><img class="only-light" src="_static/figures/landing/binning_light.png" alt="Binning histograms" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/binning_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
   <em>See the gallery</em>
 </a>
 ```
@@ -95,7 +95,7 @@
 ```{raw} html
 <div class="rpt-lean">
   <div><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 12l11-7 11 7v10l-11 7-11-7z" class="s-raptor" fill="none"/><path d="M5 12l11 7 11-7M16 19v10" class="s-muted" fill="none"/></svg><b>Header-only C++</b><span>Nothing extra to link.</span></div>
-  <div><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="12" width="24" height="8" rx="2" class="s-ink" fill="none"/><rect x="6" y="14" width="9" height="4" class="f-raptor"/></svg><b>Low memory</b><span>A million samples sit close to the bare minimum state (third card below).</span></div>
+  <div><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="12" width="24" height="8" rx="2" class="s-ink" fill="none"/><rect x="6" y="14" width="9" height="4" class="f-raptor"/></svg><b>Low memory</b><span>A million samples sit near the bare minimum state.</span></div>
   <div><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="s-raptor" fill="none"/><path d="M10 16.5l4 4 8-9" class="s-ink" fill="none"/></svg><b>Unused features cost nothing</b><span>Same code, same launch speed; tests check it against the previous release.</span></div>
 </div>
 ```
@@ -203,11 +203,11 @@ print(result.status, result.steps, result.x[:3])
 
 Pass the kernel's arguments as you would call it; give an array where each sample has its own value.
 
-eagle ran the whole step loop on the GPU. It chooses how to launch from the batch size: one launch that runs every step, a set of persistent workers that pick up samples as they free up, or launches of a few steps each, whichever it times as faster. One call did all the launching.
+eagle ran the whole step loop on the GPU, choosing how to launch from the batch size, and did all the launching in one call.
 
-Samples that finished were dropped from the next launch: eagle keeps an active set, the list of samples still running, and each launch covers only that list, so the batch shrank as it ran. The card measures what this saves and where it does not pay.
+Finished samples were dropped from the next launch: eagle keeps the list of samples still running, so the batch shrank as it ran. The card measures what this saves.
 
-Pass NumPy arrays instead of CuPy and the same call runs on your CPU threads.
+NumPy arrays instead of CuPy run the same call on CPU threads.
 :::
 ::::
 
@@ -235,7 +235,7 @@ Straight to a section:
 ````{dropdown} Install
 ```bash
 pip install raptor-core                                     # the protocol spine: Python 3.9+, no dependencies
-pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64, CPython versions per `pyproject.toml`, host g++; see Building from source for compiler versions)
+pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64 and aarch64, macOS arm64, CPython versions per `pyproject.toml`, host compiler; see Building from source for compiler versions)
 pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cuda13] on both for CUDA 13
 ```
 
@@ -247,7 +247,7 @@ pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cu
 toolkit is needed.
 ```
 
-**Platforms:** the wheels are built for Linux x86_64 (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). What the wheel ships, what you need and what the cards measured are in the {ref}`compatibility table <compatibility>`. There are no wheels for macOS, Windows or ARM yet, and WSL2 is untested. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
+**Platforms:** the wheels are built for Linux (x86_64 and aarch64) and macOS (Apple silicon, arm64) (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). What the wheel ships, what you need and what the cards measured are in the {ref}`compatibility table <compatibility>`. There are no Windows wheels and none for Intel Macs; build from source there. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
 
 `raptor-hawk` pulls `aether-dsc` (the sealed C++ headers hawk compiles against) automatically. eagle alone:
 `pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for every NVIDIA
