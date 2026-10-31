@@ -30,7 +30,7 @@
   <a class="quiet" href="https://github.com/amasat01/amasat01.github.io/raw/main/notebooks/raptor_start_here.ipynb">Download the notebook</a>
   <a class="quiet" href="https://colab.research.google.com/github/amasat01/amasat01.github.io/blob/main/notebooks/raptor_start_here.ipynb">Open in Colab</a>
   <code>pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"</code>
-  <span class="rpt-cpu"><code>pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU (the CPU route). Wheels: Linux x86_64 and aarch64, macOS on Apple silicon; Windows <a href="build_from_source.html">builds from source</a>.</span>
+  <span class="rpt-cpu"><code>pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU (the CPU route). Wheels: Linux x86_64 and aarch64, macOS 15+ on Apple silicon; Windows <a href="build_from_source.html">builds from source</a>.</span>
 </div>
 ```
 
@@ -235,7 +235,7 @@ Straight to a section:
 ````{dropdown} Install
 ```bash
 pip install raptor-core                                     # the protocol spine: Python 3.9+, no dependencies
-pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64 and aarch64, macOS arm64, CPython versions per `pyproject.toml`, host compiler; see Building from source for compiler versions)
+pip install raptor-hawk                                     # hawk, CPU only (Linux x86_64 and aarch64, macOS 15+ arm64, CPython versions per `pyproject.toml`, host compiler; see Building from source for compiler versions)
 pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cuda13] on both for CUDA 13
 ```
 
@@ -247,7 +247,7 @@ pip install "raptor-hawk[cuda12]" "raptor-eagle[cuda12]"    # GPU route; use [cu
 toolkit is needed.
 ```
 
-**Platforms:** the wheels are built for Linux (x86_64 and aarch64) and macOS (Apple silicon, arm64) (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). What the wheel ships, what you need and what the cards measured are in the {ref}`compatibility table <compatibility>`. There are no Windows wheels and none for Intel Macs; build from source there. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.13t and 3.14t, `hawk` and `eagle` run GIL-free.
+**Platforms:** the wheels are built for Linux (x86_64 and aarch64) and macOS 15+ (Apple silicon, arm64) (CPython versions as listed in each package's `pyproject.toml`, including the free-threaded builds, where `hawk` and `eagle` take the CPU route). What the wheel ships, what you need and what the cards measured are in the {ref}`compatibility table <compatibility>`. There are no Windows wheels and none for Intel Macs; build from source there. `raptor-core` and `aether-dsc` are pure Python and install anywhere. On free-threaded 3.14t, `hawk` and `eagle` run GIL-free.
 
 `raptor-hawk` pulls `aether-dsc` (the sealed C++ headers hawk compiles against) automatically. eagle alone:
 `pip install "raptor-eagle[cuda12]"` (`[torch]` adds PyTorch interop); its wheel ships GPU code for every NVIDIA
