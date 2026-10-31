@@ -5,7 +5,8 @@
 `release_version(root)` is for a project's docs/conf.py. The pull-request build tags its checkout with the
 version the PR's release label gives (the same step the wheels use), so setuptools-scm reads that tag. With no
 label the checkout is past the last tag, and the newest release tag is shown instead of `X.Y.Z.devN+g...`.
-`family_version()` is for the landing site: the newest release of raptor, the family's spine.
+`family_version()` is for the landing site: the version the pull request's release label gives on top of raptor's newest
+release (`PR_LABELS`, as tools/next_version.py reads it), else that newest release; raptor is the family's spine.
 `DOCS_VERSION` in the environment overrides both. Stdlib plus setuptools-scm; one file, copied unchanged into
 every repository that builds docs.
 """
@@ -49,6 +50,19 @@ def release_version(root):
     return scm.split(".dev")[0].split("+")[0]
 
 
+def _released_as(newest, labels):
+    """The version the pull request's release label gives on top of the newest tag (what the other repos tag their
+    checkout with), so the page shows the release it is published with; no label: the newest tag."""
+    m = _TAG.match(newest)
+    if not any(t.startswith("release:") for t in labels.split()) or not m:
+        return newest.lstrip("v")
+    import next_version
+    label = next_version.label_of(labels)
+    if label == "none":
+        return newest.lstrip("v")
+    return next_version.bump((int(m[1]), int(m[2]), int(m[3]), int(m[4][2:]) if m[4] else None), label)
+
+
 def family_version(repo="raptor"):
     env = os.environ.get("DOCS_VERSION", "").lstrip("v")
     if env:
@@ -59,7 +73,8 @@ def family_version(repo="raptor"):
         tags = [line.rsplit("/", 1)[-1] for line in out.splitlines()]
         tags = [t for t in tags if _TAG.match(t)]
         if tags:
-            return max(tags, key=_key).lstrip("v")
+            newest = max(tags, key=_key)
+            return _released_as(newest, os.environ.get("PR_LABELS", ""))
     except Exception:
         pass
     try:

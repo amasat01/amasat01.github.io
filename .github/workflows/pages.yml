@@ -89,7 +89,10 @@ jobs:
       - run: python -m pip install --quiet -r requirements.txt pyyaml
       - name: the deploy workflow only downloads, verifies and uploads
         run: python tools/ci_publish_subset.py .github/workflows/deploy.yml
-      - run: make check
+      - name: Build and check, showing the version the release label gives
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: make check
       - id: tree
         run: echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
