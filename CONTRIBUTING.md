@@ -26,7 +26,9 @@ make check        # the generated-content tests, then a strict build (zero warni
 make linkcheck    # every external link
 ```
 
-`make check` is what `.github/workflows/pages.yml` runs. It does not re-run `tools/sync_cards.py`: that script reads a real eagle
+The gallery animations and landing thumbnails are build output: `make check` first runs `make media`, which reads the paired
+hawk and eagle checkouts (`make check HAWK=<path> EAGLE=<path>`, default `./hawk` and `./eagle`). `make check` is what
+`.github/workflows/pages.yml` runs. It does not re-run `tools/sync_cards.py`: that script reads a real eagle
 checkout when the cards change, and `make check` verifies the committed `_generated/` output against it.
 
 ## The shared docs package

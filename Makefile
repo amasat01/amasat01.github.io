@@ -10,7 +10,7 @@ SPHINXBUILD   ?= python -m sphinx
 SOURCEDIR     = .
 BUILDDIR      = _build
 
-.PHONY: help Makefile clean livehtml strict linkcheck check
+.PHONY: help Makefile clean livehtml media strict linkcheck check
 
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
@@ -18,9 +18,17 @@ help:
 clean:
 	rm -rf $(BUILDDIR)
 
+# The gallery animations and the landing thumbnails come from the paired hawk and eagle checkouts; they are build
+# output and never committed (tools/gallery_gifs.py, tools/landing_thumbs.py).
+HAWK ?= hawk
+EAGLE ?= eagle
+media:
+	python3 tools/gallery_gifs.py $(HAWK) $(EAGLE)
+	python3 tools/landing_thumbs.py
+
 # Build with warnings promoted to errors, but keep going so a single run
 # reports every warning instead of stopping at the first.
-strict:
+strict: media
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" -W --keep-going $(SPHINXOPTS) $(O)
 
 linkcheck:

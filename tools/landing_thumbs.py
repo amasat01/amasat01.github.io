@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Still thumbnails of the five gallery pictures for the landing page: ``_static/figures/landing/NAME_{light,dark}.png``.
 
+Build output, never committed: ``make media`` runs this after ``tools/gallery_gifs.py``.
+
 The gallery animations are GIFs (hundreds of kB each); the landing page shows their first frame instead, a square crop
 of the same picture at 2x its display size, and links to the gallery for the real thing.
 
