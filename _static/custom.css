@@ -570,7 +570,7 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
 .rpt-domains svg, .rpt-lean svg { width: 32px; height: 32px; margin-bottom: 4px; }
 .rpt-domains b, .rpt-lean b { font-size: 15px; line-height: 1.25; }
 .rpt-domains span, .rpt-lean span { font-size: 14px; line-height: 1.4; color: var(--rpt-ink-secondary); }
-.rpt-caps-box { margin: 24px 0 36px; }
+.rpt-explore { display: flex; flex-direction: column; gap: 10px; margin: 24px 0 36px; }
 .rpt-caps-box > summary { cursor: pointer; display: inline-block; font-size: 15px; color: var(--raptor); list-style: none; }
 .rpt-caps-box > summary::-webkit-details-marker { display: none; }
 .rpt-caps-box > summary::after { content: " \25B8"; }

@@ -43,6 +43,7 @@
 ```
 
 ```{raw} html
+<div class="rpt-explore">
 <details class="rpt-caps-box"><summary>See everything built in</summary>
 <div class="rpt-caps">
   <details class="rpt-cap"><summary>Write</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html">Python kernels</a></li><li><a href="https://amasat01.github.io/hawk/content/tutorials/09_per_sample_control.html">branches, stops</a></li><li><a href="https://amasat01.github.io/hawk/content/api/generated/hawk.math.html">math, random</a></li><li><a href="https://amasat01.github.io/hawk/content/linear_algebra.html">linear algebra</a></li><li><a href="https://amasat01.github.io/hawk/content/api/generated/hawk.geometry.html">rays, meshes</a></li><li><a href="https://amasat01.github.io/hawk/content/compiling.html#wide-values">wide values</a></li></ul></details>
@@ -52,6 +53,17 @@
   <details class="rpt-cap"><summary>Connect</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/eagle/content/interop.html">NumPy, CuPy, PyTorch, JAX, Warp</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/tutorials/03_torch_training.html">train in PyTorch, JAX</a></li><li><a href="https://amasat01.github.io/hawk/content/embedded.html">embedded C</a></li></ul></details>
 </div>
 </details>
+<details class="rpt-caps-box"><summary>See the domains it serves</summary>
+<div class="rpt-caps">
+  <details class="rpt-cap"><summary>Mechanics and fluids</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/06_orbits.html">orbits</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/07_fem_assembly.html">finite elements</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/09_heat_diffusion.html">heat</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/10_fluids.html">fluids</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/19_solid_mechanics.html">solids</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/22_molecular_dynamics.html">molecular dynamics</a></li></ul></details>
+  <details class="rpt-cap"><summary>Particles and radiation</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/08_particle_binning.html">binning</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/14_nuclear.html">neutrons</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/17_particle_physics.html">particle tracks</a></li></ul></details>
+  <details class="rpt-cap"><summary>Reactions and life sciences</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/13_combustion.html">combustion</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/15_biochemistry.html">enzymes</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/20_epidemiology.html">epidemics</a></li></ul></details>
+  <details class="rpt-cap"><summary>Energy, finance and control</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/16_energy.html">power grids</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/18_finance.html">options</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/21_control.html">control</a></li></ul></details>
+  <details class="rpt-cap"><summary>Signals and data</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/11_batched_contraction.html">contractions</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/12_monte_carlo_ensemble.html">Monte Carlo</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/23_signal_processing.html">signals</a></li></ul></details>
+  <details class="rpt-cap"><summary>Geometry and visibility</summary><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/vocabulary/24_line_of_sight.html">line of sight</a></li></ul></details>
+</div>
+</details>
+</div>
 ```
 
 ```{raw} html
