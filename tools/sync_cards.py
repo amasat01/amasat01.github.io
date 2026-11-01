@@ -3538,6 +3538,8 @@ def main(argv=None):
 
     if rk78_gpu:
         script_rel = rk78_gpu.get("script", "benchmarks/rk78_card/rk78_card.py")
+        if not (args.eagle_root / script_rel).is_file():   # moved into the perf card; gone with the card re-run
+            script_rel = "benchmarks/perf_card/rkf78.py"
         script_path = pool.source(script_rel)
         source_label = "the RK7(8) card"
         base_card = rk78_gpu

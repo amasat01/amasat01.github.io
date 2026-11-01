@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-26T12:16:43Z",
+  "generated_utc": "2026-11-01T07:10:06Z",
   "sources": [
     {
       "path": "benchmarks/device_names.json",
@@ -46,6 +46,10 @@
       "md5": "f9c4d4d83d853181142e47e22a9cc994"
     },
     {
+      "path": "benchmarks/perf_card/rkf78.py",
+      "md5": "f77fb876280e209533924a92d3d7082c"
+    },
+    {
       "path": "benchmarks/rk78_card/card_nvidia-a100-sxm4-40gb.json",
       "md5": "cc309796e79b4cb9cb8bb50d8ed60aa1"
     },
@@ -84,10 +88,6 @@
     {
       "path": "benchmarks/rk78_card/cpu_card_intel-r-xeon-r-platinum-8581c-cpu-2-30ghz.json",
       "md5": "f310468056ce15f8bf9cb5608152663d"
-    },
-    {
-      "path": "benchmarks/rk78_card/rk78_card.py",
-      "md5": "47f837e7d0704ec8f90552b5e65b443e"
     },
     {
       "path": "benchmarks/sol_reference.json",
