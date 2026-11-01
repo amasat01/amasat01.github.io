@@ -22,6 +22,8 @@ LEGACY = ("#ee4c2c", "#1a9a8c", "#00a3e0", "#518d05", "#306101", "#4d77cf", "#76
           "#218048", "#199c98", "#ab3b22", "#af7f2b", "#1f5c7c", "#342cdb", "#b4f5a0", "#0dffd4", "#e76858",
           "#e0bf66", "#81c5ea", "#8999f1")
 SKIP_DIRS = {"_build", ".git", "__pycache__", "tests", "notebooks"}
+#: The sibling checkouts the build clones for the gallery (gitignored): their files are theirs, not the site's.
+SIBLING_CHECKOUTS = {"hawk", "eagle"}
 #: Generated figures that draw tools: they are checked against the tokens, not scanned.
 GENERATED_FIGURES = {"what_you_write_light.svg", "what_you_write_dark.svg"}
 #: The family kit's own token file (shipped by raptor_docs): the palette is defined there, so it is not scanned.
@@ -30,7 +32,8 @@ KIT_TOKENS = {"raptor-tokens.css"}
 
 def _sources():
     for p in sorted(SITE_ROOT.rglob("*")):
-        if not p.is_file() or SKIP_DIRS & set(p.relative_to(SITE_ROOT).parts):
+        rel = p.relative_to(SITE_ROOT).parts
+        if not p.is_file() or SKIP_DIRS & set(rel) or rel[0] in SIBLING_CHECKOUTS:
             continue
         if p.suffix in {".py", ".md", ".css", ".js", ".html", ".svg", ".json", ".yml"} and p.name not in GENERATED_FIGURES | KIT_TOKENS:
             yield p
