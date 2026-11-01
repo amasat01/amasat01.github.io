@@ -571,15 +571,19 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
 .rpt-domains b, .rpt-lean b { font-size: 15px; line-height: 1.25; }
 .rpt-domains span, .rpt-lean span { font-size: 14px; line-height: 1.4; color: var(--rpt-ink-secondary); }
 .rpt-caps-box { margin: 24px 0 36px; }
-.rpt-caps-box summary { cursor: pointer; display: inline-block; font-size: 15px; color: var(--raptor); list-style: none; }
-.rpt-caps-box summary::-webkit-details-marker { display: none; }
-.rpt-caps-box summary::after { content: " \25B8"; }
-.rpt-caps-box[open] summary::after { content: " \25BE"; }
-.rpt-caps-box summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
-.rpt-caps { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 20px; margin: 16px 0 8px; align-items: baseline; }
-.rpt-caps > div { display: contents; }
-.rpt-caps b { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rpt-ink-secondary); }
-.rpt-caps .rpt-chips { margin: 0; }
+.rpt-caps-box > summary { cursor: pointer; display: inline-block; font-size: 15px; color: var(--raptor); list-style: none; }
+.rpt-caps-box > summary::-webkit-details-marker { display: none; }
+.rpt-caps-box > summary::after { content: " \25B8"; }
+.rpt-caps-box[open] > summary::after { content: " \25BE"; }
+.rpt-caps-box > summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.rpt-caps { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 8px; }
+.rpt-cap summary { cursor: pointer; list-style: none; display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rpt-ink-secondary); }
+.rpt-cap summary::-webkit-details-marker { display: none; }
+.rpt-cap summary::before { content: "\25B8  "; color: var(--raptor); }
+.rpt-cap[open] summary::before { content: "\25BE  "; }
+.rpt-cap summary:hover, .rpt-cap[open] summary { color: var(--rpt-ink); }
+.rpt-cap summary:focus-visible { outline: 2px solid var(--raptor); outline-offset: 2px; }
+.rpt-cap .rpt-chips { margin: 8px 0 4px 18px; }
 .rpt-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; padding: 0; }
 .rpt-chips li { padding: 3px 12px; font-size: 14px; border: 1px solid var(--rpt-border); border-radius: 999px; color: var(--rpt-ink-secondary); background: var(--rpt-panel); }
 .rpt-thumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; text-decoration: none; }
@@ -619,5 +623,4 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
   .rpt-libs { grid-template-columns: minmax(0, 1fr); }
   .rpt-arrow::before { content: "\2193"; } .rpt-arrow { justify-self: center; }
   .rpt-thumbs span { width: 56px; height: 56px; }
-  .rpt-caps { grid-template-columns: minmax(0, 1fr); gap: 4px; } .rpt-caps b { margin-top: 10px; }
 }
