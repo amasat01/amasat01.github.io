@@ -36,10 +36,20 @@
 
 ```{raw} html
 <figure class="rpt-thread">
-  <svg id="thread" role="img" aria-label="One ink stroke splits into many thin lines, one per sample, each ending in a drop; the lines then become five kinds of case: rays on a mesh, an FFT spectrum, a factorised matrix, a scatter histogram and an ODE fan."></svg>
+  <svg id="thread" role="img" aria-label="One ink stroke splits into many thin lines, one per sample, each ending in a drop; the lines then become five kinds of case."></svg>
   <figcaption>Each line is a sample, each drop where it finished; then the cases they become.</figcaption>
 </figure>
 <script>RaptorThread.mount(document.getElementById("thread"), { desktopSamples: 150, phoneSamples: 60, seed: 20261001 });</script>
+```
+
+```{raw} html
+<div class="rpt-caps" aria-label="What is built in">
+  <div><b>Write</b><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/tutorials/01_your_first_kernel.html">Python kernels</a></li><li><a href="https://amasat01.github.io/hawk/content/tutorials/09_per_sample_control.html">branches, stops</a></li><li><a href="https://amasat01.github.io/hawk/content/api/generated/hawk.math.html">math, random</a></li><li><a href="https://amasat01.github.io/hawk/content/linear_algebra.html">linear algebra</a></li><li><a href="https://amasat01.github.io/hawk/content/api/generated/hawk.geometry.html">rays, meshes</a></li><li><a href="https://amasat01.github.io/hawk/content/compiling.html#wide-values">wide values</a></li></ul></div>
+  <div><b>Combine</b><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/tutorials/06_lookups_scatters_and_sums.html">sums, scatters, lookups</a></li><li><a href="https://amasat01.github.io/hawk/content/howto_index_set.html">sparse lanes</a></li><li><a href="https://amasat01.github.io/eagle/content/api/api_python.html#module-eagle.fft">FFT</a></li><li><a href="https://amasat01.github.io/eagle/content/api/api_python.html#module-eagle.gemm.capture">batched GEMM</a></li></ul></div>
+  <div><b>Differentiate</b><ul class="rpt-chips"><li><a href="https://amasat01.github.io/hawk/content/derivatives.html">reverse and forward</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/autodiff.html">through whole graphs</a></li></ul></div>
+  <div><b>Run</b><ul class="rpt-chips"><li><a href="https://amasat01.github.io/eagle/content/userguide/cuda_graphs.html">graph replay</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/graph_across_devices.html">CPU + GPU graphs</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/examples/early_termination.html">early stop</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/parallel_execution.html">several GPUs</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/determinism.html">bit-stable</a></li></ul></div>
+  <div><b>Connect</b><ul class="rpt-chips"><li><a href="https://amasat01.github.io/eagle/content/interop.html">NumPy, CuPy, PyTorch, JAX, Warp</a></li><li><a href="https://amasat01.github.io/eagle/content/userguide/tutorials/03_torch_training.html">train in PyTorch, JAX</a></li><li><a href="https://amasat01.github.io/hawk/content/embedded.html">embedded C</a></li></ul></div>
+</div>
 ```
 
 ```{raw} html
@@ -78,9 +88,7 @@
   <a href="https://amasat01.github.io/hawk/content/domains.html#signals-and-data"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 16c3-12 6-12 9 0s6 12 9 0 5-8 10-4" class="s-raptor" fill="none"/><path d="M2 16h28" class="s-muted" fill="none"/></svg><b>Signals and data</b><span>matrices, filters, spectra</span></a>
   <a href="https://amasat01.github.io/hawk/content/domains.html#geometry-and-visibility"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 26L12 14l8 8 9-12" class="s-muted" fill="none"/><path d="M4 6l14 14" class="s-raptor" fill="none"/><circle cx="18" cy="20" r="2" class="f-raptor"/></svg><b>Geometry and visibility</b><span>rays, eclipse, line of sight</span></a>
 </div>
-<ul class="rpt-chips" aria-label="Also built in">
-    <li><a href="https://amasat01.github.io/hawk/content/linear_algebra.html">linear algebra up to 4096</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/23_signal_processing.html">FFT</a></li><li><a href="https://amasat01.github.io/hawk/content/vocabulary/24_line_of_sight.html">rays and geometry</a></li><li><a href="https://amasat01.github.io/hawk/content/howto_index_set.html">lane sets</a></li><li><a href="https://amasat01.github.io/hawk/content/tutorials/06_lookups_scatters_and_sums.html">ordered scatters, keyed sums</a></li><li><a href="https://amasat01.github.io/hawk/content/interop.html">interop</a></li><li><a href="https://amasat01.github.io/hawk/content/derivatives.html">derivatives through loops and branches</a></li><li><a href="https://amasat01.github.io/hawk/content/domains.html">the domain series</a></li>
-  </ul><a class="rpt-thumbs" href="gallery.html" aria-label="The gallery">
+<a class="rpt-thumbs" href="gallery.html" aria-label="The gallery">
   <span><img class="only-light" src="_static/figures/landing/fem_light.png" alt="A shaded mesh" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fem_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
   <span><img class="only-light" src="_static/figures/landing/heat_light.png" alt="Heat on a plate" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/heat_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>
   <span><img class="only-light" src="_static/figures/landing/fluids_light.png" alt="Pool waves" width="100" height="100" loading="lazy"><img class="only-dark" src="_static/figures/landing/fluids_dark.png" alt="" aria-hidden="true" width="100" height="100" loading="lazy"></span>

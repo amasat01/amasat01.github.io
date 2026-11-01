@@ -26,7 +26,6 @@
 
   var STROKE_PHASE = 0.16;   // share of the play time spent drawing the single stroke
   var P1 = 0.42;             // share of the loop spent on thread -> branches; the rest morphs them into the cases
-  var NAMES = ["Ray tracing", "Spectra", "Linear algebra", "Particle statistics", "Trajectories"];
   var FADE = 0.06;           // share of the play time a finished hairline takes to grey
 
   function build(svg, opts) {
@@ -93,7 +92,7 @@
     }
 
 
-    var M = 60, K = 14, FT = K / (M - 1), NS = phone ? [6, 10, 6, 8, 6] : [10, 20, 10, 20, 12], HS = [1.57, 1.25, 1.6, 1.43, 1.35], OF = [-0.1, 0.22, 0, 0.16, -0.03], hb = (H - 2 * pad) / 5, hh = phone ? hb * 0.7 : (H - 2 * pad - 16) / 8, cum = phone ? pad : pad + 16, ord = [], grp = [[], [], [], [], []], extra = [], lab = [];
+    var M = 60, K = 14, FT = K / (M - 1), NS = phone ? [6, 10, 6, 8, 6] : [10, 20, 10, 20, 12], HS = [1.57, 1.25, 1.6, 1.43, 1.35], OF = [-0.1, 0.22, 0, 0.16, -0.03], hb = (H - 2 * pad) / 5, hh = phone ? hb * 0.7 : (H - 2 * pad - 16) / 8, cum = phone ? pad : pad + 16, ord = [], grp = [[], [], [], [], []], extra = [];
     var XA = phone ? [0.1, 0.1, 0.1, 0.1, 0.1] : [0.08, 0.24, 0.12, 0.36, 0.3], CW = phone ? [0.5, 0.5, 0.5, 0.5, 0.5] : [0.42, 0.32, 0.5, 0.32, 0.44], FK = [0.3, 0.34, 0, 0.34, 0], TA = [0.4, 0.35, 0, 0.4, 0];
     var YB = HS.map(function (h, c) { var y = cum + (h / 2 - OF[c]) * hh; cum += (h + 0.2) * hh; return y; }), yb = function (c) { return phone ? pad + hb * (c + 0.5) : YB[c]; }, xs = function (c) { return x0 + L * XA[c]; };
     var wv = 9.4 / (L * CW[0]), tl = phone ? 0 : 0.7 / (L * CW[0]), meshY = function (x) { return yb(0) + hh * 0.3 + hh * 0.09 * Math.sin((x - xs(0)) * wv) - hh * tl * (x - xs(0)); };
@@ -153,8 +152,6 @@
           q.at = q2.at = P1 + 0.3; q.setAttribute("data-b", 0); q2.setAttribute("data-b", 0); q2.mx = 0.8; extra.push(q, q2);
         }
       }
-      var t = el("text", { x: (xs(c) + L * CW[c] + 10).toFixed(1), y: (yb(c) + (c === 0 ? (phone ? hh * 0.4 + 14 : hh * 0.2) : 4)).toFixed(1), class: "t-label" }, svg);
-      t.textContent = NAMES[c]; t.setAttribute("data-b", c); t.at = P1 + 0.04 * c + 0.2; lab.push(t);
     });
     var mp = []; for (i = 0; i <= 60; i++) mp.push((xs(0) + L * CW[0] * i / 60).toFixed(1) + " " + meshY(xs(0) + L * CW[0] * i / 60).toFixed(1));
     [["M" + mp.join("L"), 0], ["M" + xs(1) + " " + (yb(1) + hh * 0.4) + "h" + L * CW[1], 1], ["M" + xs(3) + " " + (yb(3) + hh * 0.4) + "h" + L * CW[3], 3]].forEach(function (e) {
@@ -181,7 +178,6 @@
         if (Tm > P1 || ln.mo) morph(ln, Tm);
       }
       extra.forEach(function (p) { p.style.opacity = ((p.mx || 1) * smooth((Tm - p.at) / 0.15)).toFixed(2); });
-      lab.forEach(function (t) { t.style.opacity = smooth((Tm - t.at) / 0.1).toFixed(2); });
     }
     function morph(ln, Tm) {
       var u = Math.max(0, Math.min(1, (Tm - ln.m0) / 0.3)), m = smooth(u), d = "", e;

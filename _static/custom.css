@@ -160,7 +160,6 @@ code, pre, kbd,
 .t-rs0 { stop-color: var(--raptor); stop-opacity: 1; }
 .t-rs1 { stop-color: var(--raptor); stop-opacity: 0; }
 .t-rd { fill: var(--raptor); }
-.t-label { fill: var(--rpt-ink-secondary); font-size: 13px; }
 .rpt-chips a { color: inherit; text-decoration: none; }
 .rpt-chips li:hover { border-color: var(--raptor); }
 
@@ -571,6 +570,10 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
 .rpt-domains svg, .rpt-lean svg { width: 32px; height: 32px; margin-bottom: 4px; }
 .rpt-domains b, .rpt-lean b { font-size: 15px; line-height: 1.25; }
 .rpt-domains span, .rpt-lean span { font-size: 14px; line-height: 1.4; color: var(--rpt-ink-secondary); }
+.rpt-caps { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 20px; margin: 32px 0 40px; align-items: baseline; }
+.rpt-caps > div { display: contents; }
+.rpt-caps b { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rpt-ink-secondary); }
+.rpt-caps .rpt-chips { margin: 0; }
 .rpt-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; padding: 0; }
 .rpt-chips li { padding: 3px 12px; font-size: 14px; border: 1px solid var(--rpt-border); border-radius: 999px; color: var(--rpt-ink-secondary); background: var(--rpt-panel); }
 .rpt-thumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; text-decoration: none; }
@@ -610,4 +613,5 @@ a.cm-tick:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
   .rpt-libs { grid-template-columns: minmax(0, 1fr); }
   .rpt-arrow::before { content: "\2193"; } .rpt-arrow { justify-self: center; }
   .rpt-thumbs span { width: 56px; height: 56px; }
+  .rpt-caps { grid-template-columns: minmax(0, 1fr); gap: 4px; } .rpt-caps b { margin-top: 10px; }
 }
