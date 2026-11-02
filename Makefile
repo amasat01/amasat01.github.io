@@ -39,9 +39,11 @@ linkcheck:
 # The raptor_docs package tests (tests/test_raptor_docs_*.py) are in the same
 # discovery: they need Python 3.11+, nbformat and nbclient (pyproject.toml).
 # Does NOT re-run tools/sync_cards.py (that is maintenance-time, against a
-# real eagle checkout); it checks the _generated/ output already committed.
+# real eagle checkout); it checks the _generated/ output already committed. The two first-kernel notebooks
+# (hawk's and eagle's copy) must match in cell types and sources: HAWK and EAGLE name the checkouts.
 check:
 	python3 -m unittest discover -s tests -v
+	python3 -m raptor_docs.nb same $(HAWK)/docs/content/tutorials/01_your_first_kernel.ipynb $(EAGLE)/docs/content/userguide/first_kernel.ipynb
 	$(MAKE) strict
 
 # Watch for changes and auto-recompile (requires watchdog: pip install watchdog)

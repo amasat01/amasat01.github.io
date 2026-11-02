@@ -1,10 +1,10 @@
 # Copyright 2026 Alessandro Masat
 # SPDX-License-Identifier: Apache-2.0
-"""Notebook tools: ``python -m raptor_docs.nb <check|execute|run_gate|colab_setup|hosted> [args]``."""
+"""Notebook tools: ``python -m raptor_docs.nb <check|execute|run_gate|colab_setup|same|hosted> [args]``."""
 import importlib
 import sys
 
-COMMANDS = ("check", "execute", "run_gate", "colab_setup", "hosted")
+COMMANDS = ("check", "execute", "run_gate", "colab_setup", "same", "hosted")
 
 
 def local_kernel(name):
