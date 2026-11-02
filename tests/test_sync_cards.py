@@ -1005,5 +1005,35 @@ class StartHereNotebookColabCell(unittest.TestCase):
             self.assertFalse(line.lstrip().startswith(("# !pip", "#!pip", "# %pip")), line)
 
 
+class FeatureBlock(unittest.TestCase):
+    """The C2 block: rows of the feature card, with the A1 labels shown as they are."""
+
+    def _eagle(self, tmp, rows):
+        d = pathlib.Path(tmp) / "benchmarks" / "perf_card"
+        d.mkdir(parents=True)
+        card = {"device": {"name": "Test GPU"}, "rows": rows}
+        (d / "feature_card_test.json").write_text(json.dumps(card))
+        return pathlib.Path(tmp)
+
+    def test_no_card_gives_an_empty_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text, ok = sync_cards.build_feature_block(sync_cards.Pool(tmp), tmp)
+        self.assertFalse(ok)
+        self.assertNotIn("|", text)
+
+    def test_labels_and_ratios(self):
+        ok = lambda s: {"status": "ok", "wall_s": {"median": s}}  # noqa: E731
+        rows = [{"row": "scatter", "n": 4194304, "dtype": "float64", "reference_arm": "keyed",
+                 "arms": {"keyed": ok(0.002), "ordered": ok(0.004), "or": {"status": "out_of_memory"},
+                          "np": {"status": "not_run: budget"}, "cupy": {"status": "failed: boom"},
+                          "torch": {"status": "not_run: not installed: torch"}}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._eagle(tmp, rows)
+            text, ok_ = sync_cards.build_feature_block(sync_cards.Pool(root), root)
+        self.assertTrue(ok_)
+        for expected in ("| ordered | 4.00 ms | 2.0x |", "out of memory", "> 120 s per run", "not installed", "| cupy | failed |"):
+            self.assertIn(expected, text.replace("×", "x"))
+
+
 if __name__ == "__main__":
     unittest.main()
