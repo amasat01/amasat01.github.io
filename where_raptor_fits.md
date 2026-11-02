@@ -140,7 +140,7 @@ One level down, a kernel compiled elsewhere deploys through
 ## What RAPTOR is not
 
 Not a deep-learning framework, not an autograd engine for whole programs, not a replacement for cuBLAS or cuDNN
-(NVIDIA's own tuned dense-matrix and neural-network libraries) or any other tuned dense-tensor library. If your problem is one large dense tensor operation, the frameworks below will serve you
+(NVIDIA's own tuned dense-matrix and deep-learning libraries) or any other tuned dense-tensor library. If your problem is one large dense tensor operation, the frameworks below will serve you
 better, and RAPTOR will happily consume their output.
 
 ## Where we overlap, and what RAPTOR streamlines
@@ -192,7 +192,7 @@ two results checked to agree — is
 |---|---|---|
 | **numpy** | your data fits on the CPU and vectorised array code is fast enough | passing arrays in and out zero-copy on the host (DLPack / array interface; a GPU run copies them in); your array code can run between eagle's steps ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html)) |
 | **CuPy** | you want numpy semantics on the GPU, or a hand-written CUDA kernel is fine | passing CuPy arrays zero-copy; RAPTOR kernels can run on CuPy's stream ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_cupy_numpy.html)) |
-| **PyTorch** | you train neural networks or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html)) |
+| **PyTorch** | you train deep-learning models or need its ecosystem of models and operators | a kernel in place of one torch step, with `backward`, `torch.compile` and CUDA graphs unchanged, and your torch model as a step inside an eagle batch ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_torch.html)) |
 | **JAX** | you want whole-program transformations (`jit`, `grad`, `vmap`) over array code, compiled through XLA (Google's whole-program compiler) | a kernel in place of one `jax.numpy` step, inside `jit`, `grad`, `vmap` and `lax.scan` (row `JX-GRAD-TRANSFORMS`; the CPU leg is certified, the GPU leg awaits a run on a GPU build of JAX), on XLA's stream; your jitted model can run between eagle launches ([guide](https://amasat01.github.io/eagle/content/interop/use_eagle_with_jax.html)) |
 | **TensorFlow / Keras** | you build and serve models in that ecosystem | exchanging tensors over DLPack (not among the certified crossings today) |
 | **Numba** | you want to JIT (just-in-time compile — turn a Python function into machine code the first time it runs) ordinary Python loops on the CPU, or write CUDA kernels in Python's CUDA dialect | either side can consume the other's arrays |

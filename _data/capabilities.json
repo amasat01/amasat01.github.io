@@ -2407,7 +2407,7 @@
  "x": {
   "handtuned": {
    "x": 0.07,
-   "why": "Raw thread-level control belongs to simulation code, far from neural networks."
+   "why": "Raw thread-level control belongs to simulation code, far from deep-learning code."
   },
   "fixed": {
    "x": 0.21,
@@ -2471,7 +2471,7 @@
   },
   "arraystyle": {
    "x": 0.83,
-   "why": "Whole-array programs are the usual way neural code is written."
+   "why": "Whole-array programs are the usual way deep-learning code is written."
   },
   "training": {
    "x": 0.88,
