@@ -2134,8 +2134,8 @@ def build_compare_page(pool, perf_gpu, perf_cpu):
 
 
 # --------------------------------------------------------------------------- #
-# The landing radar: where each tool shines, one radar per platform. Six majors on the
-# landing radar, sixteen minors on the detailed one: seven minors measured from the
+# The landing radar: where each tool shines, one radar per platform. Seven majors on the
+# landing radar, twenty-five minors on the detailed one: seven minors measured from the
 # committed cards (through the helpers above) and nine qualitative from
 # `_data/radar_qualitative.json`. A minor's score = best value / this tool's value
 # (1.0 = the edge); a major draws the mean of its minors. Pure functions first
@@ -2143,6 +2143,9 @@ def build_compare_page(pool, perf_gpu, perf_cpu):
 # `perf_switch`.
 # --------------------------------------------------------------------------- #
 RADAR_QUALITATIVE = pathlib.Path("_data") / "radar_qualitative.json"
+#: The axes the 0.7.3 cards do not re-measure, with their values from the earlier cards (the source device and
+#: release are inside the file).
+RADAR_EARLIER = pathlib.Path("_data") / "radar_earlier.json"
 #: Share of the radius where an axis's worst tool sits (never the centre), and
 #: the ring fractions drawn: best, a geometric middle, worst.
 RADAR_FLOOR = 0.2
@@ -2152,13 +2155,37 @@ RADAR_MIN_SPAN = 2.0
 #: The minor axes, in the order the detailed radar draws them: grouped by major, the majors in the
 #: order of `RADAR_MAJORS`. (key, label, kind, what it measures, where the number comes from).
 #: kind "m" = measured from the cards, "q" = rubric in `_data/radar_qualitative.json`.
+#: The feature card's rows as radar axes: (axis key, label, row, our arms, what it is). Each axis compares the
+#: best of our arms in the row against the best arm of each external library the row records.
+FEATURE_AXES = (
+    ("f_wide", "Wide values", "wide_forms", ("thread", "team", "team_k8", "staged"), "samples that hold a vector of values"),
+    ("f_fused", "Fused steps", "steps_fused", ("K1", "K8", "K32"), "several integration steps fused into one launch"),
+    ("f_control", "Control flow", "control_flow", ("guard", "no_guard", "jump"), "branches and early exits inside a kernel"),
+    ("f_lalane", "Small linear algebra, per lane", "linalg_lane", ("hawk",), "one small matrix per lane"),
+    ("f_lateam", "Small linear algebra, per team", "linalg_team", ("team",), "one matrix shared by a team of lanes"),
+    ("f_contract", "Contractions", "contraction", ("box", "no_box"), "small tensor contractions"),
+    ("f_fft", "FFT", "fft", ("fft",), "a batched FFT"),
+    ("f_scatter", "Scatter", "scatter", ("keyed", "ordered", "or"), "adding values into bins by key"),
+    ("f_sum", "Reductions", "sample_sum", ("compensated", "ordered", "auto", "cell_compensated", "cell_auto"), "summing over samples"),
+)
+#: Which external tool each feature-card arm belongs to (arms that name no library are ours or unattributed).
+FEATURE_EXTERNAL = {"numpy_mask": "NumPy", "np_add_at": "NumPy", "torch": "PyTorch", "torch_func": "PyTorch",
+                    "cupy": "CuPy", "cupy_fft": "CuPy", "cupyx_scatter_add": "CuPy", "cupy_sum": "CuPy",
+                    "warp": "NVIDIA Warp", "warp_loop": "NVIDIA Warp"}
+
 RADAR_AXES = (
     ("uneven", "Uneven ensembles", "m", "How long a batch takes when every sample stops at its own step, at N = 1,000,000.",
      "performance card: results[].wall_s (spread batch)"),
     ("regular", "Regular ensembles", "m", "How long a batch takes when every sample runs the same orbit, at N = 1,000,000.",
      "performance card: results[].wall_s (uniform batch)"),
+    ("small", "Small jobs", "m", "Wall time of the smallest batch (N = 1,000), where launch overhead matters most. Not re-measured by the 0.7.3 cards: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): results[].wall_s at the smallest N"),
+    ("adaptive", "Adaptive ODEs", "m", "Wall time of an adaptive-step orbit propagator (RK7(8)) at N = 1,000,000. Not re-measured as a separate card in 0.7.3: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): RK7(8) results[].wall_s"),
     ("memory", "Memory", "m", "Peak memory the process holds for the same workload (device memory on a GPU; host memory on a CPU, net of the benchmark harness's control copy).",
      "performance card: memory.rows[] device_peak_bytes (GPU) or results[] host_peak_net_of_control_bytes (CPU)"),
+    ("compile", "Compile time", "m", "Cold compile of the adaptive kernel on empty caches. Not re-measured by the 0.7.3 cards: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): RK7(8) compile_time.rows[].cold_s"),
     ("code", "Code size", "m", "Lines of code the task takes, non-blank and non-comment.",
      "performance card: code.arms[].lines"),
     ("tensor", "Tensor workloads (qualitative)", "q", "", "rubric"),
@@ -2170,7 +2197,8 @@ RADAR_AXES = (
     ("arrays", "Works with your arrays (qualitative)", "q", "", "rubric"),
     ("deploy", "Deploy outside Python (qualitative)", "q", "", "rubric"),
     ("extensible", "Extensibility (qualitative)", "q", "", "rubric"),
-)
+) + tuple((k, label, "m", f"Wall time of {what} at the feature card's float64 row: our best arm against the best arm of each library the row records.",
+           f"feature card: rows[{row}].arms[].wall_s") for k, label, row, _arms, what in FEATURE_AXES)
 #: The six majors of the landing radar and the minors each one draws the mean of. These groups were
 #: fixed by theme before any data was looked at, and nothing here is tuned to a result: every minor counts
 #: once, every major is the plain mean of its minors' radii, and the same function runs for every tool.
@@ -2178,13 +2206,17 @@ RADAR_AXES = (
 #: (each on its own best-to-worst log scale, floor `RADAR_FLOOR`) and "q" when they are rubric scores (linear).
 RADAR_MAJORS = (
     ("ensemble", "Ensemble speed", "m",
-     "How fast a batch of independent samples runs: uneven and regular workloads.",
-     "mean of two measured wall times, each on its own best-to-worst scale",
-     ("uneven", "regular")),
+     "How fast a batch of independent samples runs: uneven, regular, small and adaptive workloads.",
+     "mean of four measured wall times, each on its own best-to-worst scale",
+     ("uneven", "regular", "small", "adaptive")),
     ("footprint", "Footprint and turnaround", "m",
-     "What the work costs around the run: the memory it holds and the code to write.",
-     "mean of two measurements, each on its own best-to-worst scale",
-     ("memory", "code")),
+     "What the work costs around the run: the memory it holds, the time to compile and the code to write.",
+     "mean of three measurements, each on its own best-to-worst scale",
+     ("memory", "compile", "code")),
+    ("capabilities", "Capabilities", "m",
+     "What the libraries support beyond the ensemble loop: wide values, fused steps, control flow, small linear algebra, contractions, FFT, scatter and reductions, each against the libraries the feature card records.",
+     "mean of nine measured wall times, each on its own best-to-worst scale",
+     tuple(a[0] for a in FEATURE_AXES)),
     ("numerics", "Tensors and precision (qualitative)", "q",
      "Dense tensor maths, array-style code and half precision: where PyTorch and JAX lead.",
      "mean of three rubric scores",
@@ -2232,6 +2264,10 @@ RADAR_AXIS_EXTRA = {
     "uneven": {"short": "Uneven ensembles", "dir": "faster is better", "edge": "fastest", "unit": "time"},
     "regular": {"short": "Regular ensembles", "dir": "faster is better", "edge": "fastest", "unit": "time"},
     "memory": {"short": "Memory", "dir": "smaller is better", "edge": "smallest", "unit": "mem"},
+    "small": {"short": "Small jobs", "dir": "faster is better", "edge": "fastest", "unit": "time"},
+    "adaptive": {"short": "Adaptive ODEs", "dir": "faster is better", "edge": "fastest", "unit": "time"},
+    "compile": {"short": "Compile time", "dir": "lower is better", "edge": "fastest", "unit": "time"},
+    **{a[0]: {"short": a[1], "dir": "faster is better", "edge": "fastest", "unit": "time"} for a in FEATURE_AXES},
     "code": {"short": "Code size", "dir": "smaller is better", "edge": "smallest", "unit": "lines"},
     "tensor": {"short": "Tensors", "dir": "", "edge": "", "unit": "rubric"},
     "array_style": {"short": "Array style", "dir": "", "edge": "", "unit": "rubric"},
@@ -2243,6 +2279,7 @@ RADAR_AXIS_EXTRA = {
     "deploy": {"short": "Deploy", "dir": "", "edge": "", "unit": "rubric"},
     "extensible": {"short": "Extensibility", "dir": "", "edge": "", "unit": "rubric"},
     "ensemble": {"short": "Ensemble speed", "dir": "faster is better", "edge": "fastest", "unit": "mean"},
+    "capabilities": {"short": "Capabilities", "dir": "faster is better", "edge": "fastest", "unit": "mean"},
     "footprint": {"short": "Footprint", "dir": "lower is better", "edge": "lowest", "unit": "mean"},
     "numerics": {"short": "Tensors and precision", "dir": "", "edge": "", "unit": "rubric"},
     "authoring": {"short": "One-sample authoring", "dir": "", "edge": "", "unit": "rubric"},
@@ -2257,7 +2294,7 @@ RADAR_DETAILED_NOTE = RADAR_NOTE
 RADAR_CONTROL_CAPTION = ("NVIDIA Warp gives you near-total control of every kernel, short of raw CUDA. raptor hands that "
                          "control to the engine on purpose, so compaction and the launch shape are decided at run time; "
                          "the two are different trade-offs, not a ranking.")
-RADAR_MAJOR_RULE = ("Each of the six majors is the plain mean of its minor axes (the detailed radar draws every minor), "
+RADAR_MAJOR_RULE = ("Each of the seven majors is the plain mean of its minor axes (the detailed radar draws every minor), "
                     "with equal weights and the same rule for every tool; a minor a tool has no reading on is left out of "
                     "its mean and the major's marker is drawn hollow. Hover or tap a major to see its minors.")
 RADAR_SCALE_RULE = ("Each measured axis is stretched over its own best-to-worst range, so ring labels differ per axis "
@@ -2389,7 +2426,26 @@ def load_qualitative(pool, path=None):
     return json.loads(p.read_text())
 
 
-def _device_axes(perf, kind):
+def _feature_axis(card, row_name, ours):
+    """(``{tool: {"value", "arm", "text", "detail"}}``, cell description) of one feature-card row: raptor is
+    the best of our arms in the row, every other tool its best attributable arm; an arm that did not run is
+    left out, so a tool with no reading has no vertex."""
+    row = next((r for r in (card or {}).get("rows", []) if r["row"] == row_name and r["dtype"] == "float64"), None)
+    if not row:
+        return {}, f"no float64 {row_name} row on this device's feature card"
+    best = {}
+    for arm, a in row["arms"].items():
+        if a.get("status") != "ok":
+            continue
+        tool = "raptor" if arm in ours else FEATURE_EXTERNAL.get(arm)
+        wall = _center(a["wall_s"])
+        if tool and (tool not in best or wall < best[tool][1]):
+            best[tool] = (arm, wall)
+    vals = {t: {"value": w, "arm": arm, "text": _fmt_sig_time(w), "detail": ""} for t, (arm, w) in best.items()}
+    return vals, f"{row_name}, N = {row['n']:,}, float64, feature card of {(card.get('generated_utc') or '')[:10]}"
+
+
+def _device_axes(perf, kind, earlier=None, feature=None):
     """Per measured axis: ``({tool: {"value": number|None, "arm": str, "text":
     str, "detail": str}}, description of the cell)``. ``value`` None = the tool
     has no reading. A tool with
@@ -2400,6 +2456,12 @@ def _device_axes(perf, kind):
         best = best_arm_per_tool(_radar_wall_values(perf, n, cfg), kind)
         axes[key] = ({t: {"value": v, "arm": a, "text": _fmt_sig_time(v), "detail": ""} for t, (a, v) in best.items()},
                      f"N = {n:,}, {_cfg_phrase(cfg['distribution'])}")
+    for key, entry in ((earlier or {}).get("axes") or {}).items():   # axes no 0.7.3 card re-measured: the earlier card's values
+        axes[key] = ({t: {"value": v["value"], "arm": v["arm"], "text": v["text"], "detail": v["detail"]}
+                      for t, v in entry["tools"].items()},
+                     f"{entry['cell']}; {earlier['source']}; not re-measured by the 0.7.3 cards")
+    for key, _label, row_name, ours, _what in FEATURE_AXES:
+        axes[key] = _feature_axis(feature, row_name, ours)
     mem = _memory_values(perf, n_max, kind)
     fmt = _fmt_mib_int if kind == "gpu" else _fmt_mib
     best = best_arm_per_tool(mem, kind)
@@ -2430,13 +2492,13 @@ def _stretch(entries, minimum=RADAR_MIN_SPAN):
     return span
 
 
-def radar_minor_axes(side, perf, qualitative):
+def radar_minor_axes(side, perf, qualitative, earlier=None, feature=None):
     """One device's minor axes, as plain data: ``{key: {"desc", "rl", "tools":
     {tool: {"score", "r", "value", "ratio", "arm", "detail"}}}}`` for every tool of
     the side (drawn and table-only). A tool with no reading on an axis is absent
     from it (no vertex), never 0. Measured axes are stretched over their own
     best..worst (see `radar_radius`); rubric axes are linear."""
-    raw = _device_axes(perf, side)
+    raw = _device_axes(perf, side, earlier, feature)
     tools = [t for t, _c in RADAR_TOOLS[side] + RADAR_TABLE_ONLY[side]]
     axes = {}
     for key, _label, kind, _what, _src in RADAR_AXES:
@@ -2522,11 +2584,11 @@ def radar_majors(minor_axes, scale=(1, 5)):
     return out
 
 
-def build_radar_device(side, slug, perf, qualitative, mode="landing"):
+def build_radar_device(side, slug, perf, qualitative, mode="landing", earlier=None, feature=None):
     """One device's radar, as plain data: ``{"slug", "name", "card", "link", "axes"}``;
-    ``axes`` are the six majors in the landing mode (each tool's entry carries the minors it is the
-    mean of) and the sixteen minors in the detailed mode."""
-    minor_axes = radar_minor_axes(side, perf, qualitative)
+    ``axes`` are the seven majors in the landing mode (each tool's entry carries the minors it is the
+    mean of) and the twenty-five minors in the detailed mode."""
+    minor_axes = radar_minor_axes(side, perf, qualitative, earlier, feature)
     axes = radar_majors(minor_axes) if mode == "landing" else minor_axes
     return {"slug": slug, "name": _tab_device(perf), "card": f"{_tab_device(perf)}, {_card_stamp(perf)}",
             "link": _card_link(side, slug), "axes": axes,
@@ -2538,10 +2600,21 @@ def _card_link(side, slug):
     return f"{EAGLE_PERF_PAGE}#{EAGLE_ANCHOR_FAMILY[family]}-{slug}".replace("_", "-")
 
 
-def radar_devices(side, entries, qualitative, mode="landing"):
+def _earlier_for(by_slug, slug):
+    """The earlier card of the same device, else of the same kind of device (same vendor and family, e.g. the
+    H100 80GB for the H100 NVL), else None."""
+    if not by_slug:
+        return None
+    if slug in by_slug:
+        return by_slug[slug]
+    family = "-".join(slug.split("-")[:2])
+    return next((v for k, v in by_slug.items() if k.startswith(family)), None)
+
+
+def radar_devices(side, entries, qualitative, mode="landing", earlier=None, features=None):
     """[(slug, radar device)] for the side's cards in tab order."""
     pref = GPU_PREFERENCE if side == "gpu" else CPU_PREFERENCE
-    return [(slug, build_radar_device(side, slug, card, qualitative, mode))
+    return [(slug, build_radar_device(side, slug, card, qualitative, mode, _earlier_for(earlier, slug), (features or {}).get(slug)))
             for slug, card in in_tab_order([e for e in entries if e[1].get("ns")], pref)]
 
 
@@ -2928,10 +3001,10 @@ def build_radar_page(pool, name, html_block):
     return w.text(), True
 
 
-def build_radars(pool, gpu_entries, cpu_entries, qualitative, mode="landing"):
+def build_radars(pool, gpu_entries, cpu_entries, qualitative, mode="landing", earlier=None, features=None):
     """{side: html block} for both sides. The axes and their order are the fixed major structure
     (`RADAR_MODE_KEYS`): no search over the data places them."""
-    devs = {side: radar_devices(side, entries, qualitative, mode)
+    devs = {side: radar_devices(side, entries, qualitative, mode, (earlier or {}).get(side), features)
             for side, entries in (("gpu", gpu_entries), ("cpu", cpu_entries))}
     entries_of = {"gpu": gpu_entries, "cpu": cpu_entries}
     blocks = {}
@@ -3101,8 +3174,15 @@ def main(argv=None):
     feature_rows, have_feature = build_feature_block(pool, args.eagle_root)
     compatibility, have_compat = build_compatibility(pool, all_cards["perf_gpu"], all_cards["perf_cpu"])
     qualitative = load_qualitative(pool)
-    radars = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative)
-    detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative, "detailed")
+    earlier = json.loads(pool.site_source(RADAR_EARLIER).read_text())
+    features = {}   # the feature card of each device, by the device slug of its perf card
+    for path in sorted((args.eagle_root / "benchmarks" / "perf_card").glob("feature_card_*.json")):
+        card = json.loads(pool.source(path.relative_to(args.eagle_root)).read_text())
+        features[card["device_slug"].removeprefix("cpu-")] = card
+    radars = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative,
+                          earlier=earlier, features=features)
+    detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative, "detailed",
+                            earlier=earlier, features=features)
     capmap = build_capmap(pool)
     radar_detailed, have_detailed = build_detailed_radar(pool, detailed)
     # landing: under the bars of each side, the capability map (the same on both), then the radar

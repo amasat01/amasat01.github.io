@@ -1,0 +1,1004 @@
+{
+ "gpu": {
+  "nvidia-a100-sxm4-40gb": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): NVIDIA A100-SXM4-40GB, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.00015615633340833787,
+       "text": "156 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.6733989719999348,
+       "text": "673 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.07908882600008837,
+       "text": "79.1 ms",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.02834193599998495,
+       "text": "28.3 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.00027165933336921927,
+       "text": "272 \u00b5s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 0.10657731599985709,
+       "text": "107 ms",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 15.435519173000102,
+       "text": "15.4 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 13.685660127999654,
+       "text": "13.7 s",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 2.1932447350000075,
+       "text": "2.19 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.21847602900015772,
+       "text": "218 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 6.142224329999863,
+       "text": "6.14 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 274 ms, 22\u00d7 from the simple to the adaptive kernel \u00b7 warm 412 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 4.0464734950001,
+       "text": "4.05 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 1.05 s, 3.8\u00d7 from the simple to the adaptive kernel \u00b7 warm 1.64 s"
+      },
+      "PyTorch": {
+       "value": 6.6263493929996,
+       "text": "6.63 s",
+       "arm": "PyTorch torch.compile (reduce-overhead)",
+       "detail": "simple kernel only: the adaptive card has no torch.compile arm \u00b7 warm 4.06 s"
+      },
+      "NVIDIA Warp": {
+       "value": 11.895291160000397,
+       "text": "11.9 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 936 ms, 12\u00d7 from the simple to the adaptive kernel \u00b7 warm 44.6 ms"
+      },
+      "raptor": {
+       "value": 3.771312120999937,
+       "text": "3.77 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 978 ms, 3.8\u00d7 from the simple to the adaptive kernel \u00b7 warm 572 ms"
+      }
+     }
+    }
+   }
+  },
+  "nvidia-h100-80gb-hbm3": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): NVIDIA H100 80GB HBM3, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.00010276033329622199,
+       "text": "103 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.35152115466667055,
+       "text": "352 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.06567638666668547,
+       "text": "65.7 ms",
+       "arm": "torch_compiled",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.02178240133343934,
+       "text": "21.8 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.00011176766656717518,
+       "text": "112 \u00b5s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 0.04362581599980331,
+       "text": "43.6 ms",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 9.063570743999662,
+       "text": "9.06 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 7.170341937999638,
+       "text": "7.17 s",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 1.1108588409997537,
+       "text": "1.11 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.10143284600007973,
+       "text": "101 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 4.216786043999946,
+       "text": "4.22 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 272 ms, 15\u00d7 from the simple to the adaptive kernel \u00b7 warm 267 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 2.582868802000121,
+       "text": "2.58 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 693 ms, 3.7\u00d7 from the simple to the adaptive kernel \u00b7 warm 1.05 s"
+      },
+      "PyTorch": {
+       "value": 3.7058038119998855,
+       "text": "3.71 s",
+       "arm": "PyTorch torch.compile (reduce-overhead)",
+       "detail": "simple kernel only: the adaptive card has no torch.compile arm \u00b7 warm 2.11 s"
+      },
+      "NVIDIA Warp": {
+       "value": 9.28294787499999,
+       "text": "9.28 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 574 ms, 16\u00d7 from the simple to the adaptive kernel \u00b7 warm 32.6 ms"
+      },
+      "raptor": {
+       "value": 2.4760591130002467,
+       "text": "2.48 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 619 ms, 4.0\u00d7 from the simple to the adaptive kernel \u00b7 warm 333 ms"
+      }
+     }
+    }
+   }
+  },
+  "nvidia-l4": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): NVIDIA L4, card of 2026-10-14",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.00044133533333479136,
+       "text": "441 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.6562040150000333,
+       "text": "656 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.06428669866666799,
+       "text": "64.3 ms",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.017550768999929762,
+       "text": "17.6 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.001643791666689746,
+       "text": "1.64 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 2.3209797839999737,
+       "text": "2.32 s",
+       "arm": "eagle_graph_persist",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 52.75508954100002,
+       "text": "52.8 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 54.976058964,
+       "text": "55.0 s",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 7.265257412999972,
+       "text": "7.27 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 4.272932085999969,
+       "text": "4.27 s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 4.6769865900000696,
+       "text": "4.68 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 288 ms, 16\u00d7 from the simple to the adaptive kernel \u00b7 warm 397 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 4.030750586000067,
+       "text": "4.03 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 1.05 s, 3.8\u00d7 from the simple to the adaptive kernel \u00b7 warm 1.65 s"
+      },
+      "PyTorch": {
+       "value": 6.702382220000004,
+       "text": "6.70 s",
+       "arm": "PyTorch torch.compile (reduce-overhead)",
+       "detail": "simple kernel only: the adaptive card has no torch.compile arm \u00b7 warm 4.14 s"
+      },
+      "NVIDIA Warp": {
+       "value": 12.269524668000031,
+       "text": "12.3 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 823 ms, 14\u00d7 from the simple to the adaptive kernel \u00b7 warm 62.3 ms"
+      },
+      "raptor": {
+       "value": 3.8078221209998446,
+       "text": "3.81 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 989 ms, 3.8\u00d7 from the simple to the adaptive kernel \u00b7 warm 593 ms"
+      }
+     }
+    }
+   }
+  },
+  "nvidia-rtx-pro-6000-blackwell-server-edition": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): NVIDIA RTX PRO 6000 Blackwell Server Edition, card of 2026-10-14",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.000634119666604723,
+       "text": "634 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.2289513433333165,
+       "text": "229 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.03685657933328912,
+       "text": "36.9 ms",
+       "arm": "torch_compiled",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.014598097666673008,
+       "text": "14.6 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.0014251256667800287,
+       "text": "1.43 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 0.6069215899999563,
+       "text": "607 ms",
+       "arm": "eagle_graph_compact",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 9.310774798000011,
+       "text": "9.31 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 8.54889307999997,
+       "text": "8.55 s",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 2.7868656749999445,
+       "text": "2.79 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 1.116622555000049,
+       "text": "1.12 s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 2.7828984450000007,
+       "text": "2.78 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 148 ms, 18\u00d7 from the simple to the adaptive kernel \u00b7 warm 165 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 1.8214161289999993,
+       "text": "1.82 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 477 ms, 3.8\u00d7 from the simple to the adaptive kernel \u00b7 warm 724 ms"
+      },
+      "PyTorch": {
+       "value": 2.656876513000043,
+       "text": "2.66 s",
+       "arm": "PyTorch torch.compile (reduce-overhead)",
+       "detail": "simple kernel only: the adaptive card has no torch.compile arm \u00b7 warm 1.52 s"
+      },
+      "NVIDIA Warp": {
+       "value": 4.381170700999974,
+       "text": "4.38 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 359 ms, 12\u00d7 from the simple to the adaptive kernel \u00b7 warm 50.7 ms"
+      },
+      "raptor": {
+       "value": 1.7191941710000265,
+       "text": "1.72 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 402 ms, 4.2\u00d7 from the simple to the adaptive kernel \u00b7 warm 290 ms"
+      }
+     }
+    }
+   }
+  },
+  "quadro-p2000": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): Quadro P2000, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.0008216643085082372,
+       "text": "822 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.3763696930060784,
+       "text": "376 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.11192772164940834,
+       "text": "112 ms",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.01787107701723774,
+       "text": "17.9 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.001411577221006155,
+       "text": "1.41 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 13.449293653015047,
+       "text": "13.4 s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 182.26130968006328,
+       "text": "182 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 183.59930902789347,
+       "text": "184 s",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 40.13860754203051,
+       "text": "40.1 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 26.344289642060176,
+       "text": "26.3 s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 4.2633996738586575,
+       "text": "4.26 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 235 ms, 18\u00d7 from the simple to the adaptive kernel \u00b7 warm 502 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 4.038341080071405,
+       "text": "4.04 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 715 ms, 5.6\u00d7 from the simple to the adaptive kernel \u00b7 warm 1.71 s"
+      },
+      "NVIDIA Warp": {
+       "value": 9.348667745944113,
+       "text": "9.35 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 537 ms, 17\u00d7 from the simple to the adaptive kernel \u00b7 warm 60.4 ms"
+      },
+      "raptor": {
+       "value": 4.475535714998841,
+       "text": "4.48 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 1.11 s, 4.0\u00d7 from the simple to the adaptive kernel \u00b7 warm 621 ms"
+      }
+     }
+    }
+   }
+  },
+  "tesla-t4": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): Tesla T4, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.0005260053333131509,
+       "text": "526 \u00b5s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 0.6657365456666563,
+       "text": "666 ms",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.08959354600006009,
+       "text": "89.6 ms",
+       "arm": "torch_graphed",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.026563788333305638,
+       "text": "26.6 ms",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 0.002101906333336956,
+       "text": "2.10 ms",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 4.260158245000184,
+       "text": "4.26 s",
+       "arm": "eagle_simulate",
+       "detail": ""
+      },
+      "CuPy": {
+       "value": 89.92195197000001,
+       "text": "89.9 s",
+       "arm": "cupy_masked",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 95.14307966800015,
+       "text": "95.1 s",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 13.052143875999946,
+       "text": "13.1 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      },
+      "NVIDIA Warp": {
+       "value": 7.880083418999902,
+       "text": "7.88 s",
+       "arm": "warp_kernel",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 4.815562190000037,
+       "text": "4.82 s",
+       "arm": "JAX jit(vmap(while_loop))",
+       "detail": "simple kernel 284 ms, 16\u00d7 from the simple to the adaptive kernel \u00b7 warm 420 ms \u00b7 JAX recompiles for every shape; the largest-N row is shown"
+      },
+      "CuPy": {
+       "value": 4.42611445,
+       "text": "4.43 s",
+       "arm": "CuPy masked",
+       "detail": "simple kernel 1.05 s, 4.2\u00d7 from the simple to the adaptive kernel \u00b7 warm 1.80 s"
+      },
+      "PyTorch": {
+       "value": 6.851823589000105,
+       "text": "6.85 s",
+       "arm": "PyTorch torch.compile (reduce-overhead)",
+       "detail": "simple kernel only: the adaptive card has no torch.compile arm \u00b7 warm 4.20 s"
+      },
+      "NVIDIA Warp": {
+       "value": 12.710162295000032,
+       "text": "12.7 s",
+       "arm": "Warp per-thread kernel",
+       "detail": "simple kernel 869 ms, 14\u00d7 from the simple to the adaptive kernel \u00b7 warm 94.0 ms"
+      },
+      "raptor": {
+       "value": 4.853446495999947,
+       "text": "4.85 s",
+       "arm": "eagle graph",
+       "detail": "simple kernel 1.18 s, 4.1\u00d7 from the simple to the adaptive kernel \u00b7 warm 657 ms"
+      }
+     }
+    }
+   }
+  }
+ },
+ "cpu": {
+  "aarch64": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): Google Axion (Arm Neoverse-V2), card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.00040730512601586767,
+       "text": "407 \u00b5s",
+       "arm": "eagle_term8",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.06286683300001528,
+       "text": "62.9 ms",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "NumPy": {
+       "value": 0.016856485833339246,
+       "text": "16.9 ms",
+       "arm": "mp_numpy",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 0.0004380895789492805,
+       "text": "438 \u00b5s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.0008033406209661155,
+       "text": "803 \u00b5s",
+       "arm": "jax_shard8",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 13.310084079999797,
+       "text": "13.3 s",
+       "arm": "eagle_cpu8",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 22.488360373999967,
+       "text": "22.5 s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 41.6374489220002,
+       "text": "41.6 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 0.08372889099996428,
+       "text": "83.7 ms",
+       "arm": "JAX jit + vmap(while_loop), 1 device",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 33.1 ms"
+      },
+      "Numba": {
+       "value": 0.5203335830001379,
+       "text": "520 ms",
+       "arm": "Numba prange, 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 159 ms"
+      },
+      "raptor": {
+       "value": 0.2966312049998123,
+       "text": "297 ms",
+       "arm": "eagle host, termination + compaction, up to 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 13.4 ms"
+      }
+     }
+    }
+   }
+  },
+  "amd-epyc-7b13": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): AMD EPYC 7B13, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.0004978913415806175,
+       "text": "498 \u00b5s",
+       "arm": "eagle_term8",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.07490492650003944,
+       "text": "74.9 ms",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "NumPy": {
+       "value": 0.03954946766666959,
+       "text": "39.5 ms",
+       "arm": "numpy_masked",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 0.0004483115223215301,
+       "text": "448 \u00b5s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.0008471822689032041,
+       "text": "847 \u00b5s",
+       "arm": "jax_shard8",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 26.232533138000235,
+       "text": "26.2 s",
+       "arm": "eagle_cpu8",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 31.900186982999912,
+       "text": "31.9 s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 62.18311618200005,
+       "text": "62.2 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 0.12268474500001503,
+       "text": "123 ms",
+       "arm": "JAX sharded over 8 CPU devices",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 43.5 ms"
+      },
+      "Numba": {
+       "value": 0.7120886979998886,
+       "text": "712 ms",
+       "arm": "Numba prange, 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 253 ms"
+      },
+      "raptor": {
+       "value": 1.097087854999927,
+       "text": "1.10 s",
+       "arm": "eagle host, termination + compaction, up to 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 30.2 ms"
+      }
+     }
+    }
+   }
+  },
+  "amd-epyc-9b45": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): AMD EPYC 9B45, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.00016741860066958725,
+       "text": "167 \u00b5s",
+       "arm": "eagle_term8",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.04474345300002369,
+       "text": "44.7 ms",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "NumPy": {
+       "value": 0.01556116514283141,
+       "text": "15.6 ms",
+       "arm": "mp_numpy",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 0.0003682861098843285,
+       "text": "368 \u00b5s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.0004914204077645921,
+       "text": "491 \u00b5s",
+       "arm": "jax_shard8",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 3.755014163999931,
+       "text": "3.76 s",
+       "arm": "eagle_cpu8",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 19.929938830000083,
+       "text": "19.9 s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 60.53710123200017,
+       "text": "60.5 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 0.07154886399985116,
+       "text": "71.5 ms",
+       "arm": "JAX jit + vmap(while_loop), 1 device",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 29.1 ms"
+      },
+      "Numba": {
+       "value": 0.4492630489999101,
+       "text": "449 ms",
+       "arm": "Numba prange, 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 135 ms"
+      },
+      "raptor": {
+       "value": 0.5651299500000277,
+       "text": "565 ms",
+       "arm": "eagle host, termination + compaction, up to 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 17.7 ms"
+      }
+     }
+    }
+   }
+  },
+  "intel-xeon-platinum-8581c": {
+   "source": "eagle 0.6.0 cards (before the 0.7.3 re-run): Intel Xeon Platinum 8581C, card of 2026-10-13",
+   "axes": {
+    "small": {
+     "cell": "N = 1,000, spread, up to 1,000 steps",
+     "tools": {
+      "raptor": {
+       "value": 0.0002241397991090212,
+       "text": "224 \u00b5s",
+       "arm": "eagle_term8",
+       "detail": ""
+      },
+      "PyTorch": {
+       "value": 0.04409683100000924,
+       "text": "44.1 ms",
+       "arm": "torch_masked",
+       "detail": ""
+      },
+      "NumPy": {
+       "value": 0.015875182857143955,
+       "text": "15.9 ms",
+       "arm": "mp_numpy",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 0.00039650811858185983,
+       "text": "397 \u00b5s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 0.0006007765238123175,
+       "text": "601 \u00b5s",
+       "arm": "jax_shard8",
+       "detail": ""
+      }
+     }
+    },
+    "adaptive": {
+     "cell": "adaptive RK7(8) orbits, N = 1,000,000",
+     "tools": {
+      "raptor": {
+       "value": 4.858790736999936,
+       "text": "4.86 s",
+       "arm": "eagle_cpu8",
+       "detail": ""
+      },
+      "Numba": {
+       "value": 33.219461207999984,
+       "text": "33.2 s",
+       "arm": "numba_prange",
+       "detail": ""
+      },
+      "JAX": {
+       "value": 51.34055857399994,
+       "text": "51.3 s",
+       "arm": "jax_vmap",
+       "detail": ""
+      }
+     }
+    },
+    "compile": {
+     "cell": "fixed scale: 0.1 s at the edge, 100 s at the floor",
+     "tools": {
+      "JAX": {
+       "value": 0.07426974699998823,
+       "text": "74.3 ms",
+       "arm": "JAX jit + vmap(while_loop), 1 device",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 32.7 ms"
+      },
+      "Numba": {
+       "value": 0.47763730399999815,
+       "text": "478 ms",
+       "arm": "Numba prange, 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 169 ms"
+      },
+      "raptor": {
+       "value": 0.6313760909999999,
+       "text": "631 ms",
+       "arm": "eagle host, termination + compaction, up to 8 threads",
+       "detail": "simple kernel only: this device has no adaptive-kernel compile reading \u00b7 warm 20.2 ms"
+      }
+     }
+    }
+   }
+  }
+ }
+}

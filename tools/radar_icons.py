@@ -76,6 +76,16 @@ ICONS = {
 
 #: One icon per major axis of the landing radar, reusing the minor icon that fits it best.
 ICONS.update({
+    "f_wide": '<path d="M4 8h16M4 12h16M4 16h16M8 5v14M16 5v14"/>',
+    "f_fused": '<path d="M4 7l5 5-5 5M11 7l5 5-5 5M18 7v10"/>',
+    "f_control": '<path d="M6 4v6M6 10c0 4 12 2 12 8M18 15v5M15 17l3 3 3-3"/>',
+    "f_lalane": '<rect x="5" y="5" width="14" height="14" rx="1.5"/><path d="M12 5v14M5 12h14"/>',
+    "f_lateam": '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"/>',
+    "f_contract": '<path d="M4 12h16M12 4v16M7 7l10 10"/>',
+    "f_fft": '<path d="M3 12c2-8 4-8 6 0s4 8 6 0 4-8 6 0"/>',
+    "f_scatter": '<path d="M12 4v8M12 12l-6 8M12 12v8M12 12l6 8"/>',
+    "f_sum": '<path d="M18 5H7l6 7-6 7h11"/>',
+    "capabilities": '<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.4 6.8 19.2l1-5.9L3.5 9.2l5.9-.8z"/>',
     "ensemble": ICONS["uneven"],
     "footprint": ICONS["memory"],
     "numerics": ICONS["tensor"],
