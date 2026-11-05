@@ -233,13 +233,7 @@ full, cited statement of what is certified today versus foreseen, and
 (going-deeper-optional)=
 ## Going deeper (optional)
 
-The worked compaction numbers, and the same task written in five tools side by side — neither needed to follow the
-page above.
-
-### What compaction and `eagle.simulate` actually save
-
-```{include} _generated/compaction_numbers.md
-```
+The same task written in five tools side by side, which you do not need in order to follow the page above.
 
 (same-task-five-ways)=
 ### Same task, five ways

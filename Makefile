@@ -20,6 +20,7 @@ clean:
 
 # The gallery animations and the landing thumbnails come from the paired hawk and eagle checkouts; they are build
 # output and never committed (tools/gallery_gifs.py, tools/landing_thumbs.py).
+PYTHON ?= python3
 HAWK ?= hawk
 EAGLE ?= eagle
 media:
@@ -42,8 +43,8 @@ linkcheck:
 # real eagle checkout); it checks the _generated/ output already committed. The two first-kernel notebooks
 # (hawk's and eagle's copy) must match in cell types and sources: HAWK and EAGLE name the checkouts.
 check:
-	python3 -m unittest discover -s tests -v
-	python3 -m raptor_docs.nb same $(HAWK)/docs/content/tutorials/01_your_first_kernel.ipynb $(EAGLE)/docs/content/userguide/first_kernel.ipynb
+	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) -m raptor_docs.nb same $(HAWK)/docs/content/tutorials/01_your_first_kernel.ipynb $(EAGLE)/docs/content/userguide/first_kernel.ipynb
 	$(MAKE) strict
 
 # Watch for changes and auto-recompile (requires watchdog: pip install watchdog)

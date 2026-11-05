@@ -4,56 +4,39 @@
 
 A batch where each sample stops on its own step (the "spread" distribution here) is exactly what eagle's compaction targets: once enough samples finish, the live ones are packed into the next launch instead of carrying the whole batch along.
 
-- N = 1,000: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 94.9 µs; eagle.simulate, the one-call API, 103 µs, of 16 arms run.
-- N = 10,000: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 106 µs; eagle.simulate, the one-call API, 118 µs, of 16 arms run.
-- N = 100,000: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 197 µs; eagle.simulate, the one-call API, 199 µs, of 16 arms run.
-- N = 1,000,000: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 601 µs; eagle.simulate, the one-call API, 613 µs, of 16 arms run.
+- N = 1,000,000: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 48.9 ms, of 8 arms run.
+- N = 10,000,000: fastest is `eagle_graph_persist` (hawk + eagle persistent), 475 ms; eagle.simulate, the one-call API, 477 ms, of 8 arms run.
 
-[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-h100-80gb-hbm3) (NVIDIA H100 80GB HBM3, card of 2026-10-13).
+[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-h100-nvl) (NVIDIA H100 NVL, card of 2026-11-05).
 
 ## My batch is dense (every sample runs the same number of steps)
 
-At N = 1,000,000 with nothing to compact, `warp_kernel` (1.71 ms) and `eagle_graph_auto` (1.74 ms) are a tie -- a plain per-thread kernel is the better fit once nothing finishes early, and hawk + eagle's plain graph arm matches it.
+At N = 1,000,000 with nothing to compact, `warp_kernel` (55.1 ms) and `eagle_simulate` (40.8 ms) are hawk + eagle's win -- a plain per-thread kernel is the better fit once nothing finishes early, and hawk + eagle's plain graph arm matches it.
 
-[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-h100-80gb-hbm3) (NVIDIA H100 80GB HBM3, card of 2026-10-13).
+[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-h100-nvl) (NVIDIA H100 NVL, card of 2026-11-05).
 
 ## My batches are small
 
-At the smallest size this card runs (N = 1,000), launch and compaction overhead can cost more than they save:
+At the smallest size this card runs (N = 1,000,000), launch and compaction overhead can cost more than they save:
 
-- spread, 100 steps: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 42.4 µs; eagle.simulate, the one-call API, 44.0 µs.
-- spread, 1000 steps: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 94.9 µs; eagle.simulate, the one-call API, 103 µs.
-- uniform, 1000 steps: fastest is `eagle_graph_auto` (eagle auto, the lower-level call), 99.8 µs; eagle.simulate, the one-call API, 101 µs.
+- fp32: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 9.92 ms.
+- spread, each sample stops at its own time: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 48.9 ms.
+- uniform, every sample the same orbit: fastest is `eagle_simulate` (eagle.simulate (eagle picks the launch mode)), 40.8 ms.
 
 ## Will it fit on my GPU?
 
-Same cell as the speed comparison above (N = 1,000,000, spread stop steps, up to 1000): peak GPU memory the driver accounted to the process, against the state the workload actually needs.
+Same cell as the speed comparison above (N = 1,000,000, spread batch): peak GPU memory the driver accounted to the process, against the state the workload actually needs.
 
 | tool | GPU memory | × minimum |
 |---|---:|---:|
-| eagle.simulate | 40 MiB | 1.1× |
-| hawk + eagle graph (no compaction) | 42 MiB | 1.2× |
-| NVIDIA Warp | 62 MiB | 1.8× |
-| JAX | 158 MiB | 4.6× |
-| CuPy | 192 MiB | 5.5× |
-| PyTorch with torch.compile | 242 MiB | 7.0× |
+| NVIDIA Warp | 94 MiB | 1.3× |
+| eagle.simulate | 102 MiB | 1.4× |
+| hawk + eagle graph (no compaction) | 104 MiB | 1.5× |
+| JAX | 890 MiB | 12× |
+| CuPy | 936 MiB | 13× |
+| PyTorch with torch.compile | 3138 MiB | 45× |
 
-Array libraries like CuPy, PyTorch and JAX keep a temporary for every operation in a step, so their reservations stack up across the batch; hawk + eagle and NVIDIA Warp keep only the per-sample state the workload itself needs. eagle.simulate (1.1×) is lighter than NVIDIA Warp (1.8×).
-
-## My steps are adaptive
-
-The RK7(8) card integrates an adaptive-step orbit propagator (13-stage Runge-Kutta-Fehlberg, error-controlled) rather than a fixed-step scheme -- the same comparison, a heavier per-step workload:
-
-- fastest GPU arm: hawk + eagle persistent, 43.7 ms
-- Warp per-thread kernel: 101 ms
-- JAX jit(vmap(while_loop)): 1.11 s
-- CuPy masked: 9.06 s
-- PyTorch + CUDA graph: 7.17 s
-- eagle CPU (OpenMP): 6.51 s
-
-All arms ran in one host (Intel(R) Xeon(R) Platinum 8481C CPU @ 2.70GHz). The CPU arm used 8 threads. PyTorch is shown by its fastest arm on this card.
-
-[Full table, this card](https://amasat01.github.io/eagle/content/performance.html#rk78-card-gpu-nvidia-h100-80gb-hbm3) (NVIDIA H100 80GB HBM3, card of 2026-10-13).
+Array libraries like CuPy, PyTorch and JAX keep a temporary for every operation in a step, so their reservations stack up across the batch; hawk + eagle and NVIDIA Warp keep only the per-sample state the workload itself needs. NVIDIA Warp is lighter than eagle.simulate (1.3×).
 
 ## I need derivatives
 
@@ -63,6 +46,6 @@ Every hawk kernel carries its reverse-mode (`hawk.diff.vjp`) and forward-mode (`
 
 Every kernel in this family runs unchanged on CPU threads (OpenMP), no GPU, no CUDA toolchain:
 
-- RK4 oscillators, N = 1,000,000: eagle host, termination loop, up to 8 threads, 142 ms.
+- Adaptive RKF7(8) Kepler orbits, N = 1,000,000: eagle CPU, 8 threads, 3.69 s.
 
 Every number on this page traces to a committed card: [eagle's performance page](https://amasat01.github.io/eagle/content/performance.html).
