@@ -1,0 +1,7 @@
+Small stand-ins for eagle 0.7.3 cards, same fields as the real ones (values are hand-checkable:
+wall median = 0.1 * n/1000 * arm factor, halved for "uniform").
+benchmarks/perf_card/card_fixture-gpu.json   GPU ensemble card (eagle-ensemble-card/1): 2 n x 2 distributions + fp32 x 3 arms, one failed row
+benchmarks/perf_card/card_fixture-aaa.json   second device, same shape (twice as slow), sorts first
+benchmarks/perf_card/cpu_card_fixture-host.json   CPU card (eagle-rk78-cpu-card/2): eagle_cpu8, eagle_cpu1, numpy_masked, one not_run
+benchmarks/perf_card/feature_card_fixture-gpu.json   feature card (eagle-feature-card/2): 2 rows, one out_of_memory arm
+benchmarks/perf_card/perf_card.py            stand-in script holding the code blocks the cards count
