@@ -22,6 +22,7 @@ under ``<out-dir>`` (default ``_generated/`` at the repo root):
                              axis is read from ``_data/radar_qualitative.json``
 - ``compatibility.md``   -- what the cards measured, per device (driver, CUDA, compiler), included by
                              build_from_source.md
+- ``feature_rows.md``    -- the feature card's rows (one capability at one N), included by compare.md
 - ``SOURCES.json``        -- every source file's md5 (for drift detection) and
                              every number this run wrote onto the page (for the
                              "every number comes from a card" gate)
@@ -85,57 +86,6 @@ def _fmt_mib_int(nbytes):
     shows a fraction (the driver itself accounts in ~2 MiB pages, so a
     fractional MiB would be false precision)."""
     return "–" if nbytes is None else f"{round(nbytes / 2**20)} MiB"
-
-
-#: CPU peak memory is published net of the benchmark harness's own copies
-#: (a mirror of eagle's ``_card_common.harness_copy_bytes`` / ``net_peak_bytes``;
-#: tests/test_sync_cards.py cross-checks the two against an eagle checkout).
-#: The RK4 CPU card's eagle arms copy omega and zeta into separate float64
-#: planes (16 bytes per sample) and their download returns copies of x, v and k
-#: (20 bytes per sample); eagle needs neither. Every other arm is raw.
-HARNESS_COPY_BYTES_PER_SAMPLE = 16 + 20
-_HARNESS_COPY_ARMS = ("eagle_term", "eagle_compact", "eagle_reorder")
-
-
-def harness_copy_bytes(arm, n):
-    return HARNESS_COPY_BYTES_PER_SAMPLE * n if arm.startswith(_HARNESS_COPY_ARMS) else 0
-
-
-def net_peak_bytes(row):
-    """An RK4 CPU memory row's ``peak_bytes`` less the harness's copies; a
-    negative result falls back to the measured value (below 1 MiB the
-    allocator reuses memory already resident at the baseline)."""
-    net = row["peak_bytes"] - harness_copy_bytes(row["arm"], row["n"])
-    return net if net >= 0 else row["peak_bytes"]
-
-
-CPU_MEMORY_NOTE = ("CPU peak memory is shown for N = 1,000,000 only, net of the benchmark harness's own copies "
-                   "(36 bytes per sample on eagle's arms). At smaller N this harness cannot resolve it: each "
-                   "measuring process inherits the launching process's peak, so smaller readings show that floor "
-                   "rather than the workload. The cards keep the raw readings; the next card run measures every "
-                   "size directly.")
-
-#: A CPU memory probe inherits the launching process's resident size (its
-#: ru_maxrss floor), so only N = 1e6 rows that clear their arm's small-N floor
-#: by 8 MiB are published (mirror of eagle's ``floor_estimate`` /
-#: ``is_resolved`` / ``published_peak_bytes``).
-RESOLVED_N = 10**6
-FLOOR_MARGIN_BYTES = 8 * 2**20
-
-
-def floor_estimate(rows, arm=None):
-    small = [r["peak_bytes"] + r["rss_baseline_bytes"] for r in rows
-             if r["n"] <= 10**4 and (arm is None or r["arm"] == arm)]
-    return max(small) if small else None
-
-
-def published_peak_bytes(row, rows):
-    """`net_peak_bytes` of a resolved row, None (no value) otherwise."""
-    floor = floor_estimate(rows, row["arm"])
-    if (floor is None or row["n"] != RESOLVED_N
-            or row["peak_bytes"] + row["rss_baseline_bytes"] <= floor + FLOOR_MARGIN_BYTES):
-        return None
-    return net_peak_bytes(row)
 
 
 def _fmt_x(value):
@@ -277,8 +227,15 @@ def load_card(pool, relpath):
     cpu = card.get("cpu")
     if isinstance(cpu, dict) and cpu.get("model"):
         cpu["model"] = display_cpu_model(pool, relpath, cpu["model"])
-    elif isinstance(cpu, str) and cpu:
-        card["cpu"] = display_cpu_model(pool, relpath, cpu)
+    elif isinstance(cpu, str) and cpu:   # eagle-rk78-cpu-card/2: the model string, with logical_cpus at top level
+        card["cpu"] = {"model": display_cpu_model(pool, relpath, cpu), "logical_cpus": card.get("logical_cpus")}
+    for row in (card.get("memory") or {}).get("rows", []):   # the ratio to the bare minimum state, derived from the row
+        if row.get("device_peak_bytes") is not None and row.get("minimum_bytes"):
+            row["device_factor"] = row["device_peak_bytes"] / row["minimum_bytes"]
+    if card.get("results"):   # a row that did not run (budget, failure) has no time: the pages show timed rows only
+        card["results"] = [r for r in card["results"] if "wall_s" in r]
+    if not card.get("configs") and card.get("distributions"):   # the ensemble cards: one configuration per distribution
+        card["configs"] = [{"distribution": d} for d in card["distributions"]]
     for row in (card.get("memory") or {}).get("rows", []):
         if not device_reading_valid(row):
             row["device_peak_bytes"] = None
@@ -291,20 +248,16 @@ def load_card(pool, relpath):
 FAMILY_DIRS = {
     "perf_gpu": ("benchmarks/perf_card", "card_"),
     "perf_cpu": ("benchmarks/perf_card", "cpu_card_"),
-    "rk78_gpu": ("benchmarks/rk78_card", "card_"),
-    "rk78_cpu": ("benchmarks/rk78_card", "cpu_card_"),
 }
 
 #: eagle docs anchors are ``{family}-{slug}`` where ``{family}`` is
 #: ``gen_perf_pages.py``'s key, not this script's -- the two were named
-#: independently and happen to differ for the RK4 families.
+#: independently and differ.
 EAGLE_ANCHOR_FAMILY = {
     "perf_gpu": "perf_card_gpu", "perf_cpu": "perf_card_cpu",
-    "rk78_gpu": "rk78_card_gpu", "rk78_cpu": "rk78_card_cpu",
 }
 FAMILY_TITLES = {
-    "perf_gpu": "RK4 oscillators, GPU", "perf_cpu": "RK4 oscillators, CPU",
-    "rk78_gpu": "RK7(8) orbits, GPU", "rk78_cpu": "RK7(8) orbits, CPU",
+    "perf_gpu": "Kepler orbits, GPU", "perf_cpu": "Kepler orbits, CPU",
 }
 
 
@@ -391,7 +344,7 @@ def device_label(card):
         return f"{d['name']} (compute capability {d['compute_capability']}, {d['sm_count']} SMs)"
     if card.get("cpu"):
         c = card["cpu"]
-        return f"{c['model']} ({c['cores']} cores, {c['logical_cpus']} logical CPUs)"
+        return f"{c['model']} ({c['logical_cpus']} logical CPUs)"
     return "the card's own device"
 
 
@@ -445,39 +398,34 @@ def arm_source(blocks, names):
 # --------------------------------------------------------------------------- #
 # "Performance at a glance" -- one compact table per card.
 # --------------------------------------------------------------------------- #
-def glance_table(pool, w, card, title):
+def glance_table(pool, w, card, title, default_problem=None):
     ns = card.get("ns") or []
     if not ns or not card.get("results"):
         return False
-    n = max(ns)
+    n = top_n(card)
     configs = card.get("configs") or []
     results_by_cell = {}
     for r in card["results"]:
         if r["n"] != n:
             continue
-        key = (r.get("distribution"), r.get("max_steps"))
+        key = r.get("distribution")
         results_by_cell.setdefault(key, []).append(r)
-    # memory/compile lookups, tolerant of either card's field names
+    # memory rows by (n, arm)
     mem_by_key = {}
     for row in (card.get("memory") or {}).get("rows", []):
-        key = (row.get("n"), row.get("distribution"), row.get("max_steps"), row["arm"])
+        key = (row.get("n"), row["arm"])
         mem_by_key[key] = row
-    compile_by_arm = {}
-    for row in (card.get("compile_time") or {}).get("rows", []):
-        arms = row.get("arms") or ([row["arm"]] if "arm" in row else [])
-        for a in arms:
-            compile_by_arm[a] = row
 
     device = device_label(card)
-    problem = card["workload"]["problem"]
+    problem = (card.get("workload") or {}).get("problem") or default_problem
     w.add(f"**{title}.** {pool.track(problem)}. Device: {pool.track(device)}. "
-          f"Largest batch shown: N = {n:,}.")
+          f"Batch shown: N = {n:,}.")
     w.add("")
-    w.add("| workload | arm | wall | × hawk + eagle | memory | compile (cold / warm) |")
-    w.add("|---|---|---:|---:|---:|---:|")
-    for cfg in configs or [{"distribution": None, "max_steps": None}]:
-        dist, steps = cfg.get("distribution"), cfg.get("max_steps")
-        cell = results_by_cell.get((dist, steps), [])
+    w.add("| workload | arm | wall | × hawk + eagle | memory |")
+    w.add("|---|---|---:|---:|---:|")
+    for cfg in configs or [{"distribution": None}]:
+        dist = cfg.get("distribution")
+        cell = results_by_cell.get(dist, [])
         if not cell:
             continue
         eagle_rows = [r for r in cell if r["arm"].startswith("eagle")]
@@ -486,28 +434,20 @@ def glance_table(pool, w, card, title):
         simulate = [_center(r["wall_s"]) for r in eagle_rows if r["arm"] == "eagle_simulate"]
         fastest_eagle = simulate[0] if simulate else min(
             (_center(r["wall_s"]) for r in eagle_rows), default=None)
-        workload = f"spread S={steps}" if dist == "spread" else (
-            f"uniform S={steps}" if dist == "uniform" else "(single configuration)")
+        workload = dist or "(single configuration)"
         for r in sorted(cell, key=lambda r: _center(r["wall_s"])):
             arm = r["arm"]
             wall = _center(r["wall_s"])
             ratio = _fmt_x(wall / fastest_eagle) if fastest_eagle else "–"
-            mrow = mem_by_key.get((n, dist, steps, arm))
-            mem = _fmt_mib(((mrow or {}).get("device_peak_bytes")
-                            if mrow is None or "device_peak_bytes" in mrow
-                            else published_peak_bytes(mrow, card["memory"]["rows"])))
+            mrow = mem_by_key.get((n, arm))
+            mem = _fmt_mib(r["host_peak_net_of_control_bytes"] if "host_peak_net_of_control_bytes" in r
+                           else (mrow or {}).get("device_peak_bytes"))
             if (mrow or {}).get("device_borrowed_from"):
                 mem += BORROWED_MARK
-            crow = compile_by_arm.get(arm)
-            compile_cell = (f"{_fmt_time(crow['cold_s']['median'])} / "
-                             f"{_fmt_time(crow['warm_s']['median'])}") if crow else "–"
             w.add(f"| {pool.track(workload)} | {arm_label(card, arm)} "
                   f"| {pool.track(_fmt_time(wall))} | {pool.track(ratio)} "
-                  f"| {pool.track(mem)} | {pool.track(compile_cell)} |")
+                  f"| {pool.track(mem)} |")
     w.add("")
-    if any(r and "device_peak_bytes" not in r for r in mem_by_key.values()):
-        w.add(CPU_MEMORY_NOTE)
-        w.add("")
     return True
 
 
@@ -541,10 +481,10 @@ def build_perf_glance(pool, perf_gpu, perf_cpu, all_cards):
     any_card = False
     if perf_gpu:
         any_card |= glance_table(pool, w, perf_gpu,
-                                  "RK4 oscillators, GPU")
+                                  "Kepler orbits, GPU")
     if perf_cpu:
-        any_card |= glance_table(pool, w, perf_cpu,
-                                  "RK4 oscillators, CPU")
+        any_card |= glance_table(pool, w, perf_cpu, "Kepler orbits, CPU",
+                                  (perf_gpu or {}).get("workload", {}).get("problem"))
     build_measured_on(pool, w, all_cards)
     link = "https://amasat01.github.io/eagle/content/performance.html"
     w.add(f"Full cards, every workload and column: [eagle's performance page]({link}).")
@@ -591,7 +531,7 @@ CPU_CHART_ARMS = (("eagle_term8", "eagle, 8 threads"), ("numba_prange", "Numba")
                   ("jax_shard8", "JAX"), ("torch_masked", "PyTorch"),
                   ("numpy_masked", "NumPy"))
 #: The configuration charted: the GPU chart's own (spread, S=1000).
-CPU_CHART_CONFIG = {"distribution": "spread", "max_steps": 1000}
+CPU_CHART_CONFIG = {"distribution": "spread"}
 CPU_CHIP_VAR = {"eagle_term8": "--tool-raptor", "numba_prange": "--tool-numba",
                 "jax_shard8": "--tool-jax", "torch_masked": "--tool-pytorch",
                 "numpy_masked": "--tool-numpy"}
@@ -609,8 +549,7 @@ def cpu_tab_label(card):
 def _cpu_row(card, arm, n):
     for r in card.get("results") or []:
         if (r["arm"] == arm and r["n"] == n
-                and r.get("distribution") == CPU_CHART_CONFIG["distribution"]
-                and r.get("max_steps") == CPU_CHART_CONFIG["max_steps"]):
+                and r.get("distribution") == CPU_CHART_CONFIG["distribution"]):
             return r
     return None
 
@@ -620,7 +559,7 @@ def cpu_glance_block(pool, w, slug, card):
     card's largest N. False (nothing written) when eagle's row is missing."""
     if not card.get("ns") or not card.get("results"):
         return False
-    n = max(card["ns"])
+    n = top_n(card)
     bars = []
     for arm, label in CPU_CHART_ARMS:
         r = _cpu_row(card, arm, n)
@@ -649,8 +588,7 @@ def cpu_glance_block(pool, w, slug, card):
         where += f" ({cpu['cores']} cores, {cpu['logical_cpus']} logical CPUs)"
     date = f", card of {card['generated_utc'][:10]}" if card.get("generated_utc") else ""
     anchor = f"{EAGLE_ANCHOR_FAMILY['perf_cpu']}-{slug}".replace("_", "-")
-    w.add(f'<p class="axis-note">{pool.track(f"{n:,}")} samples, each stopping at its own step '
-          f'(up to {CPU_CHART_CONFIG["max_steps"]:,}). {AXIS_RANGE_NOTE.format(lo=pool.track(_fmt_time(lo)), hi=pool.track(_fmt_time(hi)))} '
+    w.add(f'<p class="axis-note">{pool.track(f"{n:,}")} samples, each stopping at its own time. {AXIS_RANGE_NOTE.format(lo=pool.track(_fmt_time(lo)), hi=pool.track(_fmt_time(hi)))} '
           f'Measured on {pool.track(where)}{pool.track(date)}. '
           f'<a href="{EAGLE_PERF_PAGE}#{anchor}">Every tool, every N, and where each one fits</a>.</p>')
     caption = card_caption_line(pool, card)
@@ -699,7 +637,7 @@ def five_ways_tabs(pool, card, script_text, source_label):
     blocks = code_blocks(script_text)
     arm_blocks = arm_blocks_map(card)
     fit = (card.get("fit") or {}).get("arms", {})
-    n = max(card.get("ns") or [0])
+    n = top_n(card)
     tabs = []
     for arm, tool in PRIMARY_ARMS:
         if arm not in arm_blocks:
@@ -734,7 +672,7 @@ def build_same_task(pool, card, script_text, source_label, full):
         return w.text(), False
     problem = card["workload"]["problem"]
     w.add(f"Same task, five ways, measured by {pool.track(source_label)}: "
-          f"{pool.track(problem)} Largest batch shown: N = {n:,}.")
+          f"{pool.track(problem)} Batch shown: N = {n:,}.")
     w.add("")
     if full:
         w.add("::::{tab-set}")
@@ -768,9 +706,9 @@ def build_same_task(pool, card, script_text, source_label, full):
 #: The five arms the hero chart/table shows, at the configuration that reads
 #: as "my samples finish at different times" (spread stop steps, up to 1000).
 WHY_ARMS = ("eagle_simulate", "warp_kernel", "jax_vmap", "cupy_masked", "torch_masked")
-WHY_CONFIG = {"distribution": "spread", "max_steps": 1000}
+SPREAD = {"distribution": "spread"}
 #: "my batch is dense": every sample runs the full step count.
-DENSE_CONFIG = {"distribution": "uniform", "max_steps": 1000}
+DENSE = {"distribution": "uniform"}
 
 #: The four "other guys in the room" the hero/why-raptor comparison names
 #: ("name the other guys, like faster than x, y, z" was the goal),
@@ -786,7 +724,7 @@ COMPARISON_TOOL_NAMES = {
 }
 
 
-def fastest_arm_of_tool(card, arm, n, config=WHY_CONFIG):
+def fastest_arm_of_tool(card, arm, n, config=SPREAD):
     """The fastest arm of the tool that ``arm`` belongs to, in the (``n``, ``config``) cell of a GPU
     card: every number quoted for a tool uses that tool's fastest arm, never a fixed one (PyTorch has a
     masked, a CUDA-graph and a torch.compile arm; CuPy, JAX and Warp have one each). The raptor arms are
@@ -805,7 +743,7 @@ def _fastest_arm_in(rows, arm):
     return min(walls, key=walls.get) if walls else arm
 
 
-def fastest_arm_with_memory(card, arm, n, config=WHY_CONFIG):
+def fastest_arm_with_memory(card, arm, n, config=SPREAD):
     """`fastest_arm_of_tool`, kept to the arms that have a device-memory reading: the tool's fastest
     arm when it has one, else its fastest arm that does."""
     tool = radar_tool(arm, "gpu")
@@ -859,14 +797,12 @@ def _fmt_ratio(value, sig=2):
     return f"{value:.{decimals}f}×"
 
 
-def _mem_row(card, arm, n, config=WHY_CONFIG):
+def _mem_row(card, arm, n, config=SPREAD):
     """The one `memory.rows` entry for `arm` at (`n`, `config`), or None --
     the memory-table analogue of `_cell`/`_by_arm` above, one arm at a time
     since every call site below already knows which arm it wants."""
     for row in (card.get("memory") or {}).get("rows", []):
-        if (row.get("arm") == arm and row.get("n") == n
-                and row.get("distribution") == config["distribution"]
-                and row.get("max_steps") == config["max_steps"]):
+        if row.get("arm") == arm and row.get("n") == n:
             return row
     return None
 
@@ -877,14 +813,14 @@ def _mem_row(card, arm, n, config=WHY_CONFIG):
 MEMORY_COMPARISON_ARMS = ("cupy_masked", "torch_masked")
 
 
-def memory_savings(card, base_arm="eagle_simulate", arms=MEMORY_COMPARISON_ARMS, config=WHY_CONFIG):
+def memory_savings(card, base_arm="eagle_simulate", arms=MEMORY_COMPARISON_ARMS, config=SPREAD):
     """(n, [(arm, floored_ratio), ...]) -- `arms`' `device_peak_bytes` over
-    `base_arm`'s, at the card's largest N and `config`, each ratio floored to
+    `base_arm`'s, at N = 1,000,000 and `config`, each ratio floored to
     2 significant figures (never overstate a saving). ``(None, [])`` if the
     cell or `base_arm` itself is missing -- mirrors `named_speedup` exactly."""
     if not card or not card.get("ns"):
         return None, []
-    n = max(card["ns"])
+    n = top_n(card)
     base = _mem_row(card, base_arm, n, config)
     if not base or not base.get("device_peak_bytes"):
         return n, []
@@ -920,7 +856,7 @@ def _n_words(n):
 
 
 #: The arms the "Will it fit on my GPU?" table shows, same cell as the speed
-#: strip/chart (`WHY_CONFIG`) -- `eagle_graph` stands in for "eagle without
+#: strip/chart (`SPREAD`) -- `eagle_graph` stands in for "eagle without
 #: compaction" (the honest box's own phrase for it).
 MEMORY_TABLE_ARMS = ("eagle_simulate", "eagle_graph", "warp_kernel", "jax_vmap",
                      "cupy_masked", "torch_masked")
@@ -932,12 +868,12 @@ MEMORY_TABLE_LABELS = {
 }
 
 
-def will_it_fit_rows(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
+def will_it_fit_rows(card, arms=MEMORY_TABLE_ARMS, config=SPREAD):
     """[(arm, device_peak_bytes, device_factor), ...] for every `arms` entry
     the card ran at its largest N and `config`, lightest first."""
     if not card or not card.get("ns"):
         return [], None
-    n = max(card["ns"])
+    n = top_n(card)
     rows = []
     for arm in arms:
         arm = fastest_arm_with_memory(card, arm, n, config)
@@ -948,26 +884,26 @@ def will_it_fit_rows(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
     return rows, n
 
 
-def withheld_memory_arms(card, arms=MEMORY_TABLE_ARMS, config=WHY_CONFIG):
-    """`arms` whose device reading at the card's largest N and `config` was
+def withheld_memory_arms(card, arms=MEMORY_TABLE_ARMS, config=SPREAD):
+    """`arms` whose device reading at N = 1,000,000 and `config` was
     withheld by `load_card`, in `arms` order."""
     if not card or not card.get("ns"):
         return []
-    n = max(card["ns"])
+    n = top_n(card)
     return [a for a in arms
             if (_mem_row(card, a, n, config) or {}).get("device_withheld")
             and not (_mem_row(card, a, n, config) or {}).get("device_borrowed_from")]
 
 
-def named_speedup(card, base_arm="eagle_simulate", arms=COMPARISON_ARMS, config=WHY_CONFIG):
+def named_speedup(card, base_arm="eagle_simulate", arms=COMPARISON_ARMS, config=SPREAD):
     """(n, [(arm, floored_ratio), ...]) -- `base_arm`'s speed-up over each of
-    `arms` that ran this cell, at the card's largest N and `config`, each
+    `arms` that ran this cell, at N = 1,000,000 and `config`, each
     ratio floored to 2 significant figures. `arms`' order is preserved (the
     caption is never resorted by ratio). ``(None, [])`` if the cell or
     `base_arm` itself is missing."""
     if not card or not card.get("ns"):
         return None, []
-    n = max(card["ns"])
+    n = top_n(card)
     rows = _by_arm(_cell(card, n, config))
     base = rows.get(base_arm)
     if not base:
@@ -1013,22 +949,30 @@ def named_speedup_caption(pairs):
     return ", ".join(f"{' and '.join(names)} ({_fmt_ratio(ratio)})" for ratio, names in groups)
 
 
+#: The batch size every headline quotes (eagle's HEADLINE ns[0]); a card without it quotes its largest.
+HEADLINE_N = 10**6
+
+
+def top_n(card):
+    ns = card["ns"]
+    return HEADLINE_N if HEADLINE_N in ns else max(ns)
+
+
 def _cell(card, n, cfg):
     return [r for r in card.get("results", [])
-            if r["n"] == n and r.get("distribution") == cfg["distribution"]
-            and r.get("max_steps") == cfg["max_steps"]]
+            if r["n"] == n and r.get("distribution") == cfg["distribution"]]
 
 
 def _by_arm(rows):
     return {r["arm"]: r for r in rows}
 
 
-def why_raptor_bars(card, config=WHY_CONFIG, arms=WHY_ARMS):
+def why_raptor_bars(card, config=SPREAD, arms=WHY_ARMS):
     """[(arm, label, wall_s), ...] sorted fastest first -- only the arms in
     `arms` the card actually ran, at its largest N and `config`."""
     if not card or not card.get("ns"):
         return [], None
-    n = max(card["ns"])
+    n = top_n(card)
     rows = _by_arm(_cell(card, n, config))
     bars = []
     for arm in arms:
@@ -1077,11 +1021,11 @@ def check_rows_under_sol(card, r_sol):
     for r in card.get("results") or []:
         rate = r.get("sample_steps_per_s")
         if rate and rate > r_sol:
-            raise ValueError(f"row {r['arm']} n={r['n']} {r['distribution']} steps={r['max_steps']} runs at "
+            raise ValueError(f"row {r['arm']} n={r['n']} {r['distribution']} runs at "
                              f"{rate / r_sol:.3f} x the speed of light; the reference must be re-measured")
 
 
-def uneven_eff(card, arm, n, r_sol, spread=WHY_CONFIG):
+def uneven_eff(card, arm, n, r_sol, spread=SPREAD):
     """``{"fraction", "spread", "sol"}``: the arm's ``sample_steps_per_s`` on the spread cell at N,
     over the device's R_SOL (a fraction of 1). None when the card has no such rate. A value above 1
     is an error, never clamped."""
@@ -1118,19 +1062,14 @@ EFF_TOOLS = {
 }
 
 
-def eagle_bar_arm(kind):
-    """The arm of eagle's headline wall-time bar on a ``kind`` card: the one arm eagle is quoted by."""
-    return next(bar for tool, _p, bar in EFF_TOOLS[kind] if tool == "eagle")
-
-
 def eff_arms(kind, card):
     """[(arm, label, bar arm)] one per tool the card ran: the tool's fastest arm at spread, S=1000, the
     largest N (``bar arm`` is the arm the wall-time bar of that tool shows); eagle's is its bar arm
     itself, so one eagle cell never shows two values on the landing page."""
     if not card.get("ns"):
         return []
-    n = max(card["ns"])
-    rows = _cell(card, n, WHY_CONFIG)
+    n = top_n(card)
+    rows = _cell(card, n, SPREAD)
     out = []
     for _tool, prefix, bar_arm in EFF_TOOLS[kind]:
         fast = [r for r in rows if r["arm"].startswith(prefix) and r["arm"] != "eager_loop" and r.get("sample_steps_per_s")]
@@ -1154,7 +1093,7 @@ def eff_values(pool, kind, card):
     if r_sol is None:
         return key, entry, []
     check_rows_under_sol(card, r_sol)
-    n = max(card["ns"])
+    n = top_n(card)
     vals = []
     for arm, label, bar_arm in eff_arms(kind, card):
         v = uneven_eff(card, arm, n, r_sol)
@@ -1185,7 +1124,7 @@ def eff_info(pool, card, arm, n, v, entry):
     return [pool.track(x) for x in (
         arm_label(card, arm),
         _tab_device(card),
-        f"N = {n:,}, up to {WHY_CONFIG['max_steps']:,} steps, samples stopping at different steps",
+        f"N = {n:,}, samples stopping at different times",
         f"measured: {_fmt_rate(v['spread'])} sample-steps per second",
         f"Top FP64 speed of this device: {_fmt_rate(v['sol'])} sample-steps per second ({entry.get('source')} reference)",
         f"{_fmt_eff(v['fraction'])} of it",
@@ -1200,7 +1139,7 @@ EAGLE_MECHANISM_EFF = "https://amasat01.github.io/eagle/content/performance/mech
 
 def eff_chart_html(pool, kind, card, n, chip_vars):
     """The "Uneven-batch efficiency" view of one device: ``(html, vals)``. Each bar is the tool's
-    ``sample_steps_per_s`` on the spread cell (S=1000) at the card's largest N, the arm the wall-time
+    ``sample_steps_per_s`` on the spread cell (S=1000) at N = 1,000,000, the arm the wall-time
     bars use for that tool, over R_SOL = F_dev / 22 from eagle's sol_reference.json; best first. A device
     whose reference is pending gets one line instead of bars; ('', []) when the card has no rates."""
     got = eff_values(pool, kind, card)
@@ -1246,7 +1185,7 @@ def simulate_vs_twin_kernel_pct(card, simulate="eagle_simulate", twin="eagle_gra
     identically, which is noise, not a real difference between the two."""
     sim, twin_rows = {}, {}
     for r in card.get("results", []):
-        key = (r.get("distribution"), r.get("max_steps"), r["n"])
+        key = (r.get("distribution"), r["n"])
         if r["arm"] == simulate:
             sim[key] = r
         elif r["arm"] == twin:
@@ -1260,7 +1199,7 @@ def simulate_vs_twin_kernel_pct(card, simulate="eagle_simulate", twin="eagle_gra
     return max(deviations) if deviations else None
 
 
-def dense_tie_line(card, config=DENSE_CONFIG, eagle_arm=None):
+def dense_tie_line(card, config=DENSE, eagle_arm=None):
     """The honest 'ties dense batches' callout: Warp vs the fastest `eagle*`
     arm at the dense config, largest N. {"verdict": "a tie"} when within 3%;
     otherwise whichever genuinely won, so this never overclaims if a future
@@ -1268,7 +1207,7 @@ def dense_tie_line(card, config=DENSE_CONFIG, eagle_arm=None):
     quotes eagle.simulate) instead of the cell's fastest."""
     if not card or not card.get("ns"):
         return None
-    n = max(card["ns"])
+    n = top_n(card)
     rows = _by_arm(_cell(card, n, config))
     warp = rows.get("warp_kernel")
     eagle_candidates = [(a, r) for a, r in rows.items() if a.startswith("eagle")]
@@ -1297,48 +1236,6 @@ def dense_clause(pool, tie):
         return f"{name} beats it: {eagle} against Warp's {warp}"
     verb = "ties" if tie["verdict"] == "tie" else "beats"
     return f"it {verb} {name}: {warp} against {name}'s {eagle}"
-
-
-#: The non-eagle arms the RK7(8) honesty line names, in the order quoted.
-RK78_HONEST_ARMS = ("warp_kernel", "jax_vmap", "cupy_masked", "torch_masked")
-
-
-def rk78_honest(card):
-    """The RK7(8)-family honesty line: the fastest GPU `eagle*` arm (never
-    `eagle_simulate`/`eagle_cpu` -- the hand-tuned graph variants are the
-    point here), the same handful of other tools, and whether eagle's
-    CPU-only arm actually beats every GPU arm on this card (it does on a
-    FP64-weak development GPU -- worth knowing, so this is computed, never
-    assumed)."""
-    if not card or not card.get("ns"):
-        return None
-    n = max(card["ns"])
-    rows = _by_arm([r for r in card.get("results", []) if r["n"] == n])
-    eagle_candidates = [(a, r) for a, r in rows.items()
-                        if a.startswith("eagle") and a not in ("eagle_simulate", "eagle_cpu")]
-    if not eagle_candidates:
-        return None
-    fastest_arm, fastest_row = min(eagle_candidates, key=lambda ar: _center(ar[1]["wall_s"]))
-    others = []
-    for a in RK78_HONEST_ARMS:
-        a = _fastest_arm_in(rows, a)
-        if a in rows:
-            others.append((arm_label(card, a), _center(rows[a]["wall_s"])))
-    cpu_row = rows.get("eagle_cpu")
-    fastest_s = _center(fastest_row["wall_s"])
-    # "beats every GPU arm" must mean every GPU arm actually on the card,
-    # not just the fastest `eagle*` one -- Warp, JAX etc. could in principle
-    # be faster than eagle's own graph while still losing to the CPU arm.
-    gpu_min = min((_center(r["wall_s"]) for a, r in rows.items() if a != "eagle_cpu"),
-                  default=None)
-    return {
-        "n": n, "fastest_label": arm_label(card, fastest_arm), "fastest_s": fastest_s,
-        "others": others,
-        "cpu_label": arm_label(card, "eagle_cpu") if cpu_row else None,
-        "cpu_s": _center(cpu_row["wall_s"]) if cpu_row else None,
-        "cpu_beats_every_gpu_arm": bool(cpu_row) and gpu_min is not None
-                                    and _center(cpu_row["wall_s"]) < gpu_min,
-    }
 
 
 def warp_wins_count(card):
@@ -1410,133 +1307,16 @@ def build_honest_box(pool, perf_gpu):
         line += "."
     w.add(line)
 
-    n = max(perf_gpu["ns"])
+    n = top_n(perf_gpu)
     pct = simulate_vs_twin_kernel_pct(perf_gpu)
-    warp_mem = _mem_row(perf_gpu, "warp_kernel", n, WHY_CONFIG)
-    graph_mem = _mem_row(perf_gpu, "eagle_graph", n, WHY_CONFIG)
-    sim_mem = _mem_row(perf_gpu, "eagle_simulate", n, WHY_CONFIG)
+    warp_mem = _mem_row(perf_gpu, "warp_kernel", n, SPREAD)
+    graph_mem = _mem_row(perf_gpu, "eagle_graph", n, SPREAD)
+    sim_mem = _mem_row(perf_gpu, "eagle_simulate", n, SPREAD)
     if pct is not None and warp_mem and graph_mem and sim_mem:
         within = math.ceil(pct)
         w.add(f"`eagle.simulate`'s GPU time is within {pool.track(str(within))}% of the "
               "hand-tuned version, in every configuration this card runs; "
               + memory_comparison_sentence(pool, sim_mem, warp_mem, graph_mem))
-    return w.text(), True
-
-
-#: Within this relative gap two walls are "level" in prose.
-TIE_BAND = 0.03
-#: The tools `build_compaction_numbers` ranks `eagle.simulate` against.
-COMPACTION_VS_ARMS = ("warp_kernel", "jax_vmap", "cupy_masked", "torch_masked")
-
-
-def build_compaction_numbers(pool, perf_gpu):
-    """``_generated/compaction_numbers.md``: the worked compaction numbers of
-    where_raptor_fits.md, for the same headline device and cell as the rest of
-    the site (the default GPU card, its largest N, `WHY_CONFIG` / `DENSE_CONFIG`).
-    Every figure is read from the card; every comparative word ("ahead of",
-    "the better fit", "faster than every GPU arm") is decided by the numbers,
-    so a card re-run on a different GPU can change the sentence, never leave a
-    claim the card no longer supports."""
-    w = Writer(pool)
-    w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
-    w.add("")
-    if not perf_gpu or not perf_gpu.get("ns"):
-        return w.text(), False
-    n = max(perf_gpu["ns"])
-    spread = _by_arm(_cell(perf_gpu, n, WHY_CONFIG))
-    dense = _by_arm(_cell(perf_gpu, n, DENSE_CONFIG))
-    need = ("eagle_graph", "eagle_graph_compact", "eagle_graph_reorder", "eagle_simulate")
-    if any(a not in spread or a not in dense for a in need):
-        return w.text(), False
-
-    def wall(rows, arm):
-        return _center(rows[arm]["wall_s"])
-
-    def t(seconds):
-        return pool.track(_fmt_time(seconds))
-
-    def vs(a, b):
-        return "ahead" if a < b * (1 - TIE_BAND) else ("behind" if a > b * (1 + TIE_BAND) else "level")
-
-    steps = str(WHY_CONFIG["max_steps"])
-    w.add(f"The [performance card]({EAGLE_PERF_PAGE}) measures this on {pool.track(device_name(perf_gpu))}, "
-          f"{pool.track(_n_words(n))} samples integrated for up to {pool.track(steps)} steps.")
-    w.add("")
-    w.add("On a batch where samples finish at different times:")
-    w.add("")
-    g, c, r, sim = (wall(spread, a) for a in need)
-    if c < g:
-        w.add(f"- the compacted graph takes {t(c)}, against {t(g)} for the identical workload run without "
-              "compaction — what compaction itself saves at fixed work;")
-    else:
-        w.add(f"- the compacted graph takes {t(c)}, against {t(g)} for the identical workload run without "
-              "compaction — at this size compaction costs more than it saves;")
-    if r < c:
-        w.add(f"- an occasional physical reorder layered on top, opt-in and triggered only once the live "
-              f"samples have thinned and scattered, cuts that further to {t(r)};")
-    else:
-        w.add(f"- an occasional physical reorder layered on top, opt-in and triggered only once the live "
-              f"samples have thinned and scattered, takes {t(r)}, no faster than compaction alone;")
-    others = [(a, wall(spread, a)) for a in (fastest_arm_of_tool(perf_gpu, b, n, WHY_CONFIG) for b in COMPACTION_VS_ARMS)
-              if a in spread]
-    ahead = [(a, x) for a, x in others if vs(sim, x) == "ahead"]
-    rest = [(a, x) for a, x in others if vs(sim, x) != "ahead"]
-
-    def named(items):
-        return [f"{pool.track(COMPARISON_TOOL_NAMES.get(a, a))} ({t(x)})" for a, x in items]
-
-    def joined(parts):
-        return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
-
-    line = ("- `eagle.simulate` — the policy that picks between these approaches at run time, so nobody has "
-            f"to choose by hand — reaches {t(sim)} on this same batch")
-    if ahead:
-        line += f", ahead of {joined(named(ahead))}"
-    if rest:
-        line += ("; " if ahead else ", while ") + joined(named(rest)) + (
-            " is" if len(rest) == 1 else " are") + " level with it or faster"
-    w.add(line + " on this card.")
-    w.add("")
-
-    gu, cu, su = (wall(dense, a) for a in ("eagle_graph", "eagle_graph_compact", "eagle_simulate"))
-    text = (f"On a batch where every sample runs the full {pool.track(steps)} steps instead, there is nothing "
-            "to compact, and ")
-    if gu < cu:
-        text += (f"the plain graph is the better fit: {t(gu)} against {t(cu)} for the compacted graph, "
-                 "whose periodic active-set scan runs with no idle lanes left to recover.")
-    else:
-        text += f"the compacted graph still comes out ahead: {t(cu)} against {t(gu)} for the plain graph."
-    warp = dense.get("warp_kernel")
-    if warp is not None:
-        wu = _center(warp["wall_s"])
-        verdict = vs(su, wu)
-        if verdict == "level":
-            text += (f" NVIDIA Warp's per-thread kernel and `eagle.simulate` tie here ({t(wu)} and {t(su)})")
-        elif verdict == "ahead":
-            text += f" `eagle.simulate` is the faster of the two here ({t(su)} against NVIDIA Warp's {t(wu)})"
-        else:
-            text += f" NVIDIA Warp's per-thread kernel is the faster of the two here ({t(wu)} against {t(su)})"
-        small = _by_arm(_cell(perf_gpu, 10_000, DENSE_CONFIG)) if 10_000 in perf_gpu["ns"] else {}
-        if "warp_kernel" in small and "eagle_simulate" in small:
-            ws, ss = wall(small, "warp_kernel"), wall(small, "eagle_simulate")
-            word = {"level": "the two are level", "ahead": "`eagle.simulate` leads",
-                    "behind": "NVIDIA Warp leads"}[vs(ss, ws)]
-            text += f", and at N = {pool.track('10,000')} {word} ({t(ss)} against {t(ws)})"
-        text += " — worth knowing about."
-    text += " The card also lists the regimes where another approach is the better fit:"
-    cpu = dense.get("cpu_openmp")
-    gpu_best = min(wall(dense, a) for a in dense if a != "cpu_openmp")
-    clauses = []
-    if cpu is not None and _center(cpu["wall_s"]) < gpu_best:
-        clauses.append(f" on this card the 8-thread CPU build is faster than every GPU arm on the dense "
-                       f"batch ({t(_center(cpu['wall_s']))} against {t(su)})")
-    if "cupy_masked" in dense:
-        clauses.append(" the same computation written as masked CuPy array code is the better fit when "
-                       "array-style code matters more than wall time")
-    if not clauses:
-        return w.text(), False
-    text += ",".join(clauses[:1]) + (", and" + clauses[1] if len(clauses) > 1 else "") + "."
-    w.add(text)
     return w.text(), True
 
 
@@ -1553,17 +1333,17 @@ def build_hero_strip(pool, perf_gpu):
     w.add("")
     if not perf_gpu or not perf_gpu.get("ns"):
         return w.text(), False
-    n = max(perf_gpu["ns"])
-    found = fastest_of_cell(perf_gpu, n, WHY_CONFIG)
+    n = top_n(perf_gpu)
+    found = fastest_of_cell(perf_gpu, n, SPREAD)
     _speedup_n, speedup_pairs = named_speedup(perf_gpu)
     big_text = named_speedup_big_text(speedup_pairs)
     _mem_n, mem_pairs = memory_savings(perf_gpu)
     mem_big_text = memory_savings_big_text(mem_pairs)
-    eagle_mem = _mem_row(perf_gpu, "eagle_simulate", n, WHY_CONFIG)
-    cupy_arm = fastest_arm_with_memory(perf_gpu, "cupy_masked", n, WHY_CONFIG)
-    torch_arm = fastest_arm_with_memory(perf_gpu, "torch_masked", n, WHY_CONFIG)
-    cupy_mem = _mem_row(perf_gpu, cupy_arm, n, WHY_CONFIG)
-    torch_mem = _mem_row(perf_gpu, torch_arm, n, WHY_CONFIG)
+    eagle_mem = _mem_row(perf_gpu, "eagle_simulate", n, SPREAD)
+    cupy_arm = fastest_arm_with_memory(perf_gpu, "cupy_masked", n, SPREAD)
+    torch_arm = fastest_arm_with_memory(perf_gpu, "torch_masked", n, SPREAD)
+    cupy_mem = _mem_row(perf_gpu, cupy_arm, n, SPREAD)
+    torch_mem = _mem_row(perf_gpu, torch_arm, n, SPREAD)
     if (not found or not big_text or not mem_big_text
             or not eagle_mem or not cupy_mem or not torch_mem):
         return w.text(), False
@@ -1571,8 +1351,8 @@ def build_hero_strip(pool, perf_gpu):
     # the headline is eagle.simulate's GPU wall, the arm its ratios and its
     # memory are quoted for -- not the cell's fastest arm, which on an
     # FP64-weak card can be the host (CPU) arm
-    best = _by_arm(_cell(perf_gpu, n, WHY_CONFIG)).get("eagle_simulate", best)
-    n_str, steps_str = f"{n:,}", str(WHY_CONFIG["max_steps"])
+    best = _by_arm(_cell(perf_gpu, n, SPREAD)).get("eagle_simulate", best)
+    n_str = f"{n:,}"
     caption = named_speedup_caption(speedup_pairs)
 
     w.add("::::{grid} 1 1 3 3")
@@ -1580,12 +1360,11 @@ def build_hero_strip(pool, perf_gpu):
     w.add(":gutter: 2")
     w.add("")
     w.add(f":::{{grid-item-card}} {pool.track(_fmt_sig_time(_center(best['wall_s'])))}")
-    w.add(f"{pool.track(n_str)} samples (RK4), each stopping at its own step, up to "
-          f"{pool.track(steps_str)} steps")
+    w.add(f"{pool.track(n_str)} samples (adaptive RKF7(8) Kepler orbits), each stopping at its own time")
     w.add(":::")
     w.add(f":::{{grid-item-card}} {pool.track(big_text)}")
     w.add(f"than {pool.track(caption)} — {pool.track(n_str)} samples finishing at "
-          f"different times, up to {pool.track(steps_str)} steps")
+          f"different times")
     w.add(":::")
     w.add(f":::{{grid-item-card}} {pool.track(mem_big_text)}")
     cupy_name, torch_name = COMPARISON_TOOL_NAMES[cupy_arm], COMPARISON_TOOL_NAMES[torch_arm]
@@ -1599,7 +1378,7 @@ def build_hero_strip(pool, perf_gpu):
     return w.text(), True
 
 
-def build_why_raptor(pool, perf_gpu, rk78_gpu):
+def build_why_raptor(pool, perf_gpu):
     """``_generated/why_raptor.md``: the hero-adjacent comparison table +
     honest callouts. Returns (text, bars-for-the-chart, n, ok)."""
     w = Writer(pool)
@@ -1611,8 +1390,7 @@ def build_why_raptor(pool, perf_gpu, rk78_gpu):
         return w.text(), [], None, False
 
     device = device_name(perf_gpu)
-    w.add(f"| tool | wall (N = {pool.track(f'{n:,}')}, spread stop steps, up to "
-          f"{pool.track(str(WHY_CONFIG['max_steps']))}) |")
+    w.add(f"| tool | wall (N = {pool.track(f'{n:,}')}, spread batch) |")
     w.add("|---|---:|")
     for _arm, label, wall in bars:
         w.add(f"| {label} | {pool.track(_fmt_sig_time(wall))} |")
@@ -1645,22 +1423,6 @@ def build_why_raptor(pool, perf_gpu, rk78_gpu):
     w.add("RAPTOR adds, from the same source: per-sample Python, device-side stopping, "
           "forward- and reverse-mode derivatives, and the identical kernel on the CPU.")
     w.add("")
-
-    honest78 = rk78_honest(rk78_gpu)
-    if honest78:
-        others = ", ".join(f"{label} {pool.track(_fmt_sig_time(s))}"
-                            for label, s in honest78["others"])
-        n78_str = f"{honest78['n']:,}"
-        w.add(f"On the harder RK7(8) family (N = {pool.track(n78_str)} "
-              f"adaptive Kepler orbits, every one inside its error bound): "
-              f"{pool.track(honest78['fastest_label'])} "
-              f"{pool.track(_fmt_sig_time(honest78['fastest_s']))}, {others}.")
-        if honest78["cpu_label"] and honest78["cpu_beats_every_gpu_arm"]:
-            w.add(f"hawk + eagle on the CPU alone, no GPU at all: "
-                  f"{pool.track(_fmt_sig_time(honest78['cpu_s']))} -- the fastest number "
-                  f"on this card, because this GPU's FP64 throughput is modest. Honest, "
-                  f"and worth knowing before reaching for a GPU.")
-        w.add("")
 
     link = "https://amasat01.github.io/eagle/content/performance.html"
     w.add(f"*Measured on {pool.track(device)}. "
@@ -1734,13 +1496,13 @@ def _bar_row_html(label, chip_var, pct, value_text, is_us, info=None):
             f'<span class="val" style="left:{pct_s}%">{value_text}</span></div>{tail}</div>')
 
 
-def _cfg_phrase(dist, steps):
-    """How a cell's stop rule reads in one run's info line."""
+def _cfg_phrase(dist):
+    """How a cell's batch reads in one run's info line ."""
     if dist == "spread":
-        return f"spread, up to {steps:,} steps"
+        return "spread, each sample stops at its own time"
     if dist == "uniform":
-        return f"uniform, {steps:,} steps each"
-    return "single configuration"
+        return "uniform, every sample the same orbit"
+    return dist or "single configuration"
 
 
 def _tab_device(card):
@@ -1853,7 +1615,7 @@ def run_info(pool, card, row, fastest):
     method = card.get("method") or {}
     lines = [arm_label(card, row["arm"]),
              ", ".join(b for b in (_tab_device(card), _clock_note(row)) if b),
-             f"N = {row['n']:,}, {_cfg_phrase(row.get('distribution'), row.get('max_steps'))}"]
+             f"N = {row['n']:,}, {_cfg_phrase(row.get('distribution'))}"]
     median = stat.get("median")
     iqr = stat.get("iqr")
     if median is not None and iqr is not None:
@@ -1881,9 +1643,9 @@ def build_lead_sentence(pool, perf_gpu):
     w.add("")
     if not perf_gpu or not perf_gpu.get("ns"):
         return w.text(), False
-    n = max(perf_gpu["ns"])
-    found = fastest_of_cell(perf_gpu, n, WHY_CONFIG)
-    eagle_mem = _mem_row(perf_gpu, "eagle_simulate", n, WHY_CONFIG)
+    n = top_n(perf_gpu)
+    found = fastest_of_cell(perf_gpu, n, SPREAD)
+    eagle_mem = _mem_row(perf_gpu, "eagle_simulate", n, SPREAD)
     _speedup_n, speedup_pairs = named_speedup(perf_gpu)
     # each tool its own ratio, floored (never overstated), from the same cell and arm the bars use;
     # smallest first so the sentence reads as a climb
@@ -1894,10 +1656,10 @@ def build_lead_sentence(pool, perf_gpu):
     # the headline is eagle.simulate's GPU wall, the arm its ratios and its
     # memory are quoted for -- not the cell's fastest arm, which on an
     # FP64-weak card can be the host (CPU) arm, or eagle's lower-level graph call
-    best = _by_arm(_cell(perf_gpu, n, WHY_CONFIG)).get("eagle_simulate", best)
+    best = _by_arm(_cell(perf_gpu, n, SPREAD)).get("eagle_simulate", best)
     named = [f"{pool.track(_fmt_ratio(r))} faster than {name}" for r, name in ratios]
     joined = named[0] if len(named) == 1 else ", ".join(named[:-1]) + " and " + named[-1]
-    sentence = (f"{_n_words(n).capitalize()} samples, each stopping at its own step: "
+    sentence = (f"{_n_words(n).capitalize()} samples, each stopping at its own time: "
                 f"{pool.track(_fmt_sig_time(_center(best['wall_s'])))} and "
                 f"{pool.track(_fmt_mib_int(eagle_mem['device_peak_bytes']))} on {pool.track(device_name(perf_gpu))}, "
                 f"{joined}. "
@@ -1922,9 +1684,8 @@ def dense_hero_line(pool, card):
     tie = dense_tie_line(card, eagle_arm="eagle_simulate")
     if not tie:
         return ""
-    steps = pool.track(f"{DENSE_CONFIG['max_steps']:,}")
     warp, eagle = pool.track(_fmt_sig_time(tie["warp_s"])), pool.track(_fmt_sig_time(tie["eagle_s"]))
-    head = f"When every sample runs the same {steps} steps, "
+    head = "When every sample runs the same orbit, "
     if tie["verdict"] == "tie":
         return f"{head}eagle.simulate and NVIDIA Warp tie: {eagle} against {warp}."
     winner = "eagle.simulate" if tie["verdict"] == "eagle" else "NVIDIA Warp"
@@ -1939,8 +1700,8 @@ AXIS_RANGE_NOTE = ("Log scale; the axis runs from {lo} to {hi}, a margin around 
 
 
 def gpu_chart_block(pool, w, slug, card):
-    """One GPU's wall-time bars (log scale) at the card's largest N, for the
-    `WHY_CONFIG` workload. False (nothing written) without eagle's row."""
+    """One GPU's wall-time bars (log scale) at N = 1,000,000, for the
+    `SPREAD` workload. False (nothing written) without eagle's row."""
     bars, n = why_raptor_bars(card)
     if not bars:
         return False
@@ -1953,7 +1714,7 @@ def gpu_chart_block(pool, w, slug, card):
         w.add(BARS_TOGGLE)
         w.add('<div class="bars-view bars-wall">')
     w.add(f'<div class="chart" role="img" aria-label="Wall time on {device_name(card)}: {aria}.">')
-    rows_by_arm = _by_arm(_cell(card, n, WHY_CONFIG))
+    rows_by_arm = _by_arm(_cell(card, n, SPREAD))
     for arm, _label, wall in bars:
         pct = 100 * (math.log10(wall) - math.log10(lo)) / (math.log10(hi) - math.log10(lo))
         w.add(_bar_row_html(pool.track(_chart_label(card, arm)), ARM_CHIP_VAR.get(arm),
@@ -1962,8 +1723,7 @@ def gpu_chart_block(pool, w, slug, card):
     w.add("</div>")
     date = f", card of {card['generated_utc'][:10]}" if card.get("generated_utc") else ""
     anchor = f"{EAGLE_ANCHOR_FAMILY['perf_gpu']}-{slug}".replace("_", "-")
-    w.add(f'<p class="axis-note">{pool.track(f"{n:,}")} samples, each stopping at its own step '
-          f'(up to {WHY_CONFIG["max_steps"]:,}). {AXIS_RANGE_NOTE.format(lo=pool.track(_fmt_time(lo)), hi=pool.track(_fmt_time(hi)))} '
+    w.add(f'<p class="axis-note">{pool.track(f"{n:,}")} samples, each stopping at its own time. {AXIS_RANGE_NOTE.format(lo=pool.track(_fmt_time(lo)), hi=pool.track(_fmt_time(hi)))} '
           f'Measured on {pool.track(device_label(card))}'
           f'{pool.track(date)}. <a href="{EAGLE_PERF_PAGE}#{anchor}">Every tool, every N, '
           f'and where each one fits</a>.</p>')
@@ -2010,18 +1770,15 @@ def _gpu_panel(pool, slug, card):
     if have_mem:
         parts.append('<div class="rpt-mem-chart">\n<h4>Memory, as a multiple of what the samples need</h4>\n</div>')
         parts.append(_raw_html(mem))
-        n = max(card["ns"])
+        n = top_n(card)
         for arm, _b, _f in rows:
-            names = (_mem_row(card, arm, n, WHY_CONFIG) or {}).get("device_borrowed_from")
+            names = (_mem_row(card, arm, n, SPREAD) or {}).get("device_borrowed_from")
             if names:
                 parts.append(f'<p class="axis-note">{BORROWED_MARK} '
                              f'{pool.track(MEMORY_TABLE_LABELS.get(arm, arm_label(card, arm)))}: '
                              f'measured on {pool.track(" and ".join(names))}; the reading on this card '
                              "missed the pool the library reserves before the measurement's baseline, "
                              "and the pool's size does not depend on the card.</p>")
-    honest, have_honest = build_landing_honest(pool, card)
-    if have_honest:
-        parts.append(_raw_html(honest))
     return "\n".join(parts)
 
 
@@ -2098,9 +1855,9 @@ def memory_info(pool, card, arm, n):
     """The info lines of one memory bar, from the card's memory row: arm,
     device, cell, what the driver accounted against the minimum, the card's
     stamp, and the borrowed-reading note when the reading is another card's."""
-    row = _mem_row(card, arm, n, WHY_CONFIG) or {}
+    row = _mem_row(card, arm, n, SPREAD) or {}
     lines = [_chart_label(card, arm), device_name(card),
-             f"N = {n:,}, {_cfg_phrase(WHY_CONFIG['distribution'], WHY_CONFIG['max_steps'])}"]
+             f"N = {n:,}, {_cfg_phrase(SPREAD['distribution'])}"]
     if row.get("device_peak_bytes") is not None and row.get("minimum_bytes"):
         lines.append(f"{_fmt_mib_int(row['device_peak_bytes'])} held by the process, against a "
                      f"minimum of {_fmt_mib_int(row['minimum_bytes'])}")
@@ -2120,10 +1877,10 @@ def build_compare_memory_chart(pool, card, rows):
     w = Writer(pool)
     w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
     w.add("")
-    n = max(card["ns"]) if card and card.get("ns") else None
+    n = top_n(card) if card and card.get("ns") else None
 
     def label(arm):
-        borrowed = (_mem_row(card, arm, n, WHY_CONFIG) or {}).get("device_borrowed_from")
+        borrowed = (_mem_row(card, arm, n, SPREAD) or {}).get("device_borrowed_from")
         return _chart_label(card, arm) + (BORROWED_MARK if borrowed else "")
 
     factors = [f for _a, _b, f in rows if f is not None]
@@ -2145,52 +1902,6 @@ def build_compare_memory_chart(pool, card, rows):
     w.add("</div>")
     w.add("```")
     return w.text(), True
-
-
-def build_landing_honest(pool, perf_gpu):
-    """``_generated/landing_honest.md``: the "How it compares" honest note --
-    Warp's standing including the actual dense-tie wall times, eagle's own
-    memory honesty (lower-level building blocks lighter than Warp), and the
-    device/link fine print. Same primitives as honest_box.md
-    (`warp_wins_count`, `dense_tie_line`, `will_it_fit_rows`), reworded into
-    the mockup's 3-paragraph shape (never re-measured, only re-told). The
-    Warp sentence names Warp's RK4 cell wins only when the card has any."""
-    w = Writer(pool)
-    w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
-    w.add("")
-    if not perf_gpu or not perf_gpu.get("ns"):
-        return w.text(), False
-    wins = warp_wins_count(perf_gpu)
-    tie = dense_tie_line(perf_gpu, eagle_arm="eagle_simulate")
-    if not wins or not tie:
-        return w.text(), False
-    rows, _n = will_it_fit_rows(perf_gpu)
-    by_arm = {arm: factor for arm, _b, factor in rows}
-    if not all(k in by_arm for k in ("eagle_graph", "warp_kernel", "eagle_simulate")):
-        return w.text(), False
-    steps_str = str(DENSE_CONFIG["max_steps"])
-    device = device_name(perf_gpu)
-    link = "https://amasat01.github.io/eagle/content/performance.html"
-
-    w.add("```{raw} html")
-    w.add('<div class="honest">')
-    lead = (f"it is the fastest arm in {pool.track(str(wins[0]))} of the "
-            f"{pool.track(str(wins[1]))} RK4 cells this card runs, and " if wins[0] else "")
-    w.add(f"<p>NVIDIA Warp is an excellent per-thread kernel compiler: {lead}"
-          f"when every sample runs all {pool.track(steps_str)} steps {dense_clause(pool, tie)}.</p>")
-    lighter = by_arm["eagle_graph"] < by_arm["warp_kernel"]
-    w.add(f"<p>On memory, hawk + eagle's lower-level building blocks "
-          f"{'go lighter than Warp' if lighter else 'and Warp compare'}: "
-          f"{pool.track(_fmt_ratio(by_arm['eagle_graph']))} the minimum against Warp's "
-          f"{pool.track(_fmt_ratio(by_arm['warp_kernel']))}. eagle.simulate keeps room to "
-          f"compact the batch and uses {pool.track(_fmt_ratio(by_arm['eagle_simulate']))}.</p>")
-    w.add(f'<p class="fine">Measured on {pool.track(device)}. '
-          f'<a href="{link}">Every number, every arm</a>.</p>')
-    w.add("</div>")
-    w.add("```")
-    return w.text(), True
-
-
 
 
 # --------------------------------------------------------------------------- #
@@ -2228,9 +1939,8 @@ def fastest_arm_grid(pool, w, card, title):
     w.add(header)
     w.add("|---|" + "---|" * len(ns))
     for cfg in configs:
-        dist, steps = cfg.get("distribution"), cfg.get("max_steps")
-        label = f"{pool.track(dist)}, up to {pool.track(str(steps))} steps" if dist == "spread" else (
-            f"{pool.track(dist)}, {pool.track(str(steps))} steps each" if dist else "single configuration")
+        dist = cfg.get("distribution")
+        label = pool.track(_cfg_phrase(dist)) if dist else "single configuration"
         cells = []
         for n in ns:
             found = fastest_of_cell(card, n, cfg)
@@ -2268,18 +1978,7 @@ def card_date_phrase(pool, card):
     return pool.track(f"{device_name(card)}, card of {date}" if date else device_name(card))
 
 
-def adaptive_host_note(pool, card):
-    """One short line under the adaptive-ODE list: one host, the CPU arm's threads, PyTorch's fastest arm."""
-    soft, method = card.get("software") or {}, card.get("method") or {}
-    bits = ["All arms ran in one host" + (f" ({soft['cpu']})" if soft.get("cpu") else "") + "."]
-    threads = method.get("cpu_threads") or soft.get("omp_num_threads")
-    if threads:
-        bits.append(f"The CPU arm used {threads} threads.")
-    bits.append("PyTorch is shown by its fastest arm on this card.")
-    return pool.track(" ".join(bits))
-
-
-def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
+def build_compare_page(pool, perf_gpu, perf_cpu):
     w = Writer(pool)
     w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
     w.add("")
@@ -2287,8 +1986,8 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
     any_section = False
 
     if perf_gpu:
-        n = max(perf_gpu["ns"])
-        spread_grid = [fastest_of_cell(perf_gpu, nn, WHY_CONFIG) for nn in perf_gpu["ns"]]
+        n = top_n(perf_gpu)
+        spread_grid = [fastest_of_cell(perf_gpu, nn, SPREAD) for nn in perf_gpu["ns"]]
         if all(spread_grid):
             w.add("## My samples finish at different times")
             w.add("")
@@ -2301,7 +2000,7 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                 w.add(f"- N = {pool.track(f'{nn:,}')}: fastest is `{best['arm']}` "
                       f"({pool.track(arm_display(perf_gpu, best['arm']))}), "
                       f"{pool.track(_fmt_sig_time(_center(best['wall_s'])))}"
-                      f"{simulate_alongside(pool, perf_gpu, nn, WHY_CONFIG, best)}, of "
+                      f"{simulate_alongside(pool, perf_gpu, nn, SPREAD, best)}, of "
                       f"{pool.track(str(count))} arms run.")
             w.add("")
             # Hyphenated to match the built page's docutils-normalized id
@@ -2341,7 +2040,7 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                   "launch and compaction overhead can cost more than they save:")
             w.add("")
             for cfg, (count, best) in small:
-                cfg_label = f"{cfg.get('distribution')}, {cfg.get('max_steps')} steps"
+                cfg_label = _cfg_phrase(cfg.get('distribution'))
                 w.add(f"- {pool.track(cfg_label)}: fastest is `{best['arm']}` "
                       f"({pool.track(arm_display(perf_gpu, best['arm']))}), "
                       f"{pool.track(_fmt_sig_time(_center(best['wall_s'])))}"
@@ -2351,21 +2050,21 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
 
     if perf_gpu:
         mem_rows, mem_n = will_it_fit_rows(perf_gpu)
-        warp_mem_row = _mem_row(perf_gpu, "warp_kernel", mem_n, WHY_CONFIG) if mem_n else None
-        graph_mem_row = _mem_row(perf_gpu, "eagle_graph", mem_n, WHY_CONFIG) if mem_n else None
-        sim_mem_row = _mem_row(perf_gpu, "eagle_simulate", mem_n, WHY_CONFIG) if mem_n else None
+        warp_mem_row = _mem_row(perf_gpu, "warp_kernel", mem_n, SPREAD) if mem_n else None
+        graph_mem_row = _mem_row(perf_gpu, "eagle_graph", mem_n, SPREAD) if mem_n else None
+        sim_mem_row = _mem_row(perf_gpu, "eagle_simulate", mem_n, SPREAD) if mem_n else None
         if mem_rows and warp_mem_row and graph_mem_row and sim_mem_row:
             w.add("## Will it fit on my GPU?")
             w.add("")
-            w.add(f"Same cell as the speed comparison above (N = {pool.track(f'{mem_n:,}')}, spread stop "
-                  f"steps, up to {pool.track(str(WHY_CONFIG['max_steps']))}): peak GPU memory the driver "
+            w.add(f"Same cell as the speed comparison above (N = {pool.track(f'{mem_n:,}')}, spread "
+                  f"batch): peak GPU memory the driver "
                   "accounted to the process, against the state the workload actually needs.")
             w.add("")
             w.add("| tool | GPU memory | × minimum |")
             w.add("|---|---:|---:|")
             for arm, peak_bytes, factor in mem_rows:
                 label = MEMORY_TABLE_LABELS.get(arm, arm_label(perf_gpu, arm))
-                if (_mem_row(perf_gpu, arm, mem_n, WHY_CONFIG) or {}).get("device_borrowed_from"):
+                if (_mem_row(perf_gpu, arm, mem_n, SPREAD) or {}).get("device_borrowed_from"):
                     label += BORROWED_MARK
                 w.add(f"| {pool.track(label)} | {pool.track(_fmt_mib_int(peak_bytes))} | "
                       f"{pool.track(_fmt_x(factor))} |")
@@ -2376,9 +2075,9 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                   + memory_comparison_sentence(pool, sim_mem_row, warp_mem_row, graph_mem_row))
             w.add("")
             borrowed = [a for a in MEMORY_TABLE_ARMS
-                        if (_mem_row(perf_gpu, a, mem_n, WHY_CONFIG) or {}).get("device_borrowed_from")]
+                        if (_mem_row(perf_gpu, a, mem_n, SPREAD) or {}).get("device_borrowed_from")]
             for a in borrowed:
-                names = _mem_row(perf_gpu, a, mem_n, WHY_CONFIG)["device_borrowed_from"]
+                names = _mem_row(perf_gpu, a, mem_n, SPREAD)["device_borrowed_from"]
                 w.add(f"{BORROWED_MARK} {pool.track(MEMORY_TABLE_LABELS.get(a, arm_label(perf_gpu, a)))}: "
                       f"measured on {pool.track(' and '.join(names))}. On "
                       f"{pool.track(device_name(perf_gpu))} the reading missed the memory pool the library "
@@ -2397,30 +2096,6 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
                 w.add("")
             any_section = True
 
-    honest78 = rk78_honest(rk78_gpu) if rk78_gpu else None
-    if honest78:
-        w.add("## My steps are adaptive")
-        w.add("")
-        w.add("The RK7(8) card integrates an adaptive-step orbit propagator (13-stage "
-              "Runge-Kutta-Fehlberg, error-controlled) rather than a fixed-step scheme -- "
-              "the same comparison, a heavier per-step workload:")
-        w.add("")
-        w.add(f"- fastest GPU arm: {pool.track(honest78['fastest_label'])}, "
-              f"{pool.track(_fmt_sig_time(honest78['fastest_s']))}")
-        for label, s in honest78["others"]:
-            w.add(f"- {pool.track(label)}: {pool.track(_fmt_sig_time(s))}")
-        if honest78["cpu_label"]:
-            w.add(f"- {pool.track(honest78['cpu_label'])}: "
-                  f"{pool.track(_fmt_sig_time(honest78['cpu_s']))}"
-                  + (" -- beats every GPU arm above on this card" if honest78["cpu_beats_every_gpu_arm"] else ""))
-        w.add("")
-        w.add(adaptive_host_note(pool, rk78_gpu))
-        w.add("")
-        w.add(f"[Full table, this card]({base}#rk78-card-gpu-"
-              f"{pool.track(rk78_gpu.get('device_slug', ''))}) ({card_date_phrase(pool, rk78_gpu)}).")
-        w.add("")
-        any_section = True
-
     w.add("## I need derivatives")
     w.add("")
     w.add("Every hawk kernel carries its reverse-mode (`hawk.diff.vjp`) and forward-mode "
@@ -2433,21 +2108,14 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
     w.add("")
     any_section = True
 
-    # RK7(8) CPU note: deliberately re-uses honest78's own number (the
-    # eagle_cpu row embedded IN THE GPU CARD, same run as the GPU arms it is
-    # compared against) rather than re-deriving a second figure from the
-    # separately-run rk78_card_cpu card -- the two are different benchmark
-    # runs of the same arm and can legitimately differ by double-digit
-    # percent noise; showing both for "the same" claim one line apart would
-    # read as a contradiction even though neither number is wrong.
     cpu_rows = []
     if perf_cpu:
-        n = max(perf_cpu["ns"])
-        found = fastest_of_cell(perf_cpu, n, WHY_CONFIG) or (
+        n = top_n(perf_cpu)
+        found = fastest_of_cell(perf_cpu, n, SPREAD) or (
             fastest_of_cell(perf_cpu, n, perf_cpu["configs"][0]) if perf_cpu.get("configs") else None)
         if found:
-            cpu_rows.append(("RK4 oscillators", n, found))
-    if cpu_rows or honest78:
+            cpu_rows.append(("Adaptive RKF7(8) Kepler orbits", n, found))
+    if cpu_rows:
         w.add("## I want the CPU too")
         w.add("")
         w.add("Every kernel in this family runs unchanged on CPU threads (OpenMP), no GPU, "
@@ -2457,11 +2125,6 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
             w.add(f"- {pool.track(label)}, N = {pool.track(f'{n:,}')}: "
                   f"{pool.track(arm_label(perf_cpu, best['arm']))}, "
                   f"{pool.track(_fmt_sig_time(_center(best['wall_s'])))}.")
-        if honest78 and honest78["cpu_label"] and honest78["cpu_beats_every_gpu_arm"]:
-            w.add(f"- On the RK7(8) card, the CPU arm ({pool.track(honest78['cpu_label'])}, "
-                  f"{pool.track(_fmt_sig_time(honest78['cpu_s']))}) beats every GPU arm "
-                  "recorded there -- this GPU's FP64 throughput is modest; a data-centre "
-                  "GPU is expected to flip this back.")
         w.add("")
         any_section = True
 
@@ -2471,8 +2134,8 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
 
 
 # --------------------------------------------------------------------------- #
-# The landing radar: where each tool shines, one radar per platform. Six majors on the
-# landing radar, sixteen minors on the detailed one: seven minors measured from the
+# The landing radar: where each tool shines, one radar per platform. Seven majors on the
+# landing radar, twenty-five minors on the detailed one: sixteen minors measured from the
 # committed cards (through the helpers above) and nine qualitative from
 # `_data/radar_qualitative.json`. A minor's score = best value / this tool's value
 # (1.0 = the edge); a major draws the mean of its minors. Pure functions first
@@ -2480,6 +2143,9 @@ def build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu):
 # `perf_switch`.
 # --------------------------------------------------------------------------- #
 RADAR_QUALITATIVE = pathlib.Path("_data") / "radar_qualitative.json"
+#: The axes the 0.7.3 cards do not re-measure, with their values from the earlier cards (the source device and
+#: release are inside the file).
+RADAR_EARLIER = pathlib.Path("_data") / "radar_earlier.json"
 #: Share of the radius where an axis's worst tool sits (never the centre), and
 #: the ring fractions drawn: best, a geometric middle, worst.
 RADAR_FLOOR = 0.2
@@ -2489,19 +2155,37 @@ RADAR_MIN_SPAN = 2.0
 #: The minor axes, in the order the detailed radar draws them: grouped by major, the majors in the
 #: order of `RADAR_MAJORS`. (key, label, kind, what it measures, where the number comes from).
 #: kind "m" = measured from the cards, "q" = rubric in `_data/radar_qualitative.json`.
+#: The feature card's rows as radar axes: (axis key, label, row, our arms, what it is). Each axis compares the
+#: best of our arms in the row against the best arm of each external library the row records.
+FEATURE_AXES = (
+    ("f_wide", "Wide values", "wide_forms", ("thread", "team", "team_k8", "staged"), "samples that hold a vector of values"),
+    ("f_fused", "Fused steps", "steps_fused", ("K1", "K8", "K32"), "several integration steps fused into one launch"),
+    ("f_control", "Control flow", "control_flow", ("guard", "no_guard", "jump"), "branches and early exits inside a kernel"),
+    ("f_lalane", "Small linear algebra, per lane", "linalg_lane", ("hawk",), "one small matrix per lane"),
+    ("f_lateam", "Small linear algebra, per team", "linalg_team", ("team",), "one matrix shared by a team of lanes"),
+    ("f_contract", "Contractions", "contraction", ("box", "no_box"), "small tensor contractions"),
+    ("f_fft", "FFT", "fft", ("fft",), "a batched FFT"),
+    ("f_scatter", "Scatter", "scatter", ("keyed", "ordered", "or"), "adding values into bins by key"),
+    ("f_sum", "Reductions", "sample_sum", ("compensated", "ordered", "auto", "cell_compensated", "cell_auto"), "summing over samples"),
+)
+#: Which external tool each feature-card arm belongs to (arms that name no library are ours or unattributed).
+FEATURE_EXTERNAL = {"numpy_mask": "NumPy", "np_add_at": "NumPy", "torch": "PyTorch", "torch_func": "PyTorch",
+                    "cupy": "CuPy", "cupy_fft": "CuPy", "cupyx_scatter_add": "CuPy", "cupy_sum": "CuPy",
+                    "warp": "NVIDIA Warp", "warp_loop": "NVIDIA Warp"}
+
 RADAR_AXES = (
-    ("uneven", "Uneven ensembles", "m", "How long a batch takes when every sample stops at its own step, at the largest batch.",
-     "performance card: results[].wall_s (spread stop steps)"),
-    ("regular", "Regular ensembles", "m", "How long a batch takes when every sample runs the same number of steps, at the largest batch.",
-     "performance card: results[].wall_s (uniform stop steps)"),
-    ("small", "Small jobs", "m", "Wall time of the smallest batch, where launch overhead matters most.",
-     "performance card: results[].wall_s at the smallest N (spread stop steps)"),
-    ("adaptive", "Adaptive ODEs", "m", "Wall time of an adaptive-step orbit propagator (RK7(8)) at the largest batch.",
-     "RK7(8) card: results[].wall_s"),
-    ("memory", "Memory", "m", "Peak memory the process holds for the same workload (device memory on a GPU; host memory on a CPU at N = 1,000,000 only, net of the benchmark harness's own copies).",
-     "performance card: memory.rows[] device_peak_bytes (GPU) or peak_bytes (CPU, net of the harness's copies)"),
-    ("compile", "Compile time", "m", "Cold compile of the complex adaptive kernel (RK7(8) orbits) on empty caches; the simple oscillator's time and the growth factor are listed per tool. A tool with nothing to compile sits at the edge. Compiled once per kernel; raptor's compile does not depend on the problem size N.",
-     "RK7(8) card: compile_time.rows[].cold_s (JAX: the largest-N row); a tool with no adaptive reading falls back, hollow, to the performance card's compile_time"),
+    ("uneven", "Uneven ensembles", "m", "How long a batch takes when every sample stops at its own step, at N = 1,000,000.",
+     "performance card: results[].wall_s (spread batch)"),
+    ("regular", "Regular ensembles", "m", "How long a batch takes when every sample runs the same orbit, at N = 1,000,000.",
+     "performance card: results[].wall_s (uniform batch)"),
+    ("small", "Small jobs", "m", "Wall time of the smallest batch (N = 1,000), where launch overhead matters most. Not re-measured by the 0.7.3 cards: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): results[].wall_s at the smallest N"),
+    ("adaptive", "Adaptive ODEs", "m", "Wall time of an adaptive-step orbit propagator (RK7(8)) at N = 1,000,000. Not re-measured as a separate card in 0.7.3: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): RK7(8) results[].wall_s"),
+    ("memory", "Memory", "m", "Peak memory the process holds for the same workload (device memory on a GPU; host memory on a CPU, net of the benchmark harness's control copy).",
+     "performance card: memory.rows[] device_peak_bytes (GPU) or results[] host_peak_net_of_control_bytes (CPU)"),
+    ("compile", "Compile time", "m", "Cold compile of the adaptive kernel on empty caches. Not re-measured by the 0.7.3 cards: the value is from the earlier card named in the axis note.",
+     "earlier card (eagle 0.6.0): RK7(8) compile_time.rows[].cold_s"),
     ("code", "Code size", "m", "Lines of code the task takes, non-blank and non-comment.",
      "performance card: code.arms[].lines"),
     ("tensor", "Tensor workloads (qualitative)", "q", "", "rubric"),
@@ -2513,8 +2197,9 @@ RADAR_AXES = (
     ("arrays", "Works with your arrays (qualitative)", "q", "", "rubric"),
     ("deploy", "Deploy outside Python (qualitative)", "q", "", "rubric"),
     ("extensible", "Extensibility (qualitative)", "q", "", "rubric"),
-)
-#: The six majors of the landing radar and the minors each one draws the mean of. These groups were
+) + tuple((k, label, "m", f"Wall time of {what} at the feature card's float64 row: our best arm against the best arm of each library the row records.",
+           f"feature card: rows[{row}].arms[].wall_s") for k, label, row, _arms, what in FEATURE_AXES)
+#: The seven majors of the landing radar and the minors each one draws the mean of. These groups were
 #: fixed by theme before any data was looked at, and nothing here is tuned to a result: every minor counts
 #: once, every major is the plain mean of its minors' radii, and the same function runs for every tool.
 #: (key, label, kind, what it is, how it is drawn, minors). A major is "m" when its minors are measured
@@ -2528,6 +2213,10 @@ RADAR_MAJORS = (
      "What the work costs around the run: the memory it holds, the time to compile and the code to write.",
      "mean of three measurements, each on its own best-to-worst scale",
      ("memory", "compile", "code")),
+    ("capabilities", "Capabilities", "m",
+     "What the libraries support beyond the ensemble loop: wide values, fused steps, control flow, small linear algebra, contractions, FFT, scatter and reductions, each against the libraries the feature card records.",
+     "mean of nine measured wall times, each on its own best-to-worst scale",
+     tuple(a[0] for a in FEATURE_AXES)),
     ("numerics", "Tensors and precision (qualitative)", "q",
      "Dense tensor maths, array-style code and half precision: where PyTorch and JAX lead.",
      "mean of three rubric scores",
@@ -2574,10 +2263,11 @@ RADAR_GEOM = {"landing": (780, 720, 390, 355, 190), "detailed": (780, 650, 390, 
 RADAR_AXIS_EXTRA = {
     "uneven": {"short": "Uneven ensembles", "dir": "faster is better", "edge": "fastest", "unit": "time"},
     "regular": {"short": "Regular ensembles", "dir": "faster is better", "edge": "fastest", "unit": "time"},
+    "memory": {"short": "Memory", "dir": "smaller is better", "edge": "smallest", "unit": "mem"},
     "small": {"short": "Small jobs", "dir": "faster is better", "edge": "fastest", "unit": "time"},
     "adaptive": {"short": "Adaptive ODEs", "dir": "faster is better", "edge": "fastest", "unit": "time"},
     "compile": {"short": "Compile time", "dir": "lower is better", "edge": "fastest", "unit": "time"},
-    "memory": {"short": "Memory", "dir": "smaller is better", "edge": "smallest", "unit": "mem"},
+    **{a[0]: {"short": a[1], "dir": "faster is better", "edge": "fastest", "unit": "time"} for a in FEATURE_AXES},
     "code": {"short": "Code size", "dir": "smaller is better", "edge": "smallest", "unit": "lines"},
     "tensor": {"short": "Tensors", "dir": "", "edge": "", "unit": "rubric"},
     "array_style": {"short": "Array style", "dir": "", "edge": "", "unit": "rubric"},
@@ -2589,6 +2279,7 @@ RADAR_AXIS_EXTRA = {
     "deploy": {"short": "Deploy", "dir": "", "edge": "", "unit": "rubric"},
     "extensible": {"short": "Extensibility", "dir": "", "edge": "", "unit": "rubric"},
     "ensemble": {"short": "Ensemble speed", "dir": "faster is better", "edge": "fastest", "unit": "mean"},
+    "capabilities": {"short": "Capabilities", "dir": "faster is better", "edge": "fastest", "unit": "mean"},
     "footprint": {"short": "Footprint", "dir": "lower is better", "edge": "lowest", "unit": "mean"},
     "numerics": {"short": "Tensors and precision", "dir": "", "edge": "", "unit": "rubric"},
     "authoring": {"short": "One-sample authoring", "dir": "", "edge": "", "unit": "rubric"},
@@ -2603,15 +2294,14 @@ RADAR_DETAILED_NOTE = RADAR_NOTE
 RADAR_CONTROL_CAPTION = ("NVIDIA Warp gives you near-total control of every kernel, short of raw CUDA. raptor hands that "
                          "control to the engine on purpose, so compaction and the launch shape are decided at run time; "
                          "the two are different trade-offs, not a ranking.")
-RADAR_MAJOR_RULE = ("Each of the six majors is the plain mean of its minor axes (the detailed radar draws every minor), "
+RADAR_MAJOR_RULE = ("Each of the seven majors is the plain mean of its minor axes (the detailed radar draws every minor), "
                     "with equal weights and the same rule for every tool; a minor a tool has no reading on is left out of "
                     "its mean and the major's marker is drawn hollow. Hover or tap a major to see its minors.")
 RADAR_SCALE_RULE = ("Each measured axis is stretched over its own best-to-worst range, so ring labels differ per axis "
-                    "(compile time: fixed, 0.1 s to 100 s; code size: at least 4x). Axes are grouped by theme, "
+                    "(code size: at least 4x). Axes are grouped by theme, "
                     "so read the axes, not the area.")
 RADAR_QUAL_RULE = ("Italic axes are the author's judgement, not measurements: hollow markers, a linear scale, and no marker "
-                   "where a tool has no reading. A hollow marker on a measured axis means a minor is missing or, for compile "
-                   "time, is the tool's simple-kernel time. The hover panel has each axis's full wording.")
+                   "where a tool has no reading. A hollow marker on a measured axis means a minor is missing. The hover panel has each axis's full wording.")
 
 
 def radar_tool(arm, kind):
@@ -2641,22 +2331,11 @@ def best_arm_per_tool(values, kind):
     return best
 
 
-def radar_scores(best):
-    """{tool: best value / tool value} from `best_arm_per_tool`'s output
-    (1.0 for the best tool)."""
-    if not best:
-        return {}
-    floor = min(v for _arm, v in best.values())
-    return {tool: floor / v for tool, (_arm, v) in best.items()}
-
-
 #: Axes whose values sit close together stretch over a wider minimum span: code size runs
 #: from ~22 to ~44 lines, and a 22-vs-32-line pair should stay near the edge (0.78 of it).
 RADAR_MIN_SPAN_BY_AXIS = {"code": 4.0}
 #: Compile time is the exception: a FIXED absolute log scale, the same on every device,
 #: 0.1 s at the edge to 100 s at the floor. Bands drawn on hover: (seconds, label).
-RADAR_COMPILE_EDGE_S, RADAR_COMPILE_FLOOR_S = 0.1, 100.0
-RADAR_COMPILE_BANDS = ((1.0, "under 1 s: instant"), (10.0, "1-10 s: noticeable"), (60.0, "over 60 s: breaks interactive use"))
 
 
 def radar_axis_span(ratios, minimum=RADAR_MIN_SPAN):
@@ -2672,34 +2351,6 @@ def radar_radius(ratio, span):
     if not math.isfinite(ratio) or ratio >= span:
         return RADAR_FLOOR
     return 1.0 - (1.0 - RADAR_FLOOR) * math.log(max(ratio, 1.0)) / math.log(span)
-
-
-def radar_radius_compile(seconds):
-    """Radius fraction on the fixed compile scale: log, 0.1 s at the edge (1.0)
-    to 100 s at the floor (0.2); faster than the edge clamps to the edge."""
-    lo, hi = RADAR_COMPILE_EDGE_S, RADAR_COMPILE_FLOOR_S
-    if seconds <= lo:
-        return 1.0
-    if seconds >= hi:
-        return RADAR_FLOOR
-    return 1.0 - (1.0 - RADAR_FLOOR) * math.log(seconds / lo) / math.log(hi / lo)
-
-
-def radar_compile_band(seconds):
-    """How a compile time reads to someone waiting on it."""
-    if seconds < 1:
-        return "under 1 s: instant"
-    if seconds < 10:
-        return "1-10 s: noticeable"
-    if seconds < 60:
-        return "10-60 s: long"
-    return "over 60 s: breaks interactive use"
-
-
-def radar_compile_rings():
-    """Hover ring labels of the fixed scale: edge, geometric middle, floor."""
-    mid = math.sqrt(RADAR_COMPILE_EDGE_S * RADAR_COMPILE_FLOOR_S)
-    return " · ".join((f"{v:.2g} s" if v < 99 else f"{v:.0f} s") for v in (RADAR_COMPILE_EDGE_S, mid, RADAR_COMPILE_FLOOR_S))
 
 
 def radar_radius_rubric(score, lo, hi):
@@ -2743,82 +2394,26 @@ def _radar_wall_values(card, n, cfg):
     return walls
 
 
-def _rk78_wall_values(card):
-    n = max(card["ns"])
-    return n, {r["arm"]: _center(r["wall_s"]) for r in card.get("results", []) if r["n"] == n}
-
-
-def _compile_values(card, n):
-    """{arm: (cold s, warm s)} from the card's ``compile_time`` rows. Cold =
-    a fresh process on empty caches, warm = a fresh process on the caches the
-    cold run filled; each the median of 3 processes, the timer spanning the
-    first call to a ready kernel (the card's compile ``method``). Per-N rows
-    (key ``jax:1000`` ...) are read at ``n``; an arm in the card's ``shared``
-    map reuses another arm's row; arms in ``none`` have no compile step and
-    carry no reading."""
-    ct = card.get("compile_time") or {}
-    out = {}
-    for row in ct.get("rows", []):
-        key = row.get("key", "")
-        suffix = key.rsplit(":", 1)[-1]
-        if ":" in key and suffix.isdigit() and int(suffix) != n:
-            continue
-        arms = row.get("arms") or ([row["arm"]] if "arm" in row else [])
-        for arm in arms:
-            out[arm] = (row["cold_s"]["median"], row["warm_s"]["median"])
-    for arm, target in (ct.get("shared") or {}).items():
-        if target in out:
-            out.setdefault(arm, out[target])
-    return out
-
-
 def _memory_values(card, n, kind):
     """{arm: bytes}: GPU = ``device_peak_bytes`` (the memory the CUDA driver
     accounts to the process after the run minus before it, i.e. the
     allocator's high-water reservation; withheld readings are None); CPU =
-    ``peak_bytes`` (peak resident set above the baseline) net of the
-    benchmark harness's own copies (`net_peak_bytes`)."""
-    field = "device_peak_bytes" if kind == "gpu" else "peak_bytes"
+    ``host_peak_net_of_control_bytes`` of the spread row (peak resident set net of the harness's control copy)."""
     out = {}
     for arm in arm_keys(card):
-        row = _mem_row(card, arm, n, WHY_CONFIG)
-        if row and row.get(field):
-            value = row[field] if kind == "gpu" else published_peak_bytes(row, card["memory"]["rows"])
-            if value:
-                out[arm] = value
+        if kind == "gpu":
+            row = _mem_row(card, arm, n, SPREAD)
+            value = row and row.get("device_peak_bytes")
+        else:
+            row = next((r for r in _cell(card, n, SPREAD) if r["arm"] == arm), None)
+            value = row and row.get("host_peak_net_of_control_bytes")
+        if value:
+            out[arm] = value
     return out
 
 
 def _code_values(card):
     return {arm: arm_line_count(card, arm) for arm in arm_keys(card)}
-
-
-def _cpu_model_key(card):
-    """A CPU card's model as a join key (the perf and rk78 CPU cards spell
-    it differently: a dict with 'model' or a plain string)."""
-    cpu = card.get("cpu")
-    model = cpu.get("model") if isinstance(cpu, dict) else cpu
-    return re.sub(r"[^a-z0-9]+", "", re.sub(r"\((r|tm)\)", "", (model or "").lower()))
-
-
-def pair_rk78(entries, rk78_entries, kind):
-    """{slug: rk78 card or None} for the perf cards ``entries``: GPU cards pair
-    by device slug, CPU cards by CPU model."""
-    out = {}
-    for slug, card in entries:
-        match = None
-        for rslug, rcard in rk78_entries:
-            if (kind == "gpu" and rslug == slug) or (kind == "cpu" and _cpu_model_key(rcard) == _cpu_model_key(card)):
-                match = rcard
-        out[slug] = match
-    return out
-
-
-def uneven_by_tool(card, kind):
-    """{tool: (arm, wall)} on the uneven-ensemble cell (largest N)."""
-    if not card or not card.get("ns"):
-        return {}
-    return best_arm_per_tool(_radar_wall_values(card, max(card["ns"]), WHY_CONFIG), kind)
 
 
 def load_qualitative(pool, path=None):
@@ -2831,70 +2426,50 @@ def load_qualitative(pool, path=None):
     return json.loads(p.read_text())
 
 
-def _compile_entries(perf, rk78, kind, n_max):
-    """{tool: {"value" s|None, "arm", "text", "detail", "hollow"}} for the compile axis.
-    The value is the COMPLEX kernel's cold compile (rk78 card, largest-N row for the
-    per-shape arms); the simple oscillator's time and the growth factor go in the
-    detail. A tool with no complex reading falls back to its simple-kernel reading,
-    drawn hollow and labelled. "No compile step" only for a tool with genuinely none
-    (never PyTorch: its torch.compile arm is the apples-to-apples one)."""
-    simple_all = _compile_values(perf, n_max)
-    simple = best_arm_per_tool({a: v[0] for a, v in simple_all.items()}, kind)
-    complex_best, complex_all = {}, {}
-    if rk78 and rk78.get("ns") and rk78.get("compile_time"):
-        complex_all = _compile_values(rk78, max(rk78["ns"]))
-        complex_best = best_arm_per_tool({a: v[0] for a, v in complex_all.items()}, kind)
-    out = {}
-    for tool in set(simple) | set(complex_best):
-        if tool in complex_best:
-            arm, v = complex_best[tool]
-            bits = [f"warm {_fmt_sig_time(complex_all[arm][1])}"]
-            if tool in simple:
-                sv = simple[tool][1]
-                bits.insert(0, f"simple kernel {_fmt_sig_time(sv)}, {_fmt_ratio(v / sv)} from the simple to the adaptive kernel")
-            if tool == "JAX":
-                bits.append("JAX recompiles for every shape; the largest-N row is shown")
-            out[tool] = {"value": v, "arm": arm_label(rk78, arm), "text": _fmt_sig_time(v), "detail": " · ".join(bits), "hollow": False}
-        else:
-            arm, v = simple[tool]
-            why = ("the adaptive card has no torch.compile arm" if tool == "PyTorch"
-                   else "this device has no adaptive-kernel compile reading")
-            out[tool] = {"value": v, "arm": arm_label(perf, arm), "text": _fmt_sig_time(v),
-                         "detail": f"simple kernel only: {why} · warm {_fmt_sig_time(simple_all[arm][1])}", "hollow": True}
-    for arm in (perf.get("compile_time") or {}).get("none") or []:
-        tool = radar_tool(arm, kind)
-        if tool is not None and tool != "PyTorch" and tool not in out and arm in arm_keys(perf):
-            out[tool] = {"value": None, "arm": arm_label(perf, arm), "text": "no compile step", "detail": "", "hollow": False}
-    return out
+def _feature_axis(card, row_name, ours):
+    """(``{tool: {"value", "arm", "text", "detail"}}``, cell description) of one feature-card row: raptor is
+    the best of our arms in the row, every other tool its best attributable arm; an arm that did not run is
+    left out, so a tool with no reading has no vertex."""
+    row = next((r for r in (card or {}).get("rows", []) if r["row"] == row_name and r["dtype"] == "float64"), None)
+    if not row:
+        return {}, f"no float64 {row_name} row on this device's feature card"
+    best = {}
+    for arm, a in row["arms"].items():
+        if a.get("status") != "ok":
+            continue
+        tool = "raptor" if arm in ours else FEATURE_EXTERNAL.get(arm)
+        wall = _center(a["wall_s"])
+        if tool and (tool not in best or wall < best[tool][1]):
+            best[tool] = (arm, wall)
+    vals = {t: {"value": w, "arm": arm, "text": _fmt_sig_time(w), "detail": ""} for t, (arm, w) in best.items()}
+    return vals, f"{row_name}, N = {row['n']:,}, float64, feature card of {(card.get('generated_utc') or '')[:10]}"
 
 
-def _device_axes(perf, rk78, kind):
+def _device_axes(perf, kind, earlier=None, feature=None):
     """Per measured axis: ``({tool: {"value": number|None, "arm": str, "text":
     str, "detail": str}}, description of the cell)``. ``value`` None = the tool
-    has no compile step (compile axis only: it sits at the edge). A tool with
+    has no reading. A tool with
     no reading is absent from the axis (no vertex), never 0."""
     axes = {}
-    n_max, n_min = max(perf["ns"]), min(perf["ns"])
-    for key, n, cfg in (("uneven", n_max, WHY_CONFIG), ("regular", n_max, DENSE_CONFIG),
-                        ("small", n_min, WHY_CONFIG)):
+    n_max = top_n(perf)
+    for key, n, cfg in (("uneven", n_max, SPREAD), ("regular", n_max, DENSE)):
         best = best_arm_per_tool(_radar_wall_values(perf, n, cfg), kind)
         axes[key] = ({t: {"value": v, "arm": a, "text": _fmt_sig_time(v), "detail": ""} for t, (a, v) in best.items()},
-                     f"N = {n:,}, {_cfg_phrase(cfg['distribution'], cfg['max_steps'])}")
-    if rk78 and rk78.get("ns"):
-        n, vals = _rk78_wall_values(rk78)
-        best = best_arm_per_tool(vals, kind)
-        axes["adaptive"] = ({t: {"value": v, "arm": a, "text": _fmt_sig_time(v), "detail": ""} for t, (a, v) in best.items()},
-                            f"adaptive RK7(8) orbits, N = {n:,}")
-    else:
-        axes["adaptive"] = ({}, "no adaptive-ODE card for this device")
-    axes["compile"] = (_compile_entries(perf, rk78, kind, n_max),
-                       "fixed scale: 0.1 s at the edge, 100 s at the floor")
+                     f"N = {n:,}, {_cfg_phrase(cfg['distribution'])}")
+    for key in ("small", "adaptive", "compile"):
+        axes[key] = ({}, "no earlier card for this device")
+    for key, entry in ((earlier or {}).get("axes") or {}).items():   # axes no 0.7.3 card re-measured: the earlier card's values
+        axes[key] = ({t: {"value": v["value"], "arm": v["arm"], "text": v["text"], "detail": v["detail"]}
+                      for t, v in entry["tools"].items()},
+                     f"{entry['cell']}; {earlier['source']}; not re-measured by the 0.7.3 cards")
+    for key, _label, row_name, ours, _what in FEATURE_AXES:
+        axes[key] = _feature_axis(feature, row_name, ours)
     mem = _memory_values(perf, n_max, kind)
     fmt = _fmt_mib_int if kind == "gpu" else _fmt_mib
     best = best_arm_per_tool(mem, kind)
     axes["memory"] = ({t: {"value": v, "arm": a, "text": fmt(v), "detail": ""} for t, (a, v) in best.items()},
                       f"{'device' if kind == 'gpu' else 'host'} memory, N = {n_max:,}, "
-                      f"{_cfg_phrase(WHY_CONFIG['distribution'], WHY_CONFIG['max_steps'])}")
+                      f"{_cfg_phrase(SPREAD['distribution'])}")
     best = best_arm_per_tool(_code_values(perf), kind)
     axes["code"] = ({t: {"value": v, "arm": a, "text": f"{v} lines", "detail": ""} for t, (a, v) in best.items()},
                     "lines of code, non-blank and non-comment; the scale spans at least 4x from best to worst, "
@@ -2919,13 +2494,13 @@ def _stretch(entries, minimum=RADAR_MIN_SPAN):
     return span
 
 
-def radar_minor_axes(side, perf, rk78, qualitative):
+def radar_minor_axes(side, perf, qualitative, earlier=None, feature=None):
     """One device's minor axes, as plain data: ``{key: {"desc", "rl", "tools":
     {tool: {"score", "r", "value", "ratio", "arm", "detail"}}}}`` for every tool of
     the side (drawn and table-only). A tool with no reading on an axis is absent
     from it (no vertex), never 0. Measured axes are stretched over their own
     best..worst (see `radar_radius`); rubric axes are linear."""
-    raw = _device_axes(perf, rk78, side)
+    raw = _device_axes(perf, side, earlier, feature)
     tools = [t for t, _c in RADAR_TOOLS[side] + RADAR_TABLE_ONLY[side]]
     axes = {}
     for key, _label, kind, _what, _src in RADAR_AXES:
@@ -2942,22 +2517,6 @@ def radar_minor_axes(side, perf, rk78, qualitative):
                     entry[tool] = {"score": q["score"] / hi, "r": radar_radius_rubric(q["score"], lo, hi),
                                    "value": f"{q['score']} of {hi}", "ratio": q.get("reason", ""),
                                    "arm": "rubric", "detail": "", "pts": q["score"]}
-        elif key == "compile":
-            vals, desc = raw[key]
-            rl = radar_compile_rings()
-            for tool in tools:
-                v = vals.get(tool)
-                if v is None:
-                    continue
-                sec = v["value"]
-                entry[tool] = {"score": 1.0 if sec is None else min(1.0, RADAR_COMPILE_EDGE_S / sec),
-                               "r": 1.0 if sec is None else radar_radius_compile(sec), "value": v["text"],
-                               "ratio": "nothing to compile" if sec is None else radar_compile_band(sec),
-                               "arm": v["arm"], "detail": v["detail"], "hollow": v["hollow"]}
-            secs = [vals[t]["value"] for t in entry if vals[t]["value"]]
-            for tool, e in entry.items():
-                sec = vals[tool]["value"]
-                e["x"] = 1.0 if not sec else sec / min(secs)
         else:
             vals, desc = raw[key]
             for tool in tools:
@@ -2965,7 +2524,7 @@ def radar_minor_axes(side, perf, rk78, qualitative):
                 if v is None:
                     continue
                 entry[tool] = {"rv": v["value"], "arm": v["arm"] if v["value"] is None else
-                               arm_label(rk78 if key == "adaptive" else perf, v["arm"]),
+                               arm_label(perf, v["arm"]),
                                "detail": v["detail"], "value": v["text"]}
             best_v = min((e["rv"] for e in entry.values() if e["rv"] is not None and math.isfinite(e["rv"])), default=None)
             span = _stretch(entry, RADAR_MIN_SPAN_BY_AXIS.get(key, RADAR_MIN_SPAN))
@@ -2976,8 +2535,7 @@ def radar_minor_axes(side, perf, rk78, qualitative):
                 rl = radar_ring_labels(span)
             for e in entry.values():
                 e["x"] = e["ratio_f"]
-                e["ratio"] = ("nothing to compile" if e["value"] == "no compile step"
-                              else f"{_fmt_ratio(e.pop('ratio_f'))} the best")
+                e["ratio"] = f"{_fmt_ratio(e.pop('ratio_f'))} the best"
         axes[key] = {"desc": desc, "rl": rl, "tools": entry}
     return axes
 
@@ -3028,11 +2586,11 @@ def radar_majors(minor_axes, scale=(1, 5)):
     return out
 
 
-def build_radar_device(side, slug, perf, rk78, qualitative, mode="landing"):
+def build_radar_device(side, slug, perf, qualitative, mode="landing", earlier=None, feature=None):
     """One device's radar, as plain data: ``{"slug", "name", "card", "link", "axes"}``;
-    ``axes`` are the six majors in the landing mode (each tool's entry carries the minors it is the
-    mean of) and the sixteen minors in the detailed mode."""
-    minor_axes = radar_minor_axes(side, perf, rk78, qualitative)
+    ``axes`` are the seven majors in the landing mode (each tool's entry carries the minors it is the
+    mean of) and the twenty-five minors in the detailed mode."""
+    minor_axes = radar_minor_axes(side, perf, qualitative, earlier, feature)
     axes = radar_majors(minor_axes) if mode == "landing" else minor_axes
     return {"slug": slug, "name": _tab_device(perf), "card": f"{_tab_device(perf)}, {_card_stamp(perf)}",
             "link": _card_link(side, slug), "axes": axes,
@@ -3044,11 +2602,21 @@ def _card_link(side, slug):
     return f"{EAGLE_PERF_PAGE}#{EAGLE_ANCHOR_FAMILY[family]}-{slug}".replace("_", "-")
 
 
-def radar_devices(side, entries, rk78_entries, qualitative, mode="landing"):
+def _earlier_for(by_slug, slug):
+    """The earlier card of the same device, else of the same kind of device (same vendor and family, e.g. the
+    H100 80GB for the H100 NVL), else None."""
+    if not by_slug:
+        return None
+    if slug in by_slug:
+        return by_slug[slug]
+    family = "-".join(slug.split("-")[:2])
+    return next((v for k, v in by_slug.items() if k.startswith(family)), None)
+
+
+def radar_devices(side, entries, qualitative, mode="landing", earlier=None, features=None):
     """[(slug, radar device)] for the side's cards in tab order."""
     pref = GPU_PREFERENCE if side == "gpu" else CPU_PREFERENCE
-    paired = pair_rk78(entries, rk78_entries, side)
-    return [(slug, build_radar_device(side, slug, card, paired[slug], qualitative, mode))
+    return [(slug, build_radar_device(side, slug, card, qualitative, mode, _earlier_for(earlier, slug), (features or {}).get(slug)))
             for slug, card in in_tab_order([e for e in entries if e[1].get("ns")], pref)]
 
 
@@ -3274,8 +2842,7 @@ def _radar_json(pool, side, devices, tools, mode):
             "axes": [{"key": k, "label": l, "qual": kind == "q", "what": what, "src": src,
                       "edge": RADAR_AXIS_EXTRA[k]["edge"], "dir": RADAR_AXIS_EXTRA[k]["dir"],
                       "ang": round(_axis_angle(i, len(RADAR_MODE_KEYS[mode]), mode), 5),
-                      "bands": ([{"r": round(radar_radius_compile(sec), 4), "t": txt} for sec, txt in RADAR_COMPILE_BANDS]
-                                if k == "compile" else []),
+                      "bands": [],
                       "major": (RADAR_ALL_AXES[RADAR_MAJOR_OF[k]][1].replace(" (qualitative)", "")
                                 if k in RADAR_MAJOR_OF else ""),
                       "minors": [{"key": m, "label": RADAR_ALL_AXES[m][1].replace(" (qualitative)", ""),
@@ -3436,11 +3003,11 @@ def build_radar_page(pool, name, html_block):
     return w.text(), True
 
 
-def build_radars(pool, gpu_entries, cpu_entries, rk78_gpu_entries, rk78_cpu_entries, qualitative, mode="landing"):
+def build_radars(pool, gpu_entries, cpu_entries, qualitative, mode="landing", earlier=None, features=None):
     """{side: html block} for both sides. The axes and their order are the fixed major structure
     (`RADAR_MODE_KEYS`): no search over the data places them."""
-    devs = {side: radar_devices(side, entries, rk, qualitative, mode)
-            for side, entries, rk in (("gpu", gpu_entries, rk78_gpu_entries), ("cpu", cpu_entries, rk78_cpu_entries))}
+    devs = {side: radar_devices(side, entries, qualitative, mode, (earlier or {}).get(side), features)
+            for side, entries in (("gpu", gpu_entries), ("cpu", cpu_entries))}
     entries_of = {"gpu": gpu_entries, "cpu": cpu_entries}
     blocks = {}
     for side, d in devs.items():
@@ -3476,6 +3043,55 @@ def build_detailed_radar(pool, blocks):
     w.lines.append("```{raw} html")
     w.lines.extend(lines)
     w.lines.append("```")
+    return w.text(), True
+
+
+# --------------------------------------------------------------------------- #
+# The feature card (C2): one row per capability, one N per row
+# --------------------------------------------------------------------------- #
+#: How a row that did not produce a time is shown (the card's own status word -> the label a reader sees).
+FEATURE_LABELS = (("out_of_memory", "out of memory"), ("not_run: budget", "> 120 s per run"),
+                  ("not_run: not installed", "not installed"), ("failed", "failed"))
+
+
+def _feature_cell(arm, ref_wall):
+    """(time text, ratio text) of one arm of a feature row."""
+    status = arm.get("status", "")
+    if status != "ok":
+        label = next((text for key, text in FEATURE_LABELS if status.startswith(key)), status)
+        return label, "–"
+    wall = arm["wall_s"]["median"]
+    return _fmt_sig_time(wall), _fmt_x(wall / ref_wall) if ref_wall else "–"
+
+
+def build_feature_block(pool, eagle_root):
+    """``_generated/feature_rows.md``: the feature card's rows (a capability at one N, each arm against the row's reference
+    arm, a ratio under 1 means faster), for the first committed card; empty while no feature card is committed."""
+    d = pathlib.Path(eagle_root) / "benchmarks" / "perf_card"
+    paths = sorted(d.glob("feature_card_*.json")) if d.is_dir() else []
+    w = Writer(pool)
+    w.add("<!-- Generated by tools/sync_cards.py; do not edit. -->")
+    if not paths:
+        return w.text(), False
+    cards = [json.loads(pool.source(p.relative_to(eagle_root)).read_text()) for p in paths]
+    gpu = [(c["device"]["name"], c) for c in cards if c.get("device")]   # the CPU feature card has no device block
+    if not gpu:
+        return w.text(), False
+    card = in_tab_order(gpu, GPU_PREFERENCE)[0][1]
+    w.add("")
+    w.add("## Capabilities, one row each")
+    w.add("")
+    w.add(f"{card['device']['name']}: each row is one capability at one batch size, every arm in its own process. "
+          "The ratio is against the row's reference arm; below 1 is faster.")
+    w.add("")
+    w.add("| row | N | dtype | arm | wall | against reference |")
+    w.add("|---|---:|---|---|---:|---:|")
+    for row in card["rows"]:
+        ref = (row["arms"].get(row.get("reference_arm")) or {}).get("wall_s", {}).get("median")
+        for name, arm in row["arms"].items():
+            text, ratio = _feature_cell(arm, ref)
+            w.add(f"| {row['row']} | {row['n']:,} | {row['dtype']} | {name} | {text} | {ratio} |")
+    w.add("")
     return w.text(), True
 
 
@@ -3531,24 +3147,12 @@ def main(argv=None):
                  for key, (reldir, prefix) in FAMILY_DIRS.items()}
     perf_gpu = default_card(all_cards["perf_gpu"], GPU_PREFERENCE)
     perf_cpu = default_card(all_cards["perf_cpu"], CPU_PREFERENCE)
-    rk78_gpu = default_card(all_cards["rk78_gpu"], GPU_PREFERENCE)
-    rk78_cpu = default_card(all_cards["rk78_cpu"], CPU_PREFERENCE)
 
     perf_glance, have_glance = build_perf_glance(pool, perf_gpu, perf_cpu, all_cards)
 
-    if rk78_gpu:
-        script_rel = rk78_gpu.get("script", "benchmarks/rk78_card/rk78_card.py")
-        script_path = pool.source(script_rel)
-        source_label = "the RK7(8) card"
-        base_card = rk78_gpu
-    elif perf_gpu:
-        script_rel = perf_gpu.get("script", "benchmarks/perf_card/perf_card.py")
-        script_path = pool.source(script_rel)
-        source_label = "the RK4 card (the RK7(8) card has not been run yet)"
-        base_card = perf_gpu
-    else:
-        base_card, script_path, source_label = None, None, None
-
+    base_card = perf_gpu
+    script_path = pool.source(perf_gpu.get("script", "benchmarks/perf_card/perf_card.py")) if perf_gpu else None
+    source_label = "the ensemble card"
     if base_card is not None and script_path.is_file():
         script_text = script_path.read_text()
         same_task_full, have_full = build_same_task(pool, base_card, script_text,
@@ -3557,26 +3161,30 @@ def main(argv=None):
                                                         source_label, full=False)
     else:
         same_task_full = "<!-- Generated by tools/sync_cards.py; do not edit. -->\n\n" \
-                          "No RK7(8) or RK4 card JSON found under the given eagle root yet.\n"
+                          "No ensemble card JSON found under the given eagle root yet.\n"
         same_task_short = same_task_full
         have_full = have_short = False
 
     hero_strip, have_hero = build_hero_strip(pool, perf_gpu)
     honest_box, have_honest = build_honest_box(pool, perf_gpu)
-    why_raptor, why_bars, _why_n, have_why = build_why_raptor(pool, perf_gpu, rk78_gpu)
+    why_raptor, why_bars, _why_n, have_why = build_why_raptor(pool, perf_gpu)
     fastest_grid, have_grid = build_fastest_arm_grid(pool, perf_gpu, perf_cpu)
-    compare_page, have_compare = build_compare_page(pool, perf_gpu, perf_cpu, rk78_gpu, rk78_cpu)
+    compare_page, have_compare = build_compare_page(pool, perf_gpu, perf_cpu)
     lead_sentence, have_lead = build_lead_sentence(pool, perf_gpu)
-    compaction_numbers, have_compaction = build_compaction_numbers(pool, perf_gpu)
     mem_rows, _mem_n = will_it_fit_rows(perf_gpu) if perf_gpu else ([], None)
     compare_memory_chart, have_mem_chart = build_compare_memory_chart(pool, perf_gpu, mem_rows)
-    landing_honest, have_landing_honest = build_landing_honest(pool, perf_gpu)
+    feature_rows, have_feature = build_feature_block(pool, args.eagle_root)
     compatibility, have_compat = build_compatibility(pool, all_cards["perf_gpu"], all_cards["perf_cpu"])
     qualitative = load_qualitative(pool)
-    radars = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
-                          all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative)
-    detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"],
-                            all_cards["rk78_gpu"], all_cards["rk78_cpu"], qualitative, "detailed")
+    earlier = json.loads(pool.site_source(RADAR_EARLIER).read_text())
+    features = {}   # the feature card of each device, by the device slug of its perf card
+    for path in sorted((args.eagle_root / "benchmarks" / "perf_card").glob("feature_card_*.json")):
+        card = json.loads(pool.source(path.relative_to(args.eagle_root)).read_text())
+        features[card["device_slug"].removeprefix("cpu-")] = card
+    radars = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative,
+                          earlier=earlier, features=features)
+    detailed = build_radars(pool, all_cards["perf_gpu"], all_cards["perf_cpu"], qualitative, "detailed",
+                            earlier=earlier, features=features)
     capmap = build_capmap(pool)
     radar_detailed, have_detailed = build_detailed_radar(pool, detailed)
     # landing: under the bars of each side, the capability map (the same on both), then the radar
@@ -3594,11 +3202,10 @@ def main(argv=None):
     (args.out_dir / "fastest_arm_grid.md").write_text(fastest_grid)
     (args.out_dir / "compare.md").write_text(compare_page)
     (args.out_dir / "lead_sentence.md").write_text(lead_sentence)
-    (args.out_dir / "compaction_numbers.md").write_text(compaction_numbers)
     (args.out_dir / "compare_memory_chart.md").write_text(compare_memory_chart)
-    (args.out_dir / "landing_honest.md").write_text(landing_honest)
     (args.out_dir / "perf_switch.md").write_text(perf_switch)
     (args.out_dir / "compatibility.md").write_text(compatibility)
+    (args.out_dir / "feature_rows.md").write_text(feature_rows)
     for side, (text, _ok) in radar_pages.items():
         (args.out_dir / f"radar_{side}.md").write_text(text)
     (args.out_dir / "radar_detailed.md").write_text(radar_detailed)
@@ -3608,8 +3215,8 @@ def main(argv=None):
     print(f"wrote {args.out_dir} (glance={have_glance}, "
           f"same_task full/short={have_full}/{have_short}, "
           f"hero_strip={have_hero}, honest_box={have_honest}, why_raptor={have_why}, "
-          f"lead={have_lead}, compaction={have_compaction}, mem_chart={have_mem_chart}, "
-          f"landing_honest={have_landing_honest}, compat={have_compat}, "
+          f"lead={have_lead}, mem_chart={have_mem_chart}, "
+          f"compat={have_compat}, feature={have_feature}, "
           f"radar={'/'.join(str(ok) for _t, ok in radar_pages.values())}/{have_detailed}, "
           f"grid={have_grid}, compare={have_compare}, "
           f"sources={len(pool.sources)}, numbers={len(pool.numbers)})")

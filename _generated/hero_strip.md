@@ -4,13 +4,13 @@
 :class-container: strip
 :gutter: 2
 
-:::{grid-item-card} 613 µs
-1,000,000 samples (RK4), each stopping at its own step, up to 1000 steps
+:::{grid-item-card} 48.9 ms
+1,000,000 samples (adaptive RKF7(8) Kepler orbits), each stopping at its own time
 :::
-:::{grid-item-card} 2.5×–600× faster
-than NVIDIA Warp (2.5×), JAX (76×), CuPy (600×), PyTorch with torch.compile (130×) — 1,000,000 samples finishing at different times, up to 1000 steps
+:::{grid-item-card} 2.3×–190× faster
+than NVIDIA Warp (2.3×), JAX (25×), CuPy (190×), PyTorch with torch.compile (16×) — 1,000,000 samples finishing at different times
 :::
-:::{grid-item-card} 4.8×–6.0× less GPU memory
-than CuPy and PyTorch with torch.compile — a million samples in 40 MiB, 1.1× the bare minimum state (CuPy 5.5×, PyTorch with torch.compile 7.0×)
+:::{grid-item-card} 9.1×–30× less GPU memory
+than CuPy and PyTorch with torch.compile — a million samples in 102 MiB, 1.4× the bare minimum state (CuPy 13×, PyTorch with torch.compile 45×)
 :::
 ::::

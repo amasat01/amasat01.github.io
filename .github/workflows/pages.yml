@@ -20,7 +20,7 @@ concurrency:
 jobs:
   docs-fresh:
     # Freshness check, never a commit: the generator re-renders the pages and fails on any difference.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: manifesto copy matches raptor
@@ -80,16 +80,33 @@ jobs:
           ruff check --extend-exclude eagle
   build:
     needs: docs-fresh
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # the gallery animations are built from the paired hawk and eagle checkouts (same-named branch if it exists, else main)
+      - name: hawk and eagle checkouts for the gallery animations
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          GH_TOKEN: ${{ secrets.SIBLING_READ_TOKEN || github.token }}
+        run: |
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN:-none}" | base64 -w0)"
+          [ -n "${GH_TOKEN:-}" ] || auth="X-Unauthenticated: 1"
+          for repo in hawk eagle; do
+            found="$(git -c http.extraHeader="$auth" ls-remote --heads "https://github.com/amasat01/${repo}" "refs/heads/${BRANCH_NAME}" | awk '{print $2}')"
+            if [ "$found" = "refs/heads/${BRANCH_NAME}" ]; then ref="$BRANCH_NAME"; else ref=main; fi
+            echo "companion ${repo} @ ${ref}"
+            git -c http.extraHeader="$auth" clone --quiet --depth 1 --branch "$ref" "https://github.com/amasat01/${repo}" "${repo}"
+          done
       - run: python -m pip install --quiet -r requirements.txt pyyaml
       - name: the deploy workflow only downloads, verifies and uploads
         run: python tools/ci_publish_subset.py .github/workflows/deploy.yml
-      - run: make check
+      - name: Build and check, showing the version the release label gives
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: make check
       - id: tree
         run: echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7

@@ -4,3 +4,7 @@
 _build/
 **/__pycache__/
 **/*.py[cod]
+_static/gallery/*.gif
+/hawk/
+/eagle/
+_static/figures/landing/*.png

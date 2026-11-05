@@ -16,3 +16,6 @@ derivatives", "I want the CPU too":
 
 ```{include} _generated/compare.md
 ```
+
+```{include} _generated/feature_rows.md
+```

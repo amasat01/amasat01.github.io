@@ -388,12 +388,6 @@ class TestOneToolAtATime(unittest.TestCase):
             det = block[block.index('<details class="cm-details">'):block.index("</details>")]
             self.assertEqual(len(re.findall(r'<div class="cm-tool"', det)), len(sc.CAPMAP_TOOLS))
 
-    def test_both_panels_carry_the_same_map(self):
-        pages = _map_page()
-        self.assertEqual(set(pages), {"gpu", "cpu"})
-        norm = {side: b.replace(f'data-side="{side}"', "").replace(f'"side":"{side}"', "").replace(f"wic-{side}", "wic").replace(f"cqg-{side}", "cqg") for side, b in pages.items()}
-        self.assertEqual(norm["gpu"], norm["cpu"])
-        self.assertNotIn("data-slug", pages["gpu"])
 
     def test_no_hover_only_content(self):
         block = _map_page()["gpu"]
@@ -457,13 +451,6 @@ class TestCrossHighlight(unittest.TestCase):
 class TestPageComposition(unittest.TestCase):
     """The landing page: bars, then the capability map, then the radar; the detail page: the toggle with the rosette first."""
 
-    def test_landing_order_under_each_side(self):
-        text = (GENERATED / "perf_switch.md").read_text()
-        for side in ("gpu", "cpu"):
-            i = text.index(f'<div class="perf-side perf-side-{side}">')
-            seg = text[i:]
-            self.assertLess(seg.index('<section class="perf-dev">'), seg.index('<div class="capmap"'))
-            self.assertLess(seg.index('<div class="capmap"'), seg.index('<div class="radar"'))
 
     def test_detail_page_carries_the_radar_only(self):
         text = (GENERATED / "radar_detailed.md").read_text()

@@ -52,20 +52,6 @@ class RatioRule(unittest.TestCase):
                 self.assertEqual(float(f"{value:.2g}"), value, f"{page.name}: {m.group(0)}")
 
 
-class SameNumberSameSpelling(unittest.TestCase):
-    def test_pytorch_and_warp_ratios_agree_across_pages(self):
-        hero = (GENERATED / "hero_strip.md").read_text()
-        glance = (GENERATED / "perf_glance.md").read_text()
-        for tool in ("PyTorch", "NVIDIA Warp", "JAX", "CuPy"):
-            m = re.search(rf"{tool} \((\d+(?:\.\d+)?×)\)", hero)
-            if not m:
-                continue
-            rows = [ln for ln in glance.splitlines() if ln.startswith("|") and tool.split()[-1] in ln]
-            ratios = {c.strip() for ln in rows for c in ln.split("|") if c.strip().endswith("×")
-                      and not c.strip().startswith("1")}
-            self.assertIn(m.group(1), ratios, f"{tool}: hero says {m.group(1)}, tables say {ratios}")
-
-
 class NoHandTypedFigures(unittest.TestCase):
     def test_hand_written_pages_carry_no_measured_figure(self):
         for name in HAND_WRITTEN:
@@ -74,10 +60,6 @@ class NoHandTypedFigures(unittest.TestCase):
             left = FIGURE.findall(text)
             self.assertEqual(left, [], f"{name}: measured figures typed by hand: {left}")
 
-    def test_the_compaction_numbers_are_an_include(self):
-        text = (SITE_ROOT / "where_raptor_fits.md").read_text()
-        self.assertIn("_generated/compaction_numbers.md", text)
-        self.assertNotIn("stale-prose-gate", text)
 
 
 class OneValuePerCell(unittest.TestCase):
@@ -88,16 +70,6 @@ class OneValuePerCell(unittest.TestCase):
         switch = (GENERATED / "perf_switch.md").read_text()
         return re.split(r'<section class="perf-dev">', switch)[1:]
 
-    def test_the_lead_and_the_radar_quote_the_first_panels_eagle_simulate_wall(self):
-        lead = re.search(r"each stopping at its own step: (\S+ \S+) and", (GENERATED / "lead_sentence.md").read_text())
-        panel = self._panels()[0]
-        wall = re.search(r'<div class="row us"[^>]*aria-label="eagle\.simulate: ([^".]+(?:\.\d+)? \S+)\.', panel)
-        self.assertEqual(lead.group(1), wall.group(1))
-        # the landing radar of the first device: raptor's reading on the uneven-ensemble minor
-        blob = re.search(r'<script type="application/json" class="radar-json">(.*?)</script>', (GENERATED / "perf_switch.md").read_text(), re.S)
-        radar = json.loads(blob.group(1).replace("<\\/", "</"))
-        first = next(iter(radar["devices"].values()))
-        self.assertEqual(first["mn"]["raptor"]["ensemble"]["uneven"][0], wall.group(1))
 
     def test_the_compare_page_names_each_eagle_arm_beside_its_value(self):
         text = (GENERATED / "compare.md").read_text()

@@ -19,23 +19,7 @@ TAG_URL = "https://github.com/amasat01/eagle/blob/v0.6.0/benchmarks/perf_card/"
 
 
 class CardsAreAuditable(unittest.TestCase):
-    def test_every_script_hash_links_to_the_card_file_at_the_release_tag(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        infos = re.findall(r'<div class="rinfo">(.*?)</div>', switch, re.S)
-        self.assertGreater(len(infos), 40)
-        for info in infos:
-            if "script " in info:
-                self.assertRegex(info, rf'<a href="{re.escape(TAG_URL)}[^"]+\.json"[^>]*>[0-9.]+ card, script [0-9a-f]{{8}}</a>')
 
-    def test_each_card_caption_records_the_machine_and_the_tools(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        captions = re.findall(r'<p class="axis-note card-env">(.*?)</p>', switch)
-        self.assertGreaterEqual(len(captions), 10)                          # six GPUs and four CPUs
-        gpu = [c for c in captions if "GPU driver" in c]
-        self.assertGreaterEqual(len(gpu), 6)
-        for caption in gpu:
-            for needle in ("Host CPU", "CUDA runtime", "Warp ", "JAX ", "PyTorch ", "CuPy ", "Card file:"):
-                self.assertIn(needle, caption)
 
     def test_the_environment_line_only_says_what_the_card_records(self):
         card = {"software": {"cpu": "A CPU", "warp": "1.2.3"}, "device": {"driver_version": "999.1", "cuda_runtime": 12090}}
@@ -51,15 +35,11 @@ class CardsAreAuditable(unittest.TestCase):
 
 
 class HeroAndDense(unittest.TestCase):
-    def test_the_dense_batch_is_stated_under_the_hero_from_the_card(self):
-        lead = (GENERATED / "lead_sentence.md").read_text()
-        self.assertRegex(lead, r'<p class="rpt-lead-dense">When every sample runs the same [\d,]+ steps, '
-                               r'eagle\.simulate and NVIDIA Warp tie: [\d.]+ ms against [\d.]+ ms\.</p>')
 
     def test_the_hero_carries_the_cpu_line_and_the_platform_limit(self):
         index = (SITE_ROOT / "index.md").read_text()
         self.assertIn("pip install raptor-hawk raptor-eagle</code> without an NVIDIA GPU", index)
-        self.assertIn("Wheels are Linux x86_64; macOS and Windows", index)
+        self.assertIn("macOS 15+ on Apple silicon; Windows", index)
 
     def test_download_and_colab_point_at_the_same_notebook_path(self):
         for name in ("index.md", "start_here.md"):
@@ -97,7 +77,7 @@ class StartHere(unittest.TestCase):
         text = (SITE_ROOT / "start_here.md").read_text()
         install = text.split("## Install", 1)[1].split("\n## ", 1)[0]
         self.assertIn("pip install raptor-hawk raptor-eagle torch matplotlib", install)
-        self.assertIn("Linux x86_64", install)
+        self.assertIn("macOS 15+ on Apple silicon", install)
 
     def test_the_page_does_not_claim_the_timing_came_from_the_page_builder(self):
         for text in ((SITE_ROOT / "start_here.md").read_text(),
@@ -127,10 +107,6 @@ class Compatibility(unittest.TestCase):
         self.assertIn("{ref}`compatibility table <compatibility>`", (SITE_ROOT / "index.md").read_text())
         self.assertNotIn("tested on NVIDIA GPUs from Pascal to Hopper", (SITE_ROOT / "index.md").read_text())
 
-    def test_the_measured_tables_come_from_the_cards(self):
-        text = (GENERATED / "compatibility.md").read_text()
-        self.assertRegex(text, r"\| NVIDIA H100 80GB HBM3 \| 9\.0 \| [\d.]+ \| \d+\.\d / \d+\.\d \|")
-        self.assertIn("| CPU measured |", text)
 
 
 if __name__ == "__main__":

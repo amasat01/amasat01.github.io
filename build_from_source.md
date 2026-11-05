@@ -27,7 +27,7 @@ Shipped is in the wheel, required is what your machine needs, measured is what t
 | GPU architectures | Pascal (sm_60) through Blackwell, plus PTX for newer GPUs | an NVIDIA driver; no CUDA toolkit for the wheel | table below |
 | CUDA | `[cuda12]` and `[cuda13]` extras | a source build: CUDA 12.6 or newer | table below |
 | Host compiler | host `g++` (hawk compiles kernels with it) | source build: GCC 12+ or Clang 16+ (within nvcc's host-compiler limit) | table below |
-| CPUs | wheels for Linux x86_64 only | | x86-64 and aarch64, second table |
+| CPUs | wheels for Linux x86_64 and aarch64 and macOS 15+ arm64 (Python 3.9 to 3.15) | | x86-64 and aarch64, second table |
 
 ```{include} _generated/compatibility.md
 ```

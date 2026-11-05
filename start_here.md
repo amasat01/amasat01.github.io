@@ -37,7 +37,7 @@ or [open it in Colab](https://colab.research.google.com/github/amasat01/amasat01
 
 Without an NVIDIA GPU: `pip install raptor-hawk raptor-eagle torch matplotlib`.
 With one, use `"raptor-hawk[cuda12]" "raptor-eagle[cuda12]"` instead (`[cuda13]` for CUDA 13).
-Wheels are Linux x86_64; other systems [build from source](build_from_source.md).
+Wheels: Linux x86_64 and aarch64, macOS 15+ on Apple silicon. Windows [builds from source](build_from_source.md).
 
 Every cell below assumes the same small device switch every RAPTOR tutorial
 starts with — numpy on CPU, cupy on GPU, nothing imported unconditionally:

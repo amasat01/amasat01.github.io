@@ -1,78 +1,1215 @@
 {
-  "schema": "eagle-perf-card/1",
-  "device_slug": "quadro-p2000",
-  "script": "benchmarks/perf_card/perf_card.py",
-  "device": {"name": "Fixture GPU", "compute_capability": "9.9", "sm_count": 1},
-  "workload": {"problem": "fixture damped oscillator, RK4"},
-  "ns": [10],
-  "configs": [
-    {"distribution": "spread", "max_steps": 5},
-    {"distribution": "spread", "max_steps": 1000},
-    {"distribution": "uniform", "max_steps": 1000}
-  ],
-  "arms": {
-    "eagle_graph": "eagle graph", "cupy_masked": "CuPy masked",
-    "eagle_simulate": "eagle.simulate", "eagle_graph_auto": "eagle graph, auto",
-    "warp_kernel": "Warp per-thread kernel", "jax_vmap": "JAX jit + vmap(while_loop)",
-    "torch_masked": "PyTorch masked"
-  },
-  "code": {
-    "blocks": {
-      "eagle_body": {"first_line": 5, "last_line": 6, "lines": 2},
-      "cupy_body": {"first_line": 10, "last_line": 11, "lines": 2}
-    },
-    "arms": {
-      "eagle_graph": {"blocks": ["eagle_body"], "lines": 2},
-      "cupy_masked": {"blocks": ["cupy_body"], "lines": 2}
-    }
-  },
-  "results": [
-    {"n": 10, "arm": "eagle_graph", "distribution": "spread", "max_steps": 5,
-     "wall_s": {"median": 0.001}},
-    {"n": 10, "arm": "cupy_masked", "distribution": "spread", "max_steps": 5,
-     "wall_s": {"median": 0.01}},
-
-    {"n": 10, "arm": "eagle_simulate", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.005}, "kernel_only_s": 0.004},
-    {"n": 10, "arm": "eagle_graph_auto", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.0051}, "kernel_only_s": 0.00401},
-    {"n": 10, "arm": "warp_kernel", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.02}},
-    {"n": 10, "arm": "jax_vmap", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.04}},
-    {"n": 10, "arm": "cupy_masked", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.045}},
-    {"n": 10, "arm": "torch_masked", "distribution": "spread", "max_steps": 1000,
-     "wall_s": {"median": 0.05}},
-
-    {"n": 10, "arm": "warp_kernel", "distribution": "uniform", "max_steps": 1000,
-     "wall_s": {"median": 0.03}},
-    {"n": 10, "arm": "eagle_graph", "distribution": "uniform", "max_steps": 1000,
-     "wall_s": {"median": 0.0305}}
-  ],
-  "memory": {
-    "rows": [
-      {"arm": "eagle_graph", "n": 10, "distribution": "spread", "max_steps": 5,
-       "device_peak_bytes": 2097152},
-
-      {"arm": "eagle_simulate", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 4194304, "minimum_bytes": 2097152, "device_factor": 2.0},
-      {"arm": "eagle_graph", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 2097152, "minimum_bytes": 2097152, "device_factor": 1.0},
-      {"arm": "warp_kernel", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 3145728, "minimum_bytes": 2097152, "device_factor": 1.5},
-      {"arm": "jax_vmap", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 6291456, "minimum_bytes": 2097152, "device_factor": 3.0},
-      {"arm": "cupy_masked", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 9437184, "minimum_bytes": 2097152, "device_factor": 4.5},
-      {"arm": "torch_masked", "n": 10, "distribution": "spread", "max_steps": 1000,
-       "device_peak_bytes": 11534336, "minimum_bytes": 2097152, "device_factor": 5.5}
-    ]
-  },
-  "compile_time": {
-    "rows": [
-      {"key": "eagle:eagle_graph", "arms": ["eagle_graph"],
-       "cold_s": {"median": 0.5}, "warm_s": {"median": 0.05}}
-    ]
+ "schema": "eagle-ensemble-card/1",
+ "toolchain": {
+  "env_file": null,
+  "python": "3.12.14",
+  "host_compiler": "fixture-g++",
+  "nvcc": "fixture nvcc"
+ },
+ "device_slug": "fixture-gpu",
+ "script": "benchmarks/perf_card/perf_card.py",
+ "script_md5": "a69639ae0beba0b06b2be0c2466ed819",
+ "common_md5": "3b7b33719b7f33652a1c4f3c0acc83d2",
+ "generated_utc": "2026-01-01T00:00:00Z",
+ "release": "eagle 0.0.0, hawk 0.0.0",
+ "device": {
+  "name": "Fixture GPU",
+  "compute_capability": "9.9",
+  "sm_count": 4,
+  "clock_rate_hz": 2000000000.0,
+  "memory_clock_hz": 6251000000.0,
+  "memory_bus_width_bits": 192,
+  "total_memory_bytes": 17179869184,
+  "pci_bus_id": "00000000:00:03.0",
+  "driver_version": "580.178.04",
+  "cuda_driver_api": 13000,
+  "cuda_runtime": 12090,
+  "nvidia_smi": {
+   "name": "Fixture GPU",
+   "driver_version": "580.178.04",
+   "clocks_max_sm": "2040 MHz",
+   "clocks_max_mem": "6251 MHz",
+   "memory_total": "23034 MiB",
+   "power_limit": "72.00 W"
   }
+ },
+ "peak": {
+  "fp64_flops": 473280000000.0,
+  "fp64_source": "SM count x FP64 FMA per clock per SM (CUDA C++ Programming Guide, Arithmetic Instructions throughput table, compute capability 8.9: 2) x 2 FLOP per FMA x the device's reported maximum clock (cudaDeviceProp::clockRate)",
+  "dram_bytes_per_s": 300048000000.0,
+  "dram_source": "2 x memory clock (cudaDeviceProp::memoryClockRate) x bus width (cudaDeviceProp::memoryBusWidth) / 8"
+ },
+ "software": {
+  "python": "3.12.14",
+  "numpy": "2.5.3",
+  "cupy": "14.2.0",
+  "torch": "2.12.1+cu129",
+  "jax": "0.11.2",
+  "jaxlib": "0.11.2",
+  "warp": "1.17.0",
+  "hawk": "0.7.3.dev143+gbde134d1c",
+  "eagle_commit": "d5f86048f27ff8e61bf50a51508f77803e4d28e8",
+  "hawk_commit": "bde134d1cd239c00b39b842656f20a3df5746ea7-dirty",
+  "platform": "Linux-7.0.0-1014-gcp-x86_64-with-glibc2.39",
+  "cpu": "Fixture CPU",
+  "omp_num_threads": "8"
+ },
+ "kernel_sources_md5": {
+  "rkf78_attempt.cpp": "02ec000c5f12882a675a1163885a730a",
+  "rkf78_attempt.cu": "007c6111ff40759d9babd610d60b8481",
+  "rkf78_attempt.ptx": "519809724da80512f7e31e0098221ddd",
+  "compact/rkf78_attempt.cpp": "500e3ec8282a40864cdd1e629bf3d556",
+  "compact/rkf78_attempt.cu": "753e9dc13cb7bc398eab8a08c8a2b6d7",
+  "compact/rkf78_attempt.ptx": "8315e4517d83588dce2bd55a03b3aa24"
+ },
+ "workload": {
+  "problem": "two-body Kepler orbits (mu = 1, float64) from periapsis, a = 1, e uniform in [0, 0.9] (uniform: e = 0.45), random orientation; adaptive RKF7(8) (Fehlberg's tableau, a mixed absolute/relative max-norm error control and a standard step-size controller).",
+  "scheme_source": "E. Fehlberg, NASA Technical Report R-287 (1968): the RKF7(8) pair",
+  "n_stages": 13,
+  "rtol": 1e-10,
+  "atol": 1e-10,
+  "t_final": 64.0,
+  "t_final_short": 4.0,
+  "h0": 1.0,
+  "safety": 0.9,
+  "min_scale": 0.2,
+  "max_scale": 5.0,
+  "exponents": {
+   "reject": -0.125,
+   "accept": -0.1111111111111111
+  },
+  "max_attempts": 4000,
+  "seed": 1,
+  "last_step": "clipped to land on the final time",
+  "flops_per_attempt": 1106,
+  "ops_per_attempt": 1106,
+  "ops_per_attempt_source": "hand count; A100 dynamic count pending",
+  "ops_per_attempt_audit": {
+   "sm_80": null,
+   "sm_89": null
+  },
+  "graph_block": 16
+ },
+ "cells": [
+  [
+   1000,
+   "spread"
+  ],
+  [
+   1000,
+   "uniform"
+  ],
+  [
+   2000,
+   "spread"
+  ],
+  [
+   2000,
+   "uniform"
+  ]
+ ],
+ "ns": [
+  1000,
+  2000
+ ],
+ "distributions": [
+  "fp32",
+  "spread",
+  "uniform"
+ ],
+ "arms": {
+  "eagle_graph": "eagle graph",
+  "eagle_simulate": "eagle.simulate (eagle picks the launch mode)",
+  "cupy_masked": "CuPy masked"
+ },
+ "arms_not_run": {},
+ "code_lines": {
+  "blocks": {
+   "shared_scheme": 2,
+   "hawk_kernel": 2,
+   "hawk_launch": 1,
+   "eagle_simulate": 1,
+   "cupy_masked": 2
+  },
+  "arms": {
+   "eagle_graph": 3,
+   "eagle_simulate": 3,
+   "cupy_masked": 2
+  },
+  "arm_blocks": {
+   "eagle_graph": [
+    "hawk_kernel",
+    "hawk_launch"
+   ],
+   "eagle_simulate": [
+    "hawk_kernel",
+    "eagle_simulate"
+   ],
+   "cupy_masked": [
+    "cupy_masked"
+   ]
+  },
+  "shared_scheme_lines": 2,
+  "rule": "non-blank, non-comment lines between the `# >>> code:NAME` and `# <<< code:NAME` markers of the script; every arm but Warp also uses the shared scheme block (the RKF7(8) stages, the right-hand side, the error norm), counted once in shared_scheme_lines"
+ },
+ "tail_floor_ms": {
+  "spread": 1.0,
+  "uniform": 2.0
+ },
+ "tail_floor": {
+  "spread": {
+   "status": "ok",
+   "wall_s": {
+    "median": 0.001,
+    "iqr": 0.0,
+    "q1": 0.001,
+    "q3": 0.001,
+    "samples": [
+     0.001,
+     0.001,
+     0.001
+    ]
+   },
+   "rounds": 3
+  },
+  "uniform": {
+   "status": "ok",
+   "wall_s": {
+    "median": 0.002,
+    "iqr": 0.0,
+    "q1": 0.002,
+    "q3": 0.002,
+    "samples": [
+     0.002,
+     0.002,
+     0.002
+    ]
+   },
+   "rounds": 3
+  }
+ },
+ "fixed_overhead_n": 64,
+ "fixed_overhead": {
+  "eagle_graph": {
+   "status": "ok",
+   "wall_s": {
+    "median": 0.001,
+    "iqr": 0.0,
+    "q1": 0.001,
+    "q3": 0.001,
+    "samples": [
+     0.001,
+     0.001,
+     0.001
+    ]
+   },
+   "rounds": 3
+  },
+  "eagle_simulate": {
+   "status": "ok",
+   "wall_s": {
+    "median": 0.0005,
+    "iqr": 0.0,
+    "q1": 0.0005,
+    "q3": 0.0005,
+    "samples": [
+     0.0005,
+     0.0005,
+     0.0005
+    ]
+   },
+   "rounds": 3
+  },
+  "cupy_masked": {
+   "status": "ok",
+   "wall_s": {
+    "median": 0.004,
+    "iqr": 0.0,
+    "q1": 0.004,
+    "q3": 0.004,
+    "samples": [
+     0.004,
+     0.004,
+     0.004
+    ]
+   },
+   "rounds": 3
+  }
+ },
+ "fp32": {
+  "n": 1000,
+  "arms": [
+   "eagle_graph",
+   "eagle_simulate"
+  ],
+  "tolerance": 1e-06
+ },
+ "device_fma_per_s": 100000000000.0,
+ "device_fma_per_s_float32": 1000000000000.0,
+ "samples_per_lane_threads_per_sm": 1536,
+ "eff_sol_over_one": [],
+ "method": {
+  "rounds": {
+   "min": 3,
+   "max": 9,
+   "stop": "IQR/median <= 2%"
+  },
+  "isolation": "every (arm, N, cell) times in its own fresh process on a clean device; arms run one after another, the SM clock of each row shows the drift between them; the memory pass runs first and an arm out of memory at N is not built at N or larger",
+  "budget": {
+   "per_run_s": 120.0,
+   "per_cell_s": 300.0,
+   "rule": "a warm-up run over the per-run budget makes the arm not_run: budget at that N and larger; timed rounds stop at the per-cell budget (at least one round)"
+  },
+  "statistic": "median, interquartile range (inclusive quartiles)",
+  "warm_up": "one run per arm, excluded; it is also the verification run",
+  "wall": "the integration alone, inputs already on the device, to the device synchronised",
+  "end_to_end": "inputs uploaded, integration, outputs downloaded",
+  "eff_sol": "attempts per second x ops_per_attempt / device_fma_per_s (the register-only DFMA probe run in this script after the arms); ops_per_attempt is the DP-pipe instruction count of one fused eagle attempt (sol_reference.json), audited against cuobjdump in workload.ops_per_attempt_audit",
+  "samples_per_lane": "N / (SMs x resident threads per SM)",
+  "verification": "Every arm, every sample: final time reached exactly; position error against the analytic Kepler state (Newton on Kepler's equation to machine precision) below the stated bound n_acc tol (1 + v_p)(1 + 6 pi n_orbits v_p), derived from the controller's per-step budget and the Kepler along-track amplification (see truth_bound; not fitted). The truth check runs in the arm's own process; the step counts it returns are compared with the reference arm (eagle graph) in the parent: any difference comes from a floating-point difference flipping one accept/reject decision.",
+  "counting_rule": "useful FLOPs = FLOPs per attempt x the attempts the samples actually make (accepted + rejected, summed over samples, as counted by the arm itself); 1106 FLOP per attempt: 1099 counted by running the scheme code (rkf78_stages, kepler_rhs, error_ratio) on a counting number (+, -, x, /, abs, max and sqrt one FLOP each; zero coefficients skipped, as every arm skips them) plus 7 in the controller (the clip, the power, the safety factor, the two-sided clamp, the new step, the new time). The same count for every arm: work a masked arm spends on finished samples, and a batched loop spends past a sample's end, is not useful.",
+  "cpu_threads": "8"
+ },
+ "results": [
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "eagle_graph",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.11000000000000001,
+    "iqr": 0.0,
+    "q1": 0.11000000000000001,
+    "q3": 0.11000000000000001,
+    "samples": [
+     0.11000000000000001,
+     0.11000000000000001,
+     0.11000000000000001
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "eagle_simulate",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.05,
+    "iqr": 0.0,
+    "q1": 0.05,
+    "q3": 0.05,
+    "samples": [
+     0.05,
+     0.05,
+     0.05
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.05500000000000001,
+    "iqr": 0.0,
+    "q1": 0.05500000000000001,
+    "q3": 0.05500000000000001,
+    "samples": [
+     0.05500000000000001,
+     0.05500000000000001,
+     0.05500000000000001
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "cupy_masked",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.4,
+    "iqr": 0.0,
+    "q1": 0.4,
+    "q3": 0.4,
+    "samples": [
+     0.4,
+     0.4,
+     0.4
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.44000000000000006,
+    "iqr": 0.0,
+    "q1": 0.44000000000000006,
+    "q3": 0.44000000000000006,
+    "samples": [
+     0.44000000000000006,
+     0.44000000000000006,
+     0.44000000000000006
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "eagle_graph",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.05,
+    "iqr": 0.0,
+    "q1": 0.05,
+    "q3": 0.05,
+    "samples": [
+     0.05,
+     0.05,
+     0.05
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.05500000000000001,
+    "iqr": 0.0,
+    "q1": 0.05500000000000001,
+    "q3": 0.05500000000000001,
+    "samples": [
+     0.05500000000000001,
+     0.05500000000000001,
+     0.05500000000000001
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "eagle_simulate",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.025,
+    "iqr": 0.0,
+    "q1": 0.025,
+    "q3": 0.025,
+    "samples": [
+     0.025,
+     0.025,
+     0.025
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.027500000000000004,
+    "iqr": 0.0,
+    "q1": 0.027500000000000004,
+    "q3": 0.027500000000000004,
+    "samples": [
+     0.027500000000000004,
+     0.027500000000000004,
+     0.027500000000000004
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "cupy_masked",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.2,
+    "iqr": 0.0,
+    "q1": 0.2,
+    "q3": 0.2,
+    "samples": [
+     0.2,
+     0.2,
+     0.2
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.22000000000000003,
+    "iqr": 0.0,
+    "q1": 0.22000000000000003,
+    "q3": 0.22000000000000003,
+    "samples": [
+     0.22000000000000003,
+     0.22000000000000003,
+     0.22000000000000003
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "fp32",
+   "arm": "eagle_graph",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.11000000000000001,
+    "iqr": 0.0,
+    "q1": 0.11000000000000001,
+    "q3": 0.11000000000000001,
+    "samples": [
+     0.11000000000000001,
+     0.11000000000000001,
+     0.11000000000000001
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 1000,
+   "distribution": "fp32",
+   "arm": "eagle_simulate",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.05,
+    "iqr": 0.0,
+    "q1": 0.05,
+    "q3": 0.05,
+    "samples": [
+     0.05,
+     0.05,
+     0.05
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.05500000000000001,
+    "iqr": 0.0,
+    "q1": 0.05500000000000001,
+    "q3": 0.05500000000000001,
+    "samples": [
+     0.05500000000000001,
+     0.05500000000000001,
+     0.05500000000000001
+    ]
+   },
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "eagle_graph",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.2,
+    "iqr": 0.0,
+    "q1": 0.2,
+    "q3": 0.2,
+    "samples": [
+     0.2,
+     0.2,
+     0.2
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.22000000000000003,
+    "iqr": 0.0,
+    "q1": 0.22000000000000003,
+    "q3": 0.22000000000000003,
+    "samples": [
+     0.22000000000000003,
+     0.22000000000000003,
+     0.22000000000000003
+    ]
+   },
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "eagle_simulate",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.11000000000000001,
+    "iqr": 0.0,
+    "q1": 0.11000000000000001,
+    "q3": 0.11000000000000001,
+    "samples": [
+     0.11000000000000001,
+     0.11000000000000001,
+     0.11000000000000001
+    ]
+   },
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "cupy_masked",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.8,
+    "iqr": 0.0,
+    "q1": 0.8,
+    "q3": 0.8,
+    "samples": [
+     0.8,
+     0.8,
+     0.8
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.8800000000000001,
+    "iqr": 0.0,
+    "q1": 0.8800000000000001,
+    "q3": 0.8800000000000001,
+    "samples": [
+     0.8800000000000001,
+     0.8800000000000001,
+     0.8800000000000001
+    ]
+   },
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "eagle_graph",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.11000000000000001,
+    "iqr": 0.0,
+    "q1": 0.11000000000000001,
+    "q3": 0.11000000000000001,
+    "samples": [
+     0.11000000000000001,
+     0.11000000000000001,
+     0.11000000000000001
+    ]
+   },
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "eagle_simulate",
+   "status": "ok",
+   "wall_s": {
+    "median": 0.05,
+    "iqr": 0.0,
+    "q1": 0.05,
+    "q3": 0.05,
+    "samples": [
+     0.05,
+     0.05,
+     0.05
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "sm_clock_mhz": 2040.0,
+   "end_to_end_s": {
+    "median": 0.05500000000000001,
+    "iqr": 0.0,
+    "q1": 0.05500000000000001,
+    "q3": 0.05500000000000001,
+    "samples": [
+     0.05500000000000001,
+     0.05500000000000001,
+     0.05500000000000001
+    ]
+   },
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "eff_sol": null,
+   "eff_sol_note": "pending (reference count)",
+   "samples_per_lane": 1.0,
+   "build_s": 0.0,
+   "compile_s": null,
+   "kernel_only_s": null,
+   "slot_fill": 0.5,
+   "run_mode": "graph",
+   "fraction_of_peak_fp64": 0.25
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "cupy_masked",
+   "status": "failed: no progress",
+   "reference": "fixture",
+   "rule": "failed: no progress"
+  }
+ ],
+ "per_n": [
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "reference_arm": "eagle_graph",
+   "agreement": {
+    "eagle_graph": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "eagle_simulate": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "cupy_masked": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909365,
+     "sum": 100000.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.47891,
+     "sum": 10000.0
+    }
+   }
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "reference_arm": "eagle_graph",
+   "agreement": {
+    "eagle_graph": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "eagle_simulate": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "cupy_masked": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909365,
+     "sum": 100000.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.47891,
+     "sum": 10000.0
+    }
+   }
+  },
+  {
+   "n": 1000,
+   "distribution": "fp32",
+   "reference_arm": "eagle_graph",
+   "agreement": {
+    "eagle_graph": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "eagle_simulate": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "cupy_masked": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909365,
+     "sum": 100000.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.47891,
+     "sum": 10000.0
+    }
+   }
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "reference_arm": "eagle_graph",
+   "agreement": {
+    "eagle_graph": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "eagle_simulate": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "cupy_masked": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909365,
+     "sum": 200000.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.47891,
+     "sum": 20000.0
+    }
+   }
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "reference_arm": "eagle_graph",
+   "agreement": {
+    "eagle_graph": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "eagle_simulate": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    },
+    "cupy_masked": {
+     "max_position_error_vs_truth": 2.258800645248211e-07,
+     "median_position_error_vs_truth": 6.233501706092596e-08,
+     "max_velocity_error_vs_truth": 1.8171224621029356e-07,
+     "max_error_over_bound": 0.006640145119410386,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388275.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909365,
+     "sum": 200000.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.47891,
+     "sum": 20000.0
+    }
+   }
+  }
+ ],
+ "memory": {
+  "method": "A separate pass after the timing pass. Each (arm, N) runs in a fresh process: imports, the CUDA context created by one tiny device operation, then the baseline read, before the arm builds or allocates anything; then the arm's kernels built and a warm-up run on a 64-sample batch (every compile happens here; JAX also compiles for shape N), so every library's pool reserved during the warm-up counts in the reading; CuPy's pools and PyTorch's cache trimmed after the warm-up; then the arm built for N (eagle's graph, PyTorch's captured graph) and one full run with upload and download, the device read every 2 ms throughout (the masked arms hand their temporaries back after each run, so a reading after it would miss them). Device: the most memory NVML accounted to the process on the timed GPU during the build and the run, minus the baseline. Caveats: each allocator's rounding and growth policy count (JAX's allocator grows in regions that can exceed the request; PyTorch rounds blocks up and a captured CUDA graph keeps a private pool; Warp's stream-ordered pool reserves in chunks of tens of MiB, its release threshold set to 0 after the warm-up); the driver accounts in pages of about 2 MiB, so small-N rows read 0 or one page. Host: the peak resident set (VmHWM, reset to the current RSS at the host baseline, taken after the warm-up) minus the baseline RSS. Minimum: the planes the workload needs, N x (8 float64 planes (state, time, step) x 8 bytes + 2 counters x 4 bytes) = N x 72 bytes.",
+  "rows": [
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 100010,
+    "device_peak_bytes": 100000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 200000,
+    "n": 1000,
+    "arm": "eagle_graph",
+    "minimum_bytes": 72000
+   },
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 100010,
+    "device_peak_bytes": 100000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 200000,
+    "n": 1000,
+    "arm": "eagle_simulate",
+    "minimum_bytes": 72000
+   },
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 100010,
+    "device_peak_bytes": 100000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 200000,
+    "n": 1000,
+    "arm": "cupy_masked",
+    "minimum_bytes": 72000
+   },
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 200010,
+    "device_peak_bytes": 200000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 400000,
+    "n": 2000,
+    "arm": "eagle_graph",
+    "minimum_bytes": 144000
+   },
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 200010,
+    "device_peak_bytes": 200000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 400000,
+    "n": 2000,
+    "arm": "eagle_simulate",
+    "minimum_bytes": 144000
+   },
+   {
+    "device_baseline_bytes": 10,
+    "device_after_bytes": 200010,
+    "device_peak_bytes": 200000,
+    "device_source": "nvml per-process used memory",
+    "run_seconds": 1.0,
+    "host_peak_bytes": 400000,
+    "n": 2000,
+    "arm": "cupy_masked",
+    "minimum_bytes": 144000
+   }
+  ]
+ },
+ "torch_compile_note": null,
+ "fit": {
+  "intro": "Fixture fit text; the fastest arm is eagle.simulate.",
+  "arms": {
+   "eagle_graph": "fixture description of eagle_graph.",
+   "eagle_simulate": "fixture description of eagle_simulate.",
+   "cupy_masked": "fixture description of cupy_masked."
+  }
+ },
+ "wall_s": 1.0
 }

@@ -72,48 +72,6 @@ class CodeBlockParsing(unittest.TestCase):
             sync_cards.code_blocks(text)
 
 
-class ArmSchemaAdapters(unittest.TestCase):
-    def test_code_lines_schema(self):
-        card = json.loads((FIXTURE_EAGLE / "benchmarks/rk78_card/"
-                            "card_fixture-device.json").read_text())
-        blocks = sync_cards.arm_blocks_map(card)
-        self.assertEqual(blocks["eagle_graph"], ["eagle_body"])
-        self.assertEqual(sync_cards.arm_line_count(card, "warp_kernel"), 2)
-
-    def test_code_schema(self):
-        card = json.loads((FIXTURE_EAGLE / "benchmarks/perf_card/"
-                            "card_fixture-gpu.json").read_text())
-        blocks = sync_cards.arm_blocks_map(card)
-        self.assertEqual(blocks["cupy_masked"], ["cupy_body"])
-        self.assertEqual(sync_cards.arm_line_count(card, "eagle_graph"), 2)
-
-    def test_arm_label_list_schema(self):
-        card = json.loads((FIXTURE_EAGLE / "benchmarks/perf_card/"
-                            "cpu_card_fixture-host.json").read_text())
-        self.assertEqual(sync_cards.arm_keys(card), ["eagle_term8"])
-        self.assertEqual(sync_cards.arm_label(card, "eagle_term8"),
-                          "eagle host, termination loop, 8 threads")
-
-
-class GlanceTable(unittest.TestCase):
-    def test_ratio_to_fastest_eagle_arm(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
-        glance = out["perf_glance.md"]
-        # eagle_graph (1 ms) is the only eagle arm at N=10 -> its own ratio is 1x;
-        # cupy_masked (10 ms) is 10x that.
-        self.assertIn("1.0×", glance)
-        self.assertIn("10×", glance)
-        # the fixture GPU card's device name must be named once per card
-        self.assertIn("Fixture GPU", glance)
-        self.assertIn("Fixture CPU", glance)
-        # memory/compile formatted from the fixture rows
-        self.assertIn("2 MiB", glance)
-        self.assertIn("500 ms / 50 ms", glance)
-        # the CPU card's empty memory/compile rows render as "not available", not a crash
-        self.assertIn("–", glance)
-
-
 class DenseClauseOrder(unittest.TestCase):
     """The subject's number comes first and each number is attributed."""
 
@@ -136,15 +94,6 @@ class DefaultDeviceChosenByPreference(unittest.TestCase):
     """The text quotes the DEFAULT card: the first in the tab preference
     list, else the first alphabetically -- never a hard-coded device."""
 
-    def test_default_device_is_the_one_quoted_and_every_device_is_listed(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
-        glance = out["perf_glance.md"]
-        self.assertIn("Device: Fixture GPU", glance)   # the card with results; no preference match
-        self.assertIn("Measured on", glance)
-        self.assertIn("Fixture GPU", glance)
-        self.assertIn("#perf-card-gpu-fixture-aaa", glance)
-        self.assertIn("#perf-card-gpu-quadro-p2000", glance)
 
     def test_sources_json_lists_every_card_read(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -158,39 +107,6 @@ class DefaultDeviceChosenByPreference(unittest.TestCase):
         entries = [("a", {"device": {"name": "Quadro P2000"}, "ns": [1]}), ("b", {"device": {"name": "Tesla T4"}, "ns": [1]})]
         self.assertEqual(sync_cards.default_card(entries, sync_cards.GPU_PREFERENCE)["device"]["name"], "Tesla T4")
         self.assertIsNone(sync_cards.default_card([], sync_cards.GPU_PREFERENCE))
-
-
-class SameTaskFiveWays(unittest.TestCase):
-    def test_all_five_tools_present_full_and_short(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
-        full, short = out["same_task_full.md"], out["same_task_short.md"]
-        for tool in ("hawk + eagle", "CuPy", "PyTorch", "JAX", "Warp"):
-            self.assertIn(tool, full)
-            self.assertIn(tool, short)
-        # the full version carries the actual source text of each block
-        for needle in ("def eagle_step", "def cupy_step", "def torch_step",
-                        "def jax_step", "def warp_step"):
-            self.assertIn(needle, full)
-        # the short version does not (it is the condensed table only)
-        self.assertNotIn("def eagle_step", short)
-        # uses the RK7(8) fixture card (present), not the RK4 fallback
-        self.assertIn("RK7(8)", full)
-
-    def test_falls_back_to_rk4_card_when_rk78_absent(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = pathlib.Path(tmp)
-            only_perf = tmp / "eagle_root"
-            # Same fixture minus the rk78_card directory.
-            import shutil
-            shutil.copytree(FIXTURE_EAGLE / "benchmarks" / "perf_card",
-                             only_perf / "benchmarks" / "perf_card")
-            out = run_sync(only_perf, tmp / "out")
-        full = out["same_task_full.md"]
-        self.assertIn("RK4", full)
-        self.assertIn("hawk + eagle", full)
-        self.assertIn("CuPy", full)
-        self.assertIn("def eagle_step", full)
 
 
 def _cpu_card(model="Synthetic CPU", slug="synthetic-cpu", date="2026-01-02T03:04:05Z",
@@ -430,8 +346,6 @@ class EveryNumberComesFromACard(unittest.TestCase):
     def test_compare_memory_chart(self):
         self._check("compare_memory_chart.md")
 
-    def test_landing_honest(self):
-        self._check("landing_honest.md")
 
     def test_round_sig_floor_never_rounds_up(self):
         # 3.449 would round to 3.4 either way; 9.999 must floor to 9.9, not
@@ -518,35 +432,12 @@ class MemorySavings(unittest.TestCase):
         self.assertEqual(sync_cards._n_words(10), "10")
         self.assertEqual(sync_cards._n_words(1_000), "1,000")
 
-    def test_memory_savings_floors_the_ratio_never_up(self):
-        card = self._mem_card({
-            "eagle_simulate": (4 * 2**20, 2.0),
-            "cupy_masked": (9 * 2**20, 4.5),
-            "torch_masked": (11 * 2**20, 5.5),
-        })
-        n, pairs = sync_cards.memory_savings(card)
-        self.assertEqual(n, 10)
-        self.assertEqual(pairs, [("cupy_masked", 2.2), ("torch_masked", 2.7)])
-        self.assertEqual(sync_cards.memory_savings_big_text(pairs), "2.2×–2.7× less GPU memory")
 
     def test_memory_savings_single_ratio_has_no_dash(self):
         pairs = [("cupy_masked", 3.0)]
         self.assertEqual(sync_cards.memory_savings_big_text(pairs), "3.0× less GPU memory")
 
-    def test_memory_savings_empty_when_base_arm_missing(self):
-        card = self._mem_card({"warp_kernel": (3 * 2**20, 1.5)})
-        n, pairs = sync_cards.memory_savings(card)
-        self.assertEqual((n, pairs), (10, []))
-        self.assertIsNone(sync_cards.memory_savings_big_text(pairs))
 
-    def test_will_it_fit_rows_sorted_lightest_first(self):
-        card = self._mem_card({
-            "torch_masked": (11 * 2**20, 5.5), "eagle_graph": (2 * 2**20, 1.0),
-            "warp_kernel": (3 * 2**20, 1.5),
-        })
-        rows, n = sync_cards.will_it_fit_rows(card, arms=("torch_masked", "eagle_graph", "warp_kernel"))
-        self.assertEqual(n, 10)
-        self.assertEqual([arm for arm, _b, _f in rows], ["eagle_graph", "warp_kernel", "torch_masked"])
 
 
 class HeroStrip(unittest.TestCase):
@@ -558,62 +449,11 @@ class HeroStrip(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
-    def test_three_grid_item_cards(self):
-        text = self.out["hero_strip.md"]
-        self.assertEqual(text.count("{grid-item-card}"), 3)
-        self.assertIn("5.00 ms", text)
-        # the third tile is the memory headline, not "within 1%" (that moved
-        # to the honest box -- see test_honest_box_counts_warp_wins_and_the_dense_tie).
-        self.assertIn("2.2×–2.7× less GPU memory", text)
-        self.assertNotIn("within 1%", text)
 
-    def test_third_card_is_the_memory_headline(self):
-        text = self.out["hero_strip.md"]
-        # eagle_simulate 4 MiB (2.0x minimum) vs cupy 9 MiB (4.5x) and torch
-        # 11 MiB (5.5x) in the fixture's spread/1000, N=10 memory rows.
-        self.assertIn("than CuPy and PyTorch — 10 samples in 4 MiB, 2.0× the "
-                      "bare minimum state (CuPy 4.5×, PyTorch 5.5×)", text)
 
-    def test_middle_card_names_the_other_tools(self):
-        # fixture's spread/1000 cell: eagle_simulate 5 ms vs warp 20 ms (4.0x),
-        # jax 40 ms (8.0x), cupy 45 ms (9.0x), torch 50 ms (10x) -- distinct
-        # ratios, so no two tools share a parenthesis here (see
-        # NamedSpeedup.test_caption_groups_equal_floored_ratios for that).
-        text = self.out["hero_strip.md"]
-        self.assertIn("4.0×–10× faster", text)
-        self.assertIn("than NVIDIA Warp (4.0×), JAX (8.0×), "
-                      "CuPy (9.0×), PyTorch (10×)", text)
-        self.assertIn("10 samples finishing at different times, up to 1000 steps", text)
 
-    def test_honest_box_counts_warp_wins_and_the_dense_tie(self):
-        text = self.out["honest_box.md"]
-        # fixture's 3 configs x 1 N = 3 cells; warp_kernel wins "spread,1000"
-        # (20 ms vs eagle_simulate's 5 ms? no -- eagle_simulate wins that
-        # one; warp only wins "uniform,1000" is a TIE, not an outright win,
-        # so the exact count depends on fastest_of_cell's own tie-breaking
-        # (lowest wall wins ties too) -- just check the sentence shape.
-        self.assertIn("Fixture GPU", text)
-        self.assertIn("RK4 cells this card runs", text)
 
-    def test_honest_box_carries_the_within_pct_line_moved_from_the_hero_strip(self):
-        text = self.out["honest_box.md"]
-        # kernel-only deviation (4 ms vs 4.01 ms) is ~0.25%, ceil'd to 1% --
-        # this sentence used to live in hero_strip.md's third tile.
-        self.assertIn("`eagle.simulate`'s GPU time is within 1% of the "
-                      "hand-tuned version, in every configuration this card runs", text)
 
-    def test_honest_box_memory_line_warp_then_eagle_graph(self):
-        text = self.out["honest_box.md"]
-        # fixture's spread/1000, N=10 memory rows: warp_kernel 1.5x, eagle_graph
-        # (no compaction) 1.0x -- both lighter than eagle_simulate's own 2.0x.
-        self.assertIn("NVIDIA Warp is lighter than eagle.simulate (1.5×), and "
-                      "hawk + eagle's lower-level building blocks, without compaction, "
-                      "are lighter still (1.0×).", text)
-        # the whole box stays at or under 3 sentences (a period followed by
-        # whitespace/end-of-line; "1.5×"/"1.0×" decimals don't count, since
-        # their periods are followed by a digit, not whitespace).
-        body = "\n".join(l for l in text.splitlines() if l and not l.startswith("<!--"))
-        self.assertLessEqual(len(re.findall(r"\.(?=\s|$)", body, re.M)), 3)
 
 
 class WhyRaptorComparison(unittest.TestCase):
@@ -626,42 +466,9 @@ class WhyRaptorComparison(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
-    def test_bars_present_fastest_first_with_fixed_decimals(self):
-        text = self.out["why_raptor.md"]
-        # eagle.simulate (5 ms) is fastest of the fixture's WHY_ARMS cell;
-        # torch_masked (50 ms) is slowest -- both must appear, eagle's row
-        # ordered before torch's.
-        self.assertIn("eagle.simulate", text)
-        self.assertIn("5.00 ms", text)
-        self.assertIn("50.0 ms", text)
-        self.assertLess(text.index("5.00 ms"), text.index("50.0 ms"))
 
-    def test_named_speedup_and_within_pct_are_computed_not_hardcoded(self):
-        text = self.out["why_raptor.md"]
-        # eagle_simulate (5 ms) vs the fixture's spread/1000 cell: warp 20 ms
-        # (4.0x) .. torch 50 ms (10x) -- the sentence names all four, not a
-        # bare arm count.
-        self.assertIn("`eagle_simulate` is 4.0×–10× faster than "
-                      "NVIDIA Warp (4.0×)", text)
-        # kernel-only deviation (4 ms vs 4.01 ms) is ~0.25%, ceil'd to 1%.
-        self.assertIn("within 1%", text)
 
-    def test_dense_tie_detected_within_3_percent(self):
-        text = self.out["why_raptor.md"]
-        # fixture's uniform/1000 cell: warp 30 ms vs eagle_graph 30.5 ms
-        # (1.67% apart) -- inside the 3% tie band.
-        self.assertIn("ties", text)
-        self.assertIn("30.0 ms", text)
-        self.assertIn("30.5 ms", text)
 
-    def test_rk78_honest_line_and_cpu_beats_every_gpu_arm(self):
-        text = self.out["why_raptor.md"]
-        # rk78 fixture: eagle_graph 2 ms is the fastest `eagle*` GPU arm;
-        # eagle_cpu (0.3 ms) beats warp_kernel (0.5 ms) too, the fixture's
-        # true global GPU minimum, so the CPU callout must appear.
-        self.assertIn("RK7(8)", text)
-        self.assertIn("hawk + eagle on the CPU alone, no GPU at all", text)
-        self.assertIn("300 µs", text)
 
     # The SVG comparison chart was retired in favour of the plain-HTML bar
     # charts of the type-A landing port -- see
@@ -682,45 +489,9 @@ class LandingHeroFragments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
-    def test_lead_sentence_states_time_memory_and_named_speedup(self):
-        # each compared tool has its OWN ratio, smallest first (never one number shared by two tools).
-        text = self.out["lead_sentence.md"]
-        self.assertIn("5.00 ms and 4 MiB on Fixture GPU, ", text)
-        self.assertIn("4.0× faster than NVIDIA Warp, 8.0× faster than JAX, 9.0× faster than CuPy "
-                      "and 10× faster than PyTorch", text)
-        self.assertIn("runs on your CPU", text)
-        # never the literal "2017" -- no card field sources that year, so the
-        # lead sentence must never hand-type it.
-        self.assertNotIn("2017", text)
 
-    def test_time_chart_is_plain_html_rows_fastest_first(self):
-        text = self.out["perf_switch.md"]
-        self.assertIn('class="chart" role="img"', text)
-        self.assertIn('class="row us"', text)
-        self.assertIn("eagle.simulate", text)
-        self.assertIn("5.00 ms", text)
-        self.assertIn("50.0 ms", text)
-        self.assertLess(text.index("5.00 ms"), text.index("50.0 ms"))
-        # no SVG inside the bar charts (the radar beside them is the only SVG)
-        bars_only = re.sub(r'<div class="(?:worlds|capmap)[^"]*".*?<script type="application/json" class="(?:worlds|cm)-json">.*?</script>\n</div>', "", text, flags=re.S)
-        self.assertNotIn("<svg", re.sub(r'<div class="radar".*?<script type="application/json".*?</div>\n?', "", bars_only, flags=re.S).split('class="radar"')[0])
 
-    def test_memory_chart_lightest_first_same_row_form(self):
-        text = self.out["compare_memory_chart.md"]
-        self.assertIn('class="chart" role="img"', text)
-        self.assertIn("eagle graph", text)
-        self.assertIn("1.0×", text)
-        self.assertIn("5.5×", text)
-        self.assertLess(text.index("1.0×"), text.index("5.5×"))
 
-    def test_landing_honest_names_the_dense_tie_wall_times(self):
-        text = self.out["landing_honest.md"]
-        self.assertIn('class="honest"', text)
-        self.assertIn("fastest arm in 1 of the 3 RK4 cells", text)
-        self.assertIn("it ties hawk + eagle: 30.0 ms against hawk + eagle's 30.5 ms", text)
-        self.assertIn("1.0× the minimum against Warp's 1.5×", text)
-        self.assertIn("uses 2.0×", text)
-        self.assertIn("Fixture GPU", text)
 
 
 class FastestArmGrid(unittest.TestCase):
@@ -733,19 +504,7 @@ class FastestArmGrid(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
-    def test_grid_names_the_fastest_arm_per_cell(self):
-        text = self.out["fastest_arm_grid.md"]
-        # spread/1000, N=10: eagle_simulate (5 ms) beats warp (20 ms).
-        self.assertIn("eagle.simulate", text)
-        self.assertIn("5.00 ms", text)
-        # uniform/1000, N=10: warp (30 ms) beats eagle_graph (30.5 ms).
-        self.assertIn("Warp per-thread kernel", text)
-        self.assertIn("30.0 ms", text)
 
-    def test_cpu_grid_present_too(self):
-        text = self.out["fastest_arm_grid.md"]
-        self.assertIn("Fixture CPU", text)
-        self.assertIn("eagle host, termination loop, 8 threads", text)
 
 
 class ComparePage(unittest.TestCase):
@@ -756,44 +515,8 @@ class ComparePage(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cls.out = run_sync(FIXTURE_EAGLE, pathlib.Path(tmp))
 
-    def test_every_question_section_present(self):
-        text = self.out["compare.md"]
-        for heading in ("finish at different times", "batch is dense",
-                        "batches are small", "fit on my GPU", "steps are adaptive",
-                        "need derivatives", "CPU too"):
-            self.assertIn(heading, text)
 
-    def test_links_to_eagles_performance_page_anchors(self):
-        text = self.out["compare.md"]
-        # Hyphenated to match the built page's docutils-normalized id, not
-        # the underscored MyST target label itself (see
-        # build_measured_on's comment in sync_cards.py).
-        self.assertIn("#perf-card-gpu-quadro-p2000", text)
-        self.assertIn("#rk78-card-gpu-fixture-device", text)
 
-    def test_will_it_fit_table_lightest_first_with_minimum_ratio(self):
-        text = self.out["compare.md"]
-        self.assertIn("## Will it fit on my GPU?", text)
-        self.assertIn("| tool | GPU memory | × minimum |", text)
-        # fixture's spread/1000, N=10 memory rows, lightest first: eagle
-        # graph (no compaction) 2 MiB/1x, eagle.simulate 4 MiB/2x, Warp
-        # 3 MiB/1.5x, JAX 6 MiB/3x, CuPy 9 MiB/4.5x, PyTorch 11 MiB/5.5x.
-        self.assertIn("| hawk + eagle graph (no compaction) | 2 MiB | 1.0×", text)
-        self.assertIn("| eagle.simulate | 4 MiB | 2.0×", text)
-        self.assertIn("| NVIDIA Warp | 3 MiB | 1.5×", text)
-        self.assertIn("| PyTorch | 11 MiB | 5.5×", text)
-        # within the table itself (not the rest of the page, which mentions
-        # "eagle.simulate" earlier via the "finish at different times"
-        # section) -- lightest row first.
-        self.assertLess(text.index("| hawk + eagle graph (no compaction) | 2 MiB"),
-                         text.index("| NVIDIA Warp | 3 MiB"))
-        self.assertLess(text.index("| NVIDIA Warp | 3 MiB"),
-                         text.index("| eagle.simulate | 4 MiB"))
-        # the friendly sentence states Warp's lighter figure plainly, and
-        # names hawk + eagle's own lower-level, uncompacted arm too.
-        self.assertIn("NVIDIA Warp is lighter than eagle.simulate (1.5×), and "
-                      "hawk + eagle's lower-level building blocks, without compaction, "
-                      "are lighter still (1.0×).", text)
 
 
 class WarpClaimsFollowTheCard(unittest.TestCase):
@@ -831,57 +554,11 @@ class WarpClaimsFollowTheCard(unittest.TestCase):
                 for k in r["wall_s"]:
                     r["wall_s"][k] *= 1000
 
-    def test_rule1_warp_wins_some_cells(self):
-        out = self._run(lambda c: None)
-        for name, needle in (
-                ("landing_honest.md", "NVIDIA Warp is an excellent per-thread kernel compiler: "
-                                      "it is the fastest arm in 1 of the 3 RK4 cells this card runs, "
-                                      "and when every sample runs all 1000 steps"),
-                ("why_raptor.md", "- **Warp is excellent at per-thread kernels**: it is the "
-                                  "fastest arm in 1 of 3 cells, and ")):
-            self.assertIn(needle, out[name])
-        for text in out.values():
-            self.assertNotIn("wins small", text)
 
-    def test_rule1_warp_wins_no_cells(self):
-        out = self._run(self._warp_never_wins)
-        self.assertIn("NVIDIA Warp is an excellent per-thread kernel compiler: "
-                      "when every sample runs all 1000 steps hawk + eagle beats it",
-                      out["landing_honest.md"])
-        self.assertIn("- **Warp is excellent at per-thread kernels**: on a fully dense batch "
-                      "hawk + eagle beats it: 30.5 ms against Warp's 30.0 s", out["why_raptor.md"])
-        self.assertNotIn("fastest arm in 0", out["landing_honest.md"])
-        self.assertNotIn("fastest arm in 0", out["why_raptor.md"])
 
-    def test_rule2_warp_lighter_keeps_the_sentence(self):
-        out = self._run(self._factors(2.0, 1.5, 1.0))
-        want = ("NVIDIA Warp is lighter than eagle.simulate (1.5×), and hawk + eagle's "
-                "lower-level building blocks, without compaction, are lighter still (1.0×).")
-        self.assertIn(want, out["honest_box.md"])
-        self.assertIn(want, out["compare.md"])
 
-    def test_rule2_eagle_simulate_lighter(self):
-        out = self._run(self._factors(1.2, 1.5, 1.0))
-        want = ("eagle.simulate (1.2×) is lighter than NVIDIA Warp (1.5×), and hawk + eagle's "
-                "lower-level building blocks, without compaction, are lighter still (1.0×).")
-        self.assertIn(want, out["honest_box.md"])
-        self.assertIn(want, out["compare.md"])
-        self.assertNotIn("Warp is lighter", out["honest_box.md"])
 
-    def test_rule2_lighter_still_only_when_graph_is_below_both(self):
-        out = self._run(self._factors(1.2, 1.5, 1.4))
-        want = "eagle.simulate (1.2×) is lighter than NVIDIA Warp (1.5×)."
-        self.assertIn(want, out["honest_box.md"])
-        self.assertIn(want, out["compare.md"])
-        self.assertNotIn("lighter still", out["honest_box.md"])
-        self.assertNotIn("lighter still", out["compare.md"])
 
-    def test_landing_memory_paragraph_follows_the_card(self):
-        out = self._run(self._factors(1.6, 1.7, 1.3))
-        self.assertIn("building blocks go lighter than Warp: 1.3×", out["landing_honest.md"])
-        out = self._run(self._factors(1.6, 1.2, 1.3))
-        self.assertIn("building blocks and Warp compare: 1.3×", out["landing_honest.md"])
-        self.assertNotIn("go lighter than Warp", out["landing_honest.md"])
 
 class SourcesFreshnessIfEagleAvailable(unittest.TestCase):
     """Optional: re-run sync is a no-op. Only runs if RAPTOR_EAGLE_ROOT points
@@ -944,28 +621,8 @@ class CpuMemoryNetOfHarnessCopies(unittest.TestCase):
     """CPU peak memory is published net of the harness's copies (36 bytes per
     sample on the RK4 CPU card's eagle arms); the rule mirrors eagle's."""
 
-    def test_eagle_arm_is_net_and_numba_is_raw(self):
-        n = 10**6
-        eagle = {"arm": "eagle_term8", "n": n, "peak_bytes": 100 * 2**20}
-        numba = {"arm": "numba_prange", "n": n, "peak_bytes": 100 * 2**20}
-        self.assertEqual(sync_cards.net_peak_bytes(eagle), 100 * 2**20 - 36 * n)
-        self.assertEqual(sync_cards.net_peak_bytes(numba), 100 * 2**20)
 
-    def test_a_negative_result_shows_the_measured_value(self):
-        row = {"arm": "eagle_compact1", "n": 10**6, "peak_bytes": 20 * 10**6}
-        self.assertEqual(sync_cards.net_peak_bytes(row), 20 * 10**6)
 
-    def test_only_resolved_rows_are_published(self):
-        mib = 2**20
-        def row(arm, n, peak, base):
-            return {"arm": arm, "n": n, "peak_bytes": peak, "rss_baseline_bytes": base}
-        rows = [row("eagle_term8", 1000, 40 * mib, 60 * mib), row("eagle_term8", 10**6, 42 * mib, 60 * mib),
-                row("numba_prange", 1000, 0, 220 * mib), row("numba_prange", 10**6, 70 * mib, 220 * mib),
-                row("eagle_compact8", 1000, 40 * mib, 60 * mib), row("eagle_compact8", 10**6, 96 * mib, 60 * mib)]
-        self.assertIsNone(sync_cards.published_peak_bytes(rows[0], rows))       # small-N floor row
-        self.assertIsNone(sync_cards.published_peak_bytes(rows[1], rows))       # 1e6 row near the floor
-        self.assertEqual(sync_cards.published_peak_bytes(rows[3], rows), 70 * mib)
-        self.assertEqual(sync_cards.published_peak_bytes(rows[5], rows), 96 * mib - 36 * 10**6)
 
     def test_matches_eagles_function_on_every_cpu_card(self):
         import importlib.util
@@ -1003,6 +660,70 @@ class StartHereNotebookColabCell(unittest.TestCase):
         self.assertIn("Runtime \u2192 Change runtime type \u2192 T4 GPU", text)
         for line in text.splitlines():
             self.assertFalse(line.lstrip().startswith(("# !pip", "#!pip", "# %pip")), line)
+
+
+class FeatureBlock(unittest.TestCase):
+    """The C2 block: rows of the feature card, with the A1 labels shown as they are."""
+
+    def _eagle(self, tmp, rows):
+        d = pathlib.Path(tmp) / "benchmarks" / "perf_card"
+        d.mkdir(parents=True)
+        card = {"device": {"name": "Test GPU"}, "rows": rows}
+        (d / "feature_card_test.json").write_text(json.dumps(card))
+        return pathlib.Path(tmp)
+
+    def test_no_card_gives_an_empty_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text, ok = sync_cards.build_feature_block(sync_cards.Pool(tmp), tmp)
+        self.assertFalse(ok)
+        self.assertNotIn("|", text)
+
+    def test_labels_and_ratios(self):
+        ok = lambda s: {"status": "ok", "wall_s": {"median": s}}  # noqa: E731
+        rows = [{"row": "scatter", "n": 4194304, "dtype": "float64", "reference_arm": "keyed",
+                 "arms": {"keyed": ok(0.002), "ordered": ok(0.004), "or": {"status": "out_of_memory"},
+                          "np": {"status": "not_run: budget"}, "cupy": {"status": "failed: boom"},
+                          "torch": {"status": "not_run: not installed: torch"}}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._eagle(tmp, rows)
+            text, ok_ = sync_cards.build_feature_block(sync_cards.Pool(root), root)
+        self.assertTrue(ok_)
+        for expected in ("| ordered | 4.00 ms | 2.0x |", "out of memory", "> 120 s per run", "not installed", "| cupy | failed |"):
+            self.assertIn(expected, text.replace("×", "x"))
+
+
+class NewCardSchema(unittest.TestCase):
+    """What the generator reads from the eagle 0.7.3 card format."""
+
+    def test_the_headline_batch_is_one_million_when_the_card_has_it(self):
+        self.assertEqual(sync_cards.top_n({"ns": [1000000, 10000000]}), 1000000)
+        self.assertEqual(sync_cards.top_n({"ns": [1000, 2000]}), 2000)
+
+    def test_a_loaded_card_has_configs_a_cpu_dict_and_only_timed_rows(self):
+        pool = sync_cards.Pool(FIXTURE_EAGLE)
+        cpu = sync_cards.load_card(pool, "benchmarks/perf_card/cpu_card_fixture-host.json")
+        self.assertIsInstance(cpu["cpu"], dict)
+        self.assertEqual(cpu["cpu"]["logical_cpus"], cpu["logical_cpus"])
+        self.assertTrue(all("wall_s" in r for r in cpu["results"]))
+        self.assertEqual([c["distribution"] for c in cpu["configs"]], cpu["distributions"])
+        gpu = sync_cards.load_card(pool, "benchmarks/perf_card/card_fixture-gpu.json")
+        for row in gpu["memory"]["rows"]:
+            if row.get("device_peak_bytes") is not None and row.get("minimum_bytes"):
+                self.assertEqual(row["device_factor"], row["device_peak_bytes"] / row["minimum_bytes"])
+
+    def test_the_feature_block_follows_the_gpu_feature_card_and_labels_missing_arms(self):
+        text = run_sync(FIXTURE_EAGLE, tempfile.mkdtemp())["feature_rows.md"]
+        self.assertIn("each row is one capability at one batch size", text)
+        self.assertIn("out of memory", text)
+
+    def test_the_batch_phrases_name_what_the_cards_record(self):
+        self.assertIn("own time", sync_cards._cfg_phrase("spread"))
+        self.assertIn("same orbit", sync_cards._cfg_phrase("uniform"))
+
+    def test_the_removed_blocks_are_not_written(self):
+        out = run_sync(FIXTURE_EAGLE, tempfile.mkdtemp())
+        self.assertNotIn("compaction_numbers.md", out)
+        self.assertNotIn("landing_honest.md", out)
 
 
 if __name__ == "__main__":

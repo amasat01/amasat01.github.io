@@ -10,7 +10,7 @@ SPHINXBUILD   ?= python -m sphinx
 SOURCEDIR     = .
 BUILDDIR      = _build
 
-.PHONY: help Makefile clean livehtml strict linkcheck check
+.PHONY: help Makefile clean livehtml media strict linkcheck check
 
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
@@ -18,9 +18,18 @@ help:
 clean:
 	rm -rf $(BUILDDIR)
 
+# The gallery animations and the landing thumbnails come from the paired hawk and eagle checkouts; they are build
+# output and never committed (tools/gallery_gifs.py, tools/landing_thumbs.py).
+PYTHON ?= python3
+HAWK ?= hawk
+EAGLE ?= eagle
+media:
+	$(PYTHON) tools/gallery_gifs.py $(HAWK) $(EAGLE)
+	$(PYTHON) tools/landing_thumbs.py
+
 # Build with warnings promoted to errors, but keep going so a single run
 # reports every warning instead of stopping at the first.
-strict:
+strict: media
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" -W --keep-going $(SPHINXOPTS) $(O)
 
 linkcheck:
@@ -31,9 +40,11 @@ linkcheck:
 # The raptor_docs package tests (tests/test_raptor_docs_*.py) are in the same
 # discovery: they need Python 3.11+, nbformat and nbclient (pyproject.toml).
 # Does NOT re-run tools/sync_cards.py (that is maintenance-time, against a
-# real eagle checkout); it checks the _generated/ output already committed.
+# real eagle checkout); it checks the _generated/ output already committed. The two first-kernel notebooks
+# (hawk's and eagle's copy) must match in cell types and sources: HAWK and EAGLE name the checkouts.
 check:
-	python3 -m unittest discover -s tests -v
+	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) -m raptor_docs.nb same $(HAWK)/docs/content/tutorials/01_your_first_kernel.ipynb $(EAGLE)/docs/content/userguide/first_kernel.ipynb
 	$(MAKE) strict
 
 # Watch for changes and auto-recompile (requires watchdog: pip install watchdog)

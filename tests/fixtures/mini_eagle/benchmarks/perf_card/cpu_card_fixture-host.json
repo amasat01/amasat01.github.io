@@ -1,16 +1,667 @@
 {
-  "schema": "eagle-cpu-card/1",
-  "script": "benchmarks/perf_card/cpu_card.py",
-  "cpu": {"model": "Fixture CPU", "cores": 1, "logical_cpus": 1},
-  "workload": {"problem": "fixture damped oscillator, RK4, host"},
-  "ns": [10],
-  "configs": [{"distribution": "spread", "max_steps": 5}],
-  "arms": ["eagle_term8"],
-  "arm_labels": {"eagle_term8": "eagle host, termination loop, 8 threads"},
-  "results": [
-    {"n": 10, "arm": "eagle_term8", "distribution": "spread", "max_steps": 5,
-     "wall_s": {"median": 0.02}}
-  ],
-  "memory": {"rows": []},
-  "compile_time": {"rows": []}
+ "schema": "eagle-rk78-cpu-card/2",
+ "toolchain": {
+  "env_file": null,
+  "python": "3.12.14",
+  "host_compiler": "fixture-g++",
+  "nvcc": "fixture nvcc"
+ },
+ "cpu": "Fixture CPU",
+ "cpu_slug": "fixture-host",
+ "logical_cpus": 8,
+ "script": "benchmarks/perf_card/cpu_card.py",
+ "script_md5": "103c6e0069affad357f818bc7726cfec",
+ "workload_script_md5": "a69639ae0beba0b06b2be0c2466ed819",
+ "common_md5": "3b7b33719b7f33652a1c4f3c0acc83d2",
+ "generated_utc": "2026-01-01T00:00:00Z",
+ "software": {
+  "python": "3.12",
+  "numpy": "2.0",
+  "numba": "0.0",
+  "jax": "0.0",
+  "torch": "0.0"
+ },
+ "ns": [
+  1000,
+  2000
+ ],
+ "distributions": [
+  "spread",
+  "uniform"
+ ],
+ "fixed_overhead_n": 64,
+ "release": "eagle 0.0.0, hawk 0.0.0",
+ "device_fma_per_s": 100000000000.0,
+ "ops_per_attempt": 1106,
+ "ops_per_attempt_source": "hand count; A100 dynamic count pending",
+ "eff_sol_over_one": [],
+ "fma_probe": "gcc -O3 -march=native -fopenmp register-only FMA chains, 8 threads (cores), 8 lanes",
+ "arms_not_run": {},
+ "arms": {
+  "eagle_cpu8": "eagle CPU, 8 threads",
+  "eagle_cpu1": "eagle CPU, 1 thread",
+  "numpy_masked": "NumPy masked"
+ },
+ "code_lines": {
+  "blocks": {
+   "shared_scheme": 2,
+   "hawk_kernel": 2,
+   "eagle_cpu": 1,
+   "numpy_masked": 3
+  },
+  "arms": {
+   "eagle_cpu8": 3,
+   "eagle_cpu1": 3,
+   "numpy_masked": 3
+  },
+  "arm_blocks": {
+   "eagle_cpu8": [
+    "hawk_kernel",
+    "eagle_cpu"
+   ],
+   "eagle_cpu1": [
+    "hawk_kernel",
+    "eagle_cpu"
+   ],
+   "numpy_masked": [
+    "numpy_masked"
+   ]
+  },
+  "shared_scheme_lines": 2,
+  "rule": "non-blank, non-comment lines between the `# >>> code:NAME` and `# <<< code:NAME` markers of the script; every arm but Warp also uses the shared scheme block (the RKF7(8) stages, the right-hand side, the error norm), counted once in shared_scheme_lines"
+ },
+ "method": {
+  "rounds": {
+   "min": 3,
+   "max": 9,
+   "stop": "IQR/median <= 2 %"
+  },
+  "reference_arm": "eagle_cpu8",
+  "memory": "per phase, in the worker, after its warm-up compile: the peak resident set (VmHWM) of the verification run above the RSS before it (host_peak_bytes) and the RSS the run leaves live above that baseline (host_live_bytes); host_peak_net_of_control_bytes subtracts the NumPy control's peak at the same N (null where the control did not run)",
+  "compile": "the worker's compile time on empty caches (hawk host build, Numba JIT, XLA compile at N)",
+  "threads": {
+   "eagle_cpu8": 8,
+   "eagle_cpu1": 1,
+   "numpy_masked": 1
+  },
+  "load_avg_1m": "os.getloadavg()[0] recorded before and after each N's timed repetitions (per_n[*].load_avg_before/after); eagle_cpu8/eagle_cpu1 are the 1-thread vs N-thread rows",
+  "simd": "not measured on this card (see cpu_card.py's simd.summary for the same hawk host build's scalar/packed op counts)",
+  "slot_fill": "n/a on the host (device-only hook)",
+  "fixed_overhead": "the eagle arms alone at N = 64"
+ },
+ "results": [
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "eagle_cpu8",
+   "status": "ok",
+   "threads": 8,
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "eagle_cpu1",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 0.8,
+    "iqr": 0.0,
+    "q1": 0.8,
+    "q3": 0.8,
+    "samples": [
+     0.8,
+     0.8,
+     0.8
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "arm": "numpy_masked",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 2.0,
+    "iqr": 0.0,
+    "q1": 2.0,
+    "q3": 2.0,
+    "samples": [
+     2.0,
+     2.0,
+     2.0
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "eagle_cpu8",
+   "status": "ok",
+   "threads": 8,
+   "wall_s": {
+    "median": 0.05,
+    "iqr": 0.0,
+    "q1": 0.05,
+    "q3": 0.05,
+    "samples": [
+     0.05,
+     0.05,
+     0.05
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "eagle_cpu1",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 0.4,
+    "iqr": 0.0,
+    "q1": 0.4,
+    "q3": 0.4,
+    "samples": [
+     0.4,
+     0.4,
+     0.4
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "arm": "numpy_masked",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 1.0,
+    "iqr": 0.0,
+    "q1": 1.0,
+    "q3": 1.0,
+    "samples": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 1000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 100000,
+   "host_live_bytes": 50000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "eagle_cpu8",
+   "status": "ok",
+   "threads": 8,
+   "wall_s": {
+    "median": 0.2,
+    "iqr": 0.0,
+    "q1": 0.2,
+    "q3": 0.2,
+    "samples": [
+     0.2,
+     0.2,
+     0.2
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 200000,
+   "host_live_bytes": 100000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "eagle_cpu1",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 1.6,
+    "iqr": 0.0,
+    "q1": 1.6,
+    "q3": 1.6,
+    "samples": [
+     1.6,
+     1.6,
+     1.6
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 200000,
+   "host_live_bytes": 100000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "arm": "numpy_masked",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 4.0,
+    "iqr": 0.0,
+    "q1": 4.0,
+    "q3": 4.0,
+    "samples": [
+     4.0,
+     4.0,
+     4.0
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 200000,
+   "host_live_bytes": 100000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "eagle_cpu8",
+   "status": "ok",
+   "threads": 8,
+   "wall_s": {
+    "median": 0.1,
+    "iqr": 0.0,
+    "q1": 0.1,
+    "q3": 0.1,
+    "samples": [
+     0.1,
+     0.1,
+     0.1
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 200000,
+   "host_live_bytes": 100000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "eagle_cpu1",
+   "status": "ok",
+   "threads": 1,
+   "wall_s": {
+    "median": 0.8,
+    "iqr": 0.0,
+    "q1": 0.8,
+    "q3": 0.8,
+    "samples": [
+     0.8,
+     0.8,
+     0.8
+    ]
+   },
+   "rounds": 3,
+   "rule": "iqr<=2%",
+   "attempts": 2000000.0,
+   "attempt_samples_per_s": 1000000.0,
+   "useful_flops_per_s": 1000000000.0,
+   "host_peak_bytes": 200000,
+   "host_live_bytes": 100000,
+   "compile_s_cold": 1.0,
+   "slot_fill": null,
+   "host_peak_net_of_control_bytes": null,
+   "eff_sol": 0.25,
+   "eff_sol_note": null
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "arm": "numpy_masked",
+   "status": "not_run: budget",
+   "threads": 1,
+   "rule": "> 120 s per run"
+  }
+ ],
+ "per_n": [
+  {
+   "n": 1000,
+   "distribution": "spread",
+   "reference_arm": "eagle_cpu8",
+   "agreement": {
+    "eagle_cpu8": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "eagle_cpu1": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "numpy_masked": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909366,
+     "sum": 411909366.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.478911,
+     "sum": 86478911.0
+    }
+   }
+  },
+  {
+   "n": 1000,
+   "distribution": "uniform",
+   "reference_arm": "eagle_cpu8",
+   "agreement": {
+    "eagle_cpu8": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "eagle_cpu1": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "numpy_masked": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909366,
+     "sum": 411909366.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.478911,
+     "sum": 86478911.0
+    }
+   }
+  },
+  {
+   "n": 2000,
+   "distribution": "spread",
+   "reference_arm": "eagle_cpu8",
+   "agreement": {
+    "eagle_cpu8": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "eagle_cpu1": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "numpy_masked": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909366,
+     "sum": 411909366.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.478911,
+     "sum": 86478911.0
+    }
+   }
+  },
+  {
+   "n": 2000,
+   "distribution": "uniform",
+   "reference_arm": "eagle_cpu8",
+   "agreement": {
+    "eagle_cpu8": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "eagle_cpu1": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    },
+    "numpy_masked": {
+     "max_position_error_vs_truth": 2.2588064987768634e-07,
+     "median_position_error_vs_truth": 6.233505573063589e-08,
+     "max_velocity_error_vs_truth": 1.8171272152047837e-07,
+     "max_error_over_bound": 0.0066401405137022215,
+     "samples_with_step_counts_differing_from_reference": 0,
+     "max_abs_accepted_difference": 0,
+     "max_abs_rejected_difference": 0,
+     "max_position_difference_vs_reference_same_counts": 0.0,
+     "attempts_total": 498388277.0
+    }
+   },
+   "steps": {
+    "accepted": {
+     "min": 322.0,
+     "p50": 371.0,
+     "p90": 571.0,
+     "max": 693.0,
+     "mean": 411.909366,
+     "sum": 411909366.0
+    },
+    "rejected": {
+     "min": 1.0,
+     "p50": 59.0,
+     "p90": 201.0,
+     "max": 264.0,
+     "mean": 86.478911,
+     "sum": 86478911.0
+    }
+   }
+  }
+ ],
+ "wall_s": 1.0
 }
