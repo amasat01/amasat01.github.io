@@ -1685,7 +1685,7 @@ def dense_hero_line(pool, card):
     if not tie:
         return ""
     warp, eagle = pool.track(_fmt_sig_time(tie["warp_s"])), pool.track(_fmt_sig_time(tie["eagle_s"]))
-    head = f"When every sample runs the same orbit, "
+    head = "When every sample runs the same orbit, "
     if tie["verdict"] == "tie":
         return f"{head}eagle.simulate and NVIDIA Warp tie: {eagle} against {warp}."
     winner = "eagle.simulate" if tie["verdict"] == "eagle" else "NVIDIA Warp"

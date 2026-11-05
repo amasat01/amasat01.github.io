@@ -31,3 +31,7 @@ extend-exclude = ["*.ipynb"]
 [tool.ruff.lint]
 select = ["F"]
 ignore = ["F841"]
+
+[tool.ruff.lint.per-file-ignores]
+# a line-count fixture standing in for eagle's card script: its blocks are counted, never run
+"tests/fixtures/mini_eagle/benchmarks/perf_card/perf_card.py" = ["F821"]
