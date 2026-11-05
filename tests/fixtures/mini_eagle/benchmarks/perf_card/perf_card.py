@@ -1,12 +1,25 @@
 # Fixture card script: a tiny stand-in for the real benchmarks/perf_card/perf_card.py.
-# Not a real benchmark.
+# Not a real benchmark. Block line counts match code_lines in the fixture cards.
 
-# >>> code:eagle_body
-def eagle_step(x):
+# >>> code:shared_scheme
+def scheme(x):
     return x + 1
-# <<< code:eagle_body
+# <<< code:shared_scheme
 
-# >>> code:cupy_body
-def cupy_step(x):
-    return x + 1
-# <<< code:cupy_body
+# >>> code:hawk_kernel
+def kernel(x):
+    return scheme(x)
+# <<< code:hawk_kernel
+
+# >>> code:hawk_launch
+launch(kernel)
+# <<< code:hawk_launch
+
+# >>> code:eagle_simulate
+simulate(kernel)
+# <<< code:eagle_simulate
+
+# >>> code:cupy_masked
+def masked(x):
+    return scheme(x)
+# <<< code:cupy_masked
