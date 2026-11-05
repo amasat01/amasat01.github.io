@@ -24,8 +24,8 @@ PYTHON ?= python3
 HAWK ?= hawk
 EAGLE ?= eagle
 media:
-	python3 tools/gallery_gifs.py $(HAWK) $(EAGLE)
-	python3 tools/landing_thumbs.py
+	$(PYTHON) tools/gallery_gifs.py $(HAWK) $(EAGLE)
+	$(PYTHON) tools/landing_thumbs.py
 
 # Build with warnings promoted to errors, but keep going so a single run
 # reports every warning instead of stopping at the first.

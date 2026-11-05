@@ -2135,7 +2135,7 @@ def build_compare_page(pool, perf_gpu, perf_cpu):
 
 # --------------------------------------------------------------------------- #
 # The landing radar: where each tool shines, one radar per platform. Seven majors on the
-# landing radar, twenty-five minors on the detailed one: seven minors measured from the
+# landing radar, twenty-five minors on the detailed one: sixteen minors measured from the
 # committed cards (through the helpers above) and nine qualitative from
 # `_data/radar_qualitative.json`. A minor's score = best value / this tool's value
 # (1.0 = the edge); a major draws the mean of its minors. Pure functions first
@@ -2199,7 +2199,7 @@ RADAR_AXES = (
     ("extensible", "Extensibility (qualitative)", "q", "", "rubric"),
 ) + tuple((k, label, "m", f"Wall time of {what} at the feature card's float64 row: our best arm against the best arm of each library the row records.",
            f"feature card: rows[{row}].arms[].wall_s") for k, label, row, _arms, what in FEATURE_AXES)
-#: The six majors of the landing radar and the minors each one draws the mean of. These groups were
+#: The seven majors of the landing radar and the minors each one draws the mean of. These groups were
 #: fixed by theme before any data was looked at, and nothing here is tuned to a result: every minor counts
 #: once, every major is the plain mean of its minors' radii, and the same function runs for every tool.
 #: (key, label, kind, what it is, how it is drawn, minors). A major is "m" when its minors are measured
@@ -2456,6 +2456,8 @@ def _device_axes(perf, kind, earlier=None, feature=None):
         best = best_arm_per_tool(_radar_wall_values(perf, n, cfg), kind)
         axes[key] = ({t: {"value": v, "arm": a, "text": _fmt_sig_time(v), "detail": ""} for t, (a, v) in best.items()},
                      f"N = {n:,}, {_cfg_phrase(cfg['distribution'])}")
+    for key in ("small", "adaptive", "compile"):
+        axes[key] = ({}, "no earlier card for this device")
     for key, entry in ((earlier or {}).get("axes") or {}).items():   # axes no 0.7.3 card re-measured: the earlier card's values
         axes[key] = ({t: {"value": v["value"], "arm": v["arm"], "text": v["text"], "detail": v["detail"]}
                       for t, v in entry["tools"].items()},

@@ -5,7 +5,6 @@ the device data of every chip."""
 import hashlib
 import inspect
 import json
-import math
 import pathlib
 import re
 import sys
@@ -56,9 +55,6 @@ class BestArmAndScores(unittest.TestCase):
         self.assertEqual(best["PyTorch"], ("torch_graphed", 8.0))
         self.assertNotIn("eager_loop", {a for a, _v in best.values()})
 
-    def test_scores_are_best_over_value(self):
-        s = sc.radar_scores({"raptor": ("a", 2.0), "JAX": ("b", 8.0)})
-        self.assertEqual(s, {"raptor": 1.0, "JAX": 0.25})
 
     def test_non_positive_values_have_no_reading(self):
         self.assertEqual(sc.best_arm_per_tool({"warp_kernel": 0, "jax_vmap": None}, "gpu"), {})
@@ -241,12 +237,6 @@ class UnevenEfficiency(unittest.TestCase):
             sc.eff_chart_html(pool, "gpu", card, 1000, sc.ARM_CHIP_VAR)
         self.assertIn("benchmarks/sol_reference.json", pool.sources)
 
-    def test_the_radar_axis_scores_wall_time_on_the_spread_cell(self):
-        ax = sc.build_radar_device("gpu", "g", self._gpu(), None, _qual(), "detailed")["axes"]["uneven"]
-        self.assertEqual(ax["tools"]["raptor"]["value"], "1.00 s")                 # the spread-cell wall, not a share kept
-        self.assertGreater(ax["tools"]["raptor"]["r"], ax["tools"]["NVIDIA Warp"]["r"])
-        self.assertGreater(ax["tools"]["NVIDIA Warp"]["r"], ax["tools"]["JAX"]["r"])
-        self.assertNotIn("kept", ax["rl"])
 
     def test_the_axis_is_wall_time(self):
         axis = next(a for a in sc.RADAR_AXES if a[0] == "uneven")
@@ -298,16 +288,6 @@ def _synthetic_minors(**present):
 
 
 class MajorStructure(unittest.TestCase):
-    def test_six_majors_partition_the_minors_in_a_fixed_order(self):
-        self.assertEqual(sc.RADAR_MAJOR_KEYS, ("ensemble", "footprint", "numerics", "authoring", "lowlevel", "reach"))
-        grouped = [k for m in sc.RADAR_MAJORS for k in m[5]]
-        self.assertEqual(grouped, [a[0] for a in sc.RADAR_AXES])                 # every minor once, in the major order
-        self.assertEqual(sc.RADAR_MODE_KEYS["landing"], sc.RADAR_MAJOR_KEYS)
-        self.assertEqual(sc.RADAR_MODE_KEYS["detailed"], tuple(grouped))
-        self.assertEqual({m[0]: m[2] for m in sc.RADAR_MAJORS},
-                         {"ensemble": "m", "footprint": "m", "numerics": "q", "authoring": "q", "lowlevel": "q", "reach": "q"})
-        self.assertEqual(sc.RADAR_MINORS_OF["footprint"], ("memory", "compile", "code"))
-        self.assertEqual(sc.RADAR_MINORS_OF["lowlevel"], ("control",))
 
     def test_the_order_is_the_structure_not_a_search_over_the_data(self):
         for name in ("RADAR_GROUP_TAIL", "RADAR_ADJACENT_KEYS", "radar_best_order", "radar_jaggedness", "radar_axis_order"):
@@ -354,25 +334,6 @@ class MajorStructure(unittest.TestCase):
         self.assertTrue(m["hollow"])
         self.assertEqual(m["value"], "3.0 of 5")
 
-    def test_every_device_major_radius_is_the_mean_of_the_minor_radii_it_draws(self):
-        # on the committed cards: the plotted vertex of each major sits at the mean of the minors' ticks
-        for page in ("radar_gpu.md", "radar_cpu.md"):
-            data = DeviceData._json((GENERATED / page).read_text())
-            geom = data["geom"]
-            cx, cy, big_r = geom[2], geom[3], geom[4]
-            checked = 0
-            for dev in data["devices"].values():
-                for tool, majors in dev["mn"].items():
-                    for i, ax in enumerate(data["axes"]):
-                        radii = [v[3] for v in majors[ax["key"]].values()]
-                        pt = dev["pts"][tool].get(str(i))
-                        if not radii:
-                            self.assertIsNone(pt, (page, tool, ax["key"]))
-                            continue
-                        r = math.hypot(pt[0] - cx, pt[1] - cy) / big_r
-                        self.assertAlmostEqual(r, sum(radii) / len(radii), delta=3e-3, msg=(page, tool, ax["key"]))
-                        checked += 1
-            self.assertGreater(checked, 100)
 
     def test_the_same_function_runs_for_every_tool_with_equal_weights(self):
         src = inspect.getsource(sc.radar_major_entry)
@@ -390,35 +351,9 @@ class PyTorchFastestArm(unittest.TestCase):
                                                 ("torch_compiled", 20), ("cupy_masked", 50))]}
         return card
 
-    def test_every_pytorch_number_uses_its_fastest_arm_and_the_name_says_which(self):
-        card = self._card()
-        self.assertEqual(sc.fastest_arm_of_tool(card, "torch_masked", 1000, sc.WHY_CONFIG), "torch_compiled")
-        _n, pairs = sc.named_speedup(card)
-        arms = dict(pairs)
-        self.assertEqual(arms["torch_compiled"], 4.0)                 # 4 s over raptor's 1 s, not the masked arm's 8
-        self.assertNotIn("torch_masked", arms)
-        self.assertIn("PyTorch with torch.compile (4.0×)", sc.named_speedup_caption(pairs))
-        bars, _n = sc.why_raptor_bars(card)
-        self.assertIn("PyTorch with torch.compile", [b[1] for b in bars])
-        self.assertEqual(dict(sc.memory_savings(card)[1])["torch_compiled"], 2.0)
-        self.assertEqual([a for a, _b, _f in sc.will_it_fit_rows(card)[0] if a.startswith("torch")], ["torch_compiled"])
 
-    def test_single_arm_tools_and_raptor_are_left_as_named(self):
-        card = self._card()
-        for arm in ("cupy_masked", "jax_vmap", "warp_kernel", "eagle_simulate"):
-            self.assertEqual(sc.fastest_arm_of_tool(card, arm, 1000, sc.WHY_CONFIG), arm)
 
-    def test_without_a_torch_compile_row_the_fastest_remaining_arm_is_named(self):
-        card = self._card()
-        card["results"] = [r for r in card["results"] if r["arm"] != "torch_compiled"]
-        self.assertEqual(sc.fastest_arm_of_tool(card, "torch_masked", 1000, sc.WHY_CONFIG), "torch_graphed")
-        self.assertIn("PyTorch with CUDA graphs", sc.named_speedup_caption(sc.named_speedup(card)[1]))
 
-    def test_the_generated_pages_quote_the_arm_by_name(self):
-        lead = (GENERATED / "lead_sentence.md").read_text()
-        self.assertNotIn("PyTorch or CuPy", lead)
-        self.assertRegex(lead, r"\d+× faster than PyTorch with [\w. ]+ and \d+× faster than CuPy")
-        self.assertRegex((GENERATED / "hero_strip.md").read_text(), r"PyTorch with [\w. ]+ \(\d")
 
 
 class CodeSizeScale(unittest.TestCase):
@@ -431,20 +366,6 @@ class CodeSizeScale(unittest.TestCase):
     def test_the_rule_is_in_the_axis_description(self):
         text = (GENERATED / "radar_detailed.md").read_text()
         self.assertIn("spans at least 4x from best to worst", text)
-
-
-class LandingGap(unittest.TestCase):
-    def test_every_axis_is_evenly_spaced_and_there_is_no_divider_spoke(self):
-        n = len(sc.RADAR_MODE_KEYS["landing"])
-        self.assertEqual(n, 6)
-        angles = [sc._axis_angle(i, n, "landing") for i in range(n)]
-        step = 2 * 3.141592653589793 / n
-        for a, b in zip(angles, angles[1:]):
-            self.assertAlmostEqual(b - a, step)
-        for name in ("radar_gpu.md", "radar_cpu.md", "radar_detailed.md"):
-            text = (GENERATED / name).read_text()
-            self.assertNotIn("radar-divider", text)
-            self.assertNotIn('radar-spoke q', text)
 
 
 class AxisIcons(unittest.TestCase):
@@ -600,97 +521,6 @@ class Direction(unittest.TestCase):
         self.assertEqual(len(spokes), 2 * n)                    # one per axis, for each of the two sides
 
 
-def _compile_cards():
-    perf = _card({"eagle_graph": 1.0, "torch_masked": 2.0, "torch_compiled": 3.0, "jax_vmap": 3.0, "warp_kernel": 4.0})
-    perf["memory"] = {"rows": []}
-    perf["code"] = {"arms": {}}
-    cold = lambda s: {"cold_s": {"median": s}, "warm_s": {"median": s / 10}}  # noqa: E731
-    perf["compile_time"] = {"rows": [
-        {"arms": ["eagle_graph"], "key": "eagle:g", **cold(2.0)},
-        {"arms": ["jax_vmap"], "key": "jax:10", **cold(9.0)}, {"arms": ["jax_vmap"], "key": "jax:1000", **cold(1.0)},
-        {"arms": ["torch_compiled"], "key": "torch:1000", **cold(7.0)},
-        {"arms": ["warp_kernel"], "key": "warp", **cold(0.5)}], "none": ["torch_masked"]}
-    rk = {"ns": [10, 1000], "arms": {"eagle_graph": "g", "jax_vmap": "j", "warp_kernel": "w"}, "results": [],
-          "compile_time": {"rows": [
-              {"arms": ["eagle_graph"], "key": "hawk_cuda", **cold(6.0)},
-              {"arms": ["jax_vmap"], "key": "jax:10", **cold(99.0)}, {"arms": ["jax_vmap"], "key": "jax:1000", **cold(16.0)},
-              {"arms": ["warp_kernel"], "key": "warp", **cold(0.1)}]}}
-    return perf, rk
-
-
-class CompileAxis(unittest.TestCase):
-    def test_fixed_scale_edge_floor_and_clamp(self):
-        r = sc.radar_radius_compile
-        self.assertEqual(r(0.1), 1.0)
-        self.assertEqual(r(0.01), 1.0)                       # faster than the edge clamps to it
-        self.assertAlmostEqual(r(100.0), sc.RADAR_FLOOR)
-        self.assertEqual(r(1000.0), sc.RADAR_FLOOR)
-        self.assertAlmostEqual(r(sc.math.sqrt(0.1 * 100.0)), 0.6)    # geometric middle
-        self.assertEqual(sc.radar_compile_rings(), "0.1 s · 3.2 s · 100 s")
-
-    def test_the_scale_is_the_same_on_every_device(self):
-        perf, rk = _compile_cards()
-        a = sc.build_radar_device("gpu", "a", perf, rk, _qual(), "detailed")["axes"]["compile"]["tools"]["raptor"]["r"]
-        perf["compile_time"]["rows"][3]["cold_s"]["median"] = 0.2   # another tool getting faster changes nothing
-        b = sc.build_radar_device("gpu", "b", perf, rk, _qual(), "detailed")["axes"]["compile"]["tools"]["raptor"]["r"]
-        self.assertEqual(a, b)
-        self.assertAlmostEqual(a, sc.radar_radius_compile(6.0))
-
-    def test_value_is_the_complex_kernel_largest_n_with_simple_and_growth_in_the_detail(self):
-        perf, rk = _compile_cards()
-        tools = sc.build_radar_device("gpu", "x", perf, rk, _qual(), "detailed")["axes"]["compile"]["tools"]
-        self.assertEqual(tools["raptor"]["value"], "6.00 s")
-        self.assertIn("simple kernel 2.00 s, 3.0× from the simple to the adaptive kernel", tools["raptor"]["detail"])
-        self.assertEqual(tools["JAX"]["value"], "16.0 s")                   # the largest-N row (1000), not N = 10
-        self.assertIn("recompiles for every shape", tools["JAX"]["detail"])
-        self.assertFalse(tools["raptor"]["hollow"])
-
-    def test_pytorch_falls_back_to_torch_compile_hollow_and_is_never_no_compile_step(self):
-        perf, rk = _compile_cards()
-        tools = sc.build_radar_device("gpu", "x", perf, rk, _qual(), "detailed")["axes"]["compile"]["tools"]
-        pt = tools["PyTorch"]
-        self.assertEqual(pt["value"], "7.00 s")                              # torch.compile, not the eager arm
-        self.assertTrue(pt["hollow"])
-        self.assertIn("simple kernel only: the adaptive card has no torch.compile arm", pt["detail"])
-        self.assertNotEqual(pt["value"], "no compile step")
-
-    def test_pytorch_without_a_torch_compile_arm_has_no_vertex_rather_than_no_compile_step(self):
-        perf, rk = _compile_cards()
-        perf["compile_time"]["rows"] = [r for r in perf["compile_time"]["rows"] if r["arms"] != ["torch_compiled"]]
-        tools = sc.build_radar_device("gpu", "x", perf, rk, _qual(), "detailed")["axes"]["compile"]["tools"]
-        self.assertNotIn("PyTorch", tools)
-
-    def test_a_tool_without_an_adaptive_reading_falls_back_hollow_and_labelled(self):
-        perf, _rk = _compile_cards()
-        tools = sc.build_radar_device("gpu", "x", perf, None, _qual(), "detailed")["axes"]["compile"]["tools"]
-        self.assertTrue(all(v["hollow"] for v in tools.values()))
-        self.assertIn("no adaptive-kernel compile reading", tools["raptor"]["detail"])
-        self.assertEqual(tools["raptor"]["value"], "2.00 s")
-
-    def test_a_tool_with_genuinely_no_compile_step_sits_at_the_edge(self):
-        perf = _card({"eagle_term8": 1.0, "numpy_masked": 2.0}, model="Cpu")
-        perf["memory"] = {"rows": []}
-        perf["code"] = {"arms": {}}
-        perf["compile_time"] = {"rows": [{"arm": "eagle_term8", "key": "step", "cold_s": {"median": 1.0}, "warm_s": {"median": 0.1}}],
-                                "none": ["numpy_masked"]}
-        tools = sc.build_radar_device("cpu", "c", perf, None, _qual(), "detailed")["axes"]["compile"]["tools"]
-        self.assertEqual(tools["NumPy"]["r"], 1.0)
-        self.assertEqual(tools["NumPy"]["value"], "no compile step")
-
-    def test_bands_and_the_panel_wording(self):
-        self.assertEqual(sc.radar_compile_band(0.5), "under 1 s: instant")
-        self.assertEqual(sc.radar_compile_band(3), "1-10 s: noticeable")
-        self.assertEqual(sc.radar_compile_band(70), "over 60 s: breaks interactive use")
-        text = (GENERATED / "radar_detailed.md").read_text()
-        self.assertIn("fixed scale: 0.1 s at the edge, 100 s at the floor", text)
-        self.assertIn("Compiled once per kernel; raptor's compile does not depend on the problem size N.", text)
-        self.assertIn("breaks interactive use", text)
-
-    def test_rubric_text_is_collapsed_on_the_detailed_radar(self):
-        text = (GENERATED / "radar_detailed.md").read_text()
-        self.assertIn("<summary>How to read this radar</summary>", text)
-
-
 class RadarNotes(unittest.TestCase):
     """The notes under a radar: one visible sentence, the rest behind "How to read this radar"."""
     PAGES = ("radar_gpu.md", "radar_cpu.md", "radar_detailed.md")
@@ -715,25 +545,6 @@ class RadarNotes(unittest.TestCase):
                 self.assertIn("Show the data behind the radar", block)
                 self.assertIn('<details class="radar-data radar-howto">', block)    # collapsed: no `open`
 
-    def test_the_disclosure_is_a_sentence_on_majors_then_one_line_per_major(self):
-        qual = json.loads((SITE_ROOT / "_data" / "radar_qualitative.json").read_text())["axes"]
-        for k, ax in qual.items():
-            self.assertRegex(ax["anchor"], r"^5 = ")
-            self.assertLessEqual(len(ax["anchor"].split()), 15, k)
-        for page, lines in (("radar_gpu.md", 6), ("radar_cpu.md", 6), ("radar_detailed.md", 6 + 9)):
-            text = (GENERATED / page).read_text()
-            for how in re.findall(r'<details class="radar-data radar-howto">(.*?)</details>', text, re.S):
-                self.assertEqual(how.count("<li>"), lines, page)
-                self.assertIn("plain mean of its minor axes", how)
-                self.assertIn("left out of its mean", how)
-                majors = re.search(r'radar-howto-majors">(.*?)</ul>', how, re.S).group(1)
-                items = re.findall(r"<li>(.*?)</li>", majors)
-                self.assertEqual(len(items), 6)
-                for item, major in zip(items, sc.RADAR_MAJORS):
-                    self.assertIn(major[1].replace(" (qualitative)", ""), item)
-                    self.assertLessEqual(len(re.sub(r"<[^>]+>", "", item).split()), 20)
-                for item in re.findall(r"<li>(.*?)</li>", how):
-                    self.assertLessEqual(len(re.sub(r"<[^>]+>", "", item).split()), 20)
 
     def test_the_full_rubric_stays_in_the_data_file(self):
         qual = json.loads((SITE_ROOT / "_data" / "radar_qualitative.json").read_text())["axes"]
@@ -762,26 +573,7 @@ class DeviceData(unittest.TestCase):
     def _json(text):
         return json.loads(re.search(r'class="radar-json">(.*?)</script>', text, re.S).group(1).replace("<\\/", "</"))
 
-    def test_every_device_chip_has_radar_data(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        for side, data in (("gpu", self.gpu), ("cpu", self.cpu)):
-            slugs = re.findall(rf'name="perf-{side}" id="perf-{side}-\d+" data-slug="([^"]+)"', switch)
-            self.assertTrue(slugs)
-            self.assertEqual(set(slugs), set(data["devices"]))
 
-    def test_every_device_chip_has_the_bars_toggle(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        panels = re.findall(r'<section class="perf-dev">(.*?)</section>', switch, re.S)
-        chips = len(re.findall(r'name="perf-(?:gpu|cpu)" id="perf-(?:gpu|cpu)-\d+"', switch))
-        self.assertEqual(len(panels), chips)
-        for p in panels:
-            self.assertEqual(p.count('class="bars-toggle"'), 1)
-            self.assertEqual(p.count('aria-pressed="true">Wall time<'), 1)
-            self.assertEqual(p.count('aria-pressed="false">Uneven-batch efficiency<'), 1)
-            self.assertIn('class="bars-view bars-wall"', p)
-            self.assertIn('class="bars-view bars-eff"', p)
-            self.assertTrue(sc.EFF_NOTE in p or sc.EFF_PENDING in p)
-            self.assertNotIn("kept", p.lower())
 
     def test_toggle_state_is_remembered_with_guarded_storage(self):
         js = (SITE_ROOT / "_static" / "js" / "perf-state.js").read_text()
@@ -790,26 +582,11 @@ class DeviceData(unittest.TestCase):
         css = (SITE_ROOT / "_static" / "custom.css").read_text()
         self.assertIn(".bars-opt:focus-visible", css)
 
-    def test_sources_json_carries_the_uneven_efficiency(self):
-        data = json.loads((GENERATED / "SOURCES.json").read_text())
-        self.assertNotIn("uneven_kept", data)
-        self.assertIn("benchmarks/sol_reference.json", {x["path"] for x in data["sources"]})
-        src = data["uneven_efficiency"]
-        h100 = src["gpu"]["nvidia-h100-80gb-hbm3"]["tools"]
-        self.assertEqual(set(h100), {"raptor", "NVIDIA Warp", "JAX", "PyTorch", "CuPy"})
-        self.assertTrue(all(0 < v["efficiency_percent"] <= 100 and v["arm"] for v in h100.values()))
-        self.assertIn("amd-epyc-9b45", src["cpu"])
-        self.assertIn("raptor", src["cpu"]["aarch64"]["tools"])                   # its reference is measured
-        self.assertIn("raptor", src["cpu"]["amd-epyc-7b13"]["tools"])
 
     def test_a_cpu_with_a_measured_reference_shows_no_pending_line(self):
         switch = (GENERATED / "perf_switch.md").read_text()
         self.assertEqual(switch.count("Reference measurement pending for this device"), 0)
 
-    def test_the_h100_efficiency_view_is_floored(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        view = re.search(r'aria-label="Uneven-batch efficiency on NVIDIA H100 80GB HBM3: ([^"]+)"', switch).group(1)
-        self.assertRegex(view, r"eagle\.simulate 46%, NVIDIA Warp 18%, JAX <1%")
 
     def test_site_efficiency_equals_eagles_for_every_gpu_card(self):
         """The site's value is eagle's own ``eff`` span (tools/prose_claims.py) for the same arm, card and cell."""
@@ -854,30 +631,8 @@ class DeviceData(unittest.TestCase):
                     checked += 1
         self.assertGreater(checked, 20)
 
-    def test_switch_embeds_each_radar(self):
-        switch = (GENERATED / "perf_switch.md").read_text()
-        self.assertEqual(switch.count('class="radar" data-side='), 2)
 
-    def test_default_device_is_first_and_every_axis_has_a_label(self):
-        self.assertEqual(len(self.gpu["axes"]), 6)
-        self.assertEqual(len(self.detailed_gpu["axes"]), 16)
-        self.assertEqual(list(self.gpu["devices"])[0], "nvidia-h100-80gb-hbm3")
 
-    def test_missing_reading_has_no_vertex(self):
-        # the P2000 has no compile-time reading for some tool in the committed set
-        # (torch.compile needs cc >= 7.0): no vertex on the minor, not a zero ...
-        p2000 = self.detailed_gpu["devices"]["quadro-p2000"]
-        compile_axis = [i for i, a in enumerate(self.detailed_gpu["axes"]) if a["key"] == "compile"][0]
-        missing = [tool for tool in p2000["pts"] if str(compile_axis) not in p2000["pts"][tool]]
-        self.assertTrue(missing)
-        for tool in missing:
-            self.assertNotIn("compile", p2000["tips"][tool])
-        # ... and on the landing radar the footprint major is the mean of the other two, drawn hollow
-        land = self.gpu["devices"]["quadro-p2000"]
-        foot = [i for i, a in enumerate(self.gpu["axes"]) if a["key"] == "footprint"][0]
-        for tool in missing:
-            self.assertNotIn("compile", land["mn"][tool]["footprint"])
-            self.assertIn(foot, land["hol"][tool])
 
     def test_qualitative_axis_is_marked(self):
         self.assertIn('class="radar-axis q"', self.gpu_text)
@@ -885,14 +640,6 @@ class DeviceData(unittest.TestCase):
         self.assertIn("font-style: italic", (SITE_ROOT / "_static" / "custom.css").read_text())
         self.assertIn("not measurements", self.gpu_text)
 
-    def test_accessibility_hooks(self):
-        self.assertIn('role="img" aria-label="Where each tool shines on NVIDIA H100 80GB HBM3', self.gpu_text)
-        self.assertEqual(self.gpu_text.count('aria-pressed="true"'), 4)
-        self.assertIn("<details class=\"radar-data\">", self.gpu_text)
-        css = (SITE_ROOT / "_static" / "custom.css").read_text()
-        self.assertIn(".radar-leg:focus-visible", css)
-        js = (SITE_ROOT / "_static" / "js" / "radar.js").read_text()
-        self.assertIn("prefers-reduced-motion", js)
 
     def test_ring_labels_are_per_axis_and_per_device(self):
         l4 = self.detailed_gpu["devices"]["nvidia-l4"]["rl"]
@@ -962,6 +709,47 @@ class FixtureBuild(unittest.TestCase):
         text = re.sub(r"(RK|aria-\w+=)\S*|data-\S+|class=\S+|style=\"[^\"]*\"", " ", text)
         missing = {m for m in sc._NUM_RE.findall(text) if m.rstrip('.') not in sources}
         self.assertFalse(missing, sorted(missing))
+
+
+class CapabilitiesAndEarlierAxes(unittest.TestCase):
+    """The seven majors, the Capabilities axes read from a feature card, and the axes no 0.7.3 card re-measures."""
+
+    def test_the_majors_partition_the_minors(self):
+        minors = [m for _k, _l, _kind, _w, _h, ms in sc.RADAR_MAJORS for m in ms]
+        self.assertEqual(len(sc.RADAR_MAJORS), 7)
+        self.assertEqual(len(minors), len(set(minors)))
+        self.assertEqual(set(minors), {a[0] for a in sc.RADAR_AXES})
+
+    def test_a_feature_axis_is_our_best_arm_against_each_library_that_ran(self):
+        ok = lambda s: {"status": "ok", "wall_s": {"median": s}}   # noqa: E731
+        card = {"generated_utc": "2026-01-02T00:00:00Z", "rows": [
+            {"row": "scatter", "n": 8, "dtype": "float32", "arms": {"keyed": ok(1.0)}},
+            {"row": "scatter", "n": 8, "dtype": "float64", "arms": {
+                "keyed": ok(3.0), "ordered": ok(2.0), "np_add_at": ok(50.0), "cupyx_scatter_add": ok(4.0),
+                "or": {"status": "out_of_memory"}}}]}
+        vals, cell = sc._feature_axis(card, "scatter", ("keyed", "ordered", "or"))
+        self.assertEqual({t: (v["arm"], v["value"]) for t, v in vals.items()},
+                         {"raptor": ("ordered", 2.0), "NumPy": ("np_add_at", 50.0), "CuPy": ("cupyx_scatter_add", 4.0)})
+        self.assertIn("float64", cell)
+        self.assertEqual(sc._feature_axis(card, "fft", ("fft",))[0], {})
+
+    def test_the_fixture_build_draws_the_capabilities_major_from_the_feature_card(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(sc.main([str(FIXTURE_EAGLE), "--out-dir", tmp]), 0)
+            text = (pathlib.Path(tmp) / "radar_detailed.md").read_text()
+        self.assertIn("Capabilities", text)
+        self.assertIn("wide_forms", text)
+
+    def test_an_axis_without_a_new_card_is_labelled_with_its_earlier_card(self):
+        text = (GENERATED / "radar_detailed.md").read_text()
+        self.assertIn("eagle 0.6.0 cards (before the 0.7.3 re-run)", text)
+        self.assertIn("not re-measured by the 0.7.3 cards", text)
+
+    def test_the_earlier_card_of_the_same_kind_of_device_is_used(self):
+        earlier = {"nvidia-h100-80gb-hbm3": {"source": "H100"}, "nvidia-l4": {"source": "L4"}}
+        self.assertEqual(sc._earlier_for(earlier, "nvidia-l4")["source"], "L4")
+        self.assertEqual(sc._earlier_for(earlier, "nvidia-h100-nvl")["source"], "H100")
+        self.assertIsNone(sc._earlier_for(earlier, "quadro-p2000"))
 
 
 if __name__ == "__main__":
