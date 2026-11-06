@@ -47,6 +47,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
       # the chart layout measures text with Pillow and DejaVu Sans (tools/visuals.py); without them it falls back to
       # an estimate and lays the charts out differently from the committed pages
       - name: text measuring for the chart layout
@@ -86,6 +88,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
       # the gallery animations are built from the paired hawk and eagle checkouts (same-named branch if it exists, else main)
       - name: hawk and eagle checkouts for the gallery animations
         env:
