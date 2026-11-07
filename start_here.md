@@ -290,4 +290,10 @@ Every site has the same sections (Start here, Tutorials, How-to guides,
 Explanation, Reference, Contributing), and the words the family shares are
 in one [glossary](https://amasat01.github.io/raptor/content/glossary.html).
 
+**Best practices**, one short checklist per package:
+[hawk](https://amasat01.github.io/hawk/content/best_practices.html),
+[eagle](https://amasat01.github.io/eagle/content/userguide/best_practices.html),
+[aether](https://amasat01.github.io/aether/content/installation.html#best-practices),
+[raptor](https://amasat01.github.io/raptor/content/installation.html#best-practices).
+
 *deeper: [where RAPTOR fits](where_raptor_fits.md) has the full four-part story.*
