@@ -527,13 +527,13 @@ def in_tab_order(entries, preference):
 #: The tools charted on the landing page, in display order, with the plain
 #: tool name each bar carries. The other arms (one thread, multiprocessing,
 #: compaction, ...) live on eagle's full card, not here.
-CPU_CHART_ARMS = (("eagle_term8", "eagle, 8 threads"), ("numba_prange", "Numba"),
-                  ("jax_shard8", "JAX"), ("torch_masked", "PyTorch"),
+CPU_CHART_ARMS = (("eagle_cpu8", "eagle, 8 threads"), ("numba_prange", "Numba"),
+                  ("jax_vmap", "JAX"), ("torch_masked", "PyTorch"),
                   ("numpy_masked", "NumPy"))
 #: The configuration charted: the GPU chart's own (spread, S=1000).
 CPU_CHART_CONFIG = {"distribution": "spread"}
-CPU_CHIP_VAR = {"eagle_term8": "--tool-raptor", "numba_prange": "--tool-numba",
-                "jax_shard8": "--tool-jax", "torch_masked": "--tool-pytorch",
+CPU_CHIP_VAR = {"eagle_cpu8": "--tool-raptor", "numba_prange": "--tool-numba",
+                "jax_vmap": "--tool-jax", "torch_masked": "--tool-pytorch",
                 "numpy_masked": "--tool-numpy"}
 EAGLE_PERF_PAGE = "https://amasat01.github.io/eagle/content/performance.html"
 
@@ -565,7 +565,7 @@ def cpu_glance_block(pool, w, slug, card):
         r = _cpu_row(card, arm, n)
         if r is not None:
             bars.append((arm, label, _center(r["wall_s"])))
-    if not bars or bars[0][0] != "eagle_term8":
+    if not bars or bars[0][0] != "eagle_cpu8":
         return False
     lo = min(b[2] for b in bars) / 1.6
     hi = max(b[2] for b in bars) * 1.6
@@ -1057,7 +1057,7 @@ def _fmt_rate(rate):
 EFF_TOOLS = {
     "gpu": (("eagle", "eagle_", "eagle_simulate"), ("warp", "warp", "warp_kernel"), ("jax", "jax", "jax_vmap"),
             ("torch", "torch", "torch_masked"), ("cupy", "cupy", "cupy_masked")),
-    "cpu": (("eagle", "eagle_", "eagle_term8"), ("numba", "numba", "numba_prange"), ("jax", "jax", "jax_shard8"),
+    "cpu": (("eagle", "eagle_", "eagle_cpu8"), ("numba", "numba", "numba_prange"), ("jax", "jax", "jax_vmap"),
             ("torch", "torch", "torch_masked"), ("numpy", "numpy", "numpy_masked")),
 }
 
@@ -2314,7 +2314,7 @@ def radar_tool(arm, kind):
         if arm.startswith("torch_"):
             return "PyTorch"
         return {"warp_kernel": "NVIDIA Warp", "jax_vmap": "JAX", "cupy_masked": "CuPy"}.get(arm)
-    return {"numba_prange": "Numba", "jax_shard8": "JAX", "jax_vmap": "JAX",
+    return {"numba_prange": "Numba", "jax_vmap": "JAX",
             "torch_masked": "PyTorch", "numpy_masked": "NumPy", "mp_numpy": "NumPy"}.get(arm)
 
 
