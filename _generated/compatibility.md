@@ -7,4 +7,7 @@
 
 | CPU measured | cores (logical) | platform | host compiler |
 |---|---|---|---|
-| AMD EPYC 9B45 | None (16) | – | x86_64-conda-linux-gnu-g++ (conda-forge gcc 14.4.0-7) 14.4.0 |
+| Google Axion (Arm Neoverse-V2) | None (8) | – | g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0 |
+| AMD EPYC 9B45 | None (16) | – | g++-14 (Ubuntu 14.2.0-4ubuntu2~24.04.1) 14.2.0 |
+| Apple M4 Pro | None (14) | – | Apple clang version 21.0.0 (clang-2100.4.1.1) |
+| Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz | None (8) | – | g++ (GCC) 14.2.1 20250110 (Red Hat 14.2.1-7) |

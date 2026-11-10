@@ -13,8 +13,8 @@
 
 | configuration | N = 1,000,000 |
 |---|---|
-| spread, each sample stops at its own time | eagle CPU, 8 threads (3.69 s) |
-| uniform, every sample the same orbit | eagle CPU, 8 threads (2.08 s) |
-| spread-short | eagle CPU, 8 threads (168 ms) |
+| spread, each sample stops at its own time | eagle CPU, 8 threads (2.49 s) |
+| uniform, every sample the same orbit | eagle CPU, 8 threads (2.06 s) |
+| spread-short | eagle CPU, 8 threads (136 ms) |
 
 Every arm, every column, every N: [eagle's performance page](https://amasat01.github.io/eagle/content/performance.html).
