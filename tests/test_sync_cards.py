@@ -116,25 +116,25 @@ def _cpu_card(model="Synthetic CPU", slug="synthetic-cpu", date="2026-01-02T03:0
     results = []
     for dist in ("spread", "uniform"):
         for n in (1000, 1_000_000):
-            results.append({"arm": "eagle_term8", "n": n, "distribution": dist,
+            results.append({"arm": "eagle_cpu8", "n": n, "distribution": dist,
                             "max_steps": 1000, "wall_s": {"median": eagle_wall}})
             results.append({"arm": "numba_prange", "n": n, "distribution": dist,
                             "max_steps": 1000, "wall_s": {"median": other_wall}})
         results.append({"arm": "python_loops", "n": loop_n, "distribution": dist,
                         "max_steps": 1000, "wall_s": {"median": 2.0}})
-        results.append({"arm": "eagle_term8", "n": 1000, "distribution": dist,
+        results.append({"arm": "eagle_cpu8", "n": 1000, "distribution": dist,
                         "max_steps": 100, "wall_s": {"median": 9.0}})
     return {
         "cpu_slug": slug, "generated_utc": date,
         "cpu": {"model": model, "cores": 4, "logical_cpus": 8},
         "workload": {"problem": "synthetic oscillator"},
         "ns": [1000, 1_000_000],
-        "arms": ["eagle_term8", "numba_prange", "python_loops", "eagle_compact8"],
-        "arm_labels": {"eagle_term8": "eagle label", "numba_prange": "numba label",
+        "arms": ["eagle_cpu8", "numba_prange", "python_loops", "eagle_compact8"],
+        "arm_labels": {"eagle_cpu8": "eagle label", "numba_prange": "numba label",
                        "python_loops": "loops label", "eagle_compact8": "compact label"},
         "results": results,
         "fit": {"intro": "Intro sentence about loops.",
-                "arms": {"eagle_term8": "Eagle fits here. On this card: spread S=1000: 100 ms.",
+                "arms": {"eagle_cpu8": "Eagle fits here. On this card: spread S=1000: 100 ms.",
                          "numba_prange": "Numba fits here. On this card: 3.46x.",
                          "python_loops": "Loops fit here.",
                          "eagle_compact8": "Compaction fits here."}},
@@ -282,6 +282,23 @@ class PerfSwitch(unittest.TestCase):
         for sel in (".perf-seg", ".perf-chips", "#perf-hw-cpu:checked ~ .perf-side-cpu",
                     ":focus-visible"):
             self.assertIn(sel, css)
+
+    def test_the_fixture_cpu_card_gets_its_tab(self):
+        # the fixture card is in eagle's current CPU-card format: an arm-name change in the card must not
+        # drop the CPU side silently
+        with tempfile.TemporaryDirectory() as d:
+            run_sync(FIXTURE_EAGLE, pathlib.Path(d))
+            text = (pathlib.Path(d) / "perf_switch.md").read_text()
+        self.assertIn('id="perf-hw-cpu"', text)
+        self.assertIn('data-slug="fixture-host"', text)
+
+    def test_every_cpu_card_the_site_cites_has_a_tab(self):
+        sources = json.loads((GENERATED / "SOURCES.json").read_text())
+        cited = sorted(re.match(r"benchmarks/perf_card/cpu_card_(.+)\.json$", e["path"]).group(1)
+                       for e in sources["sources"] if re.match(r"benchmarks/perf_card/cpu_card_.+\.json$", e["path"]))
+        text = (GENERATED / "perf_switch.md").read_text()
+        tabs = sorted(re.findall(r'name="perf-cpu" id="perf-cpu-\d+" data-slug="([^"]+)"', text))
+        self.assertEqual(tabs, cited)
 
 
 class Determinism(unittest.TestCase):
