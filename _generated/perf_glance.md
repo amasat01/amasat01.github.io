@@ -29,23 +29,26 @@
 
 | workload | arm | wall | × hawk + eagle | memory |
 |---|---|---:|---:|---:|
-| spread | eagle CPU, 8 threads | 3.69 s | 1.0× | – |
-| spread | Numba prange | 20.9 s | 5.6× | – |
-| spread | eagle CPU, 1 thread | 29.4 s | 7.9× | – |
-| spread | JAX jit(vmap(while_loop)) | 60.4 s | 16× | – |
-| uniform | eagle CPU, 8 threads | 2.08 s | 1.0× | – |
-| uniform | eagle CPU, 1 thread | 16.5 s | 7.9× | – |
-| uniform | Numba prange | 17.9 s | 8.5× | – |
+| spread | eagle CPU, 8 threads | 2.49 s | 1.0× | – |
+| spread | Numba prange | 19.6 s | 7.8× | – |
+| spread | eagle CPU, 1 thread | 19.9 s | 7.9× | – |
+| spread | JAX jit(vmap(while_loop)) | 60.5 s | 24× | – |
+| uniform | eagle CPU, 8 threads | 2.06 s | 1.0× | – |
+| uniform | eagle CPU, 1 thread | 16.4 s | 7.9× | – |
+| uniform | Numba prange | 17.8 s | 8.6× | – |
 | uniform | JAX jit(vmap(while_loop)) | 28.8 s | 13× | – |
-| spread-short | eagle CPU, 8 threads | 168 ms | 1.0× | – |
-| spread-short | Numba prange | 1.04 s | 6.1× | – |
-| spread-short | eagle CPU, 1 thread | 1.33 s | 7.8× | – |
-| spread-short | JAX jit(vmap(while_loop)) | 2.67 s | 15× | – |
+| spread-short | eagle CPU, 8 threads | 136 ms | 1.0× | – |
+| spread-short | Numba prange | 1.05 s | 7.7× | – |
+| spread-short | eagle CPU, 1 thread | 1.07 s | 7.8× | – |
+| spread-short | JAX jit(vmap(while_loop)) | 2.67 s | 19× | – |
 
 **Measured on:**
 
 - Kepler orbits, GPU: [NVIDIA H100 NVL](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-h100-nvl)
 - Kepler orbits, GPU: [NVIDIA L4](https://amasat01.github.io/eagle/content/performance.html#perf-card-gpu-nvidia-l4)
+- Kepler orbits, CPU: [Google Axion (Arm Neoverse-V2)](https://amasat01.github.io/eagle/content/performance.html#perf-card-cpu-aarch64)
 - Kepler orbits, CPU: [AMD EPYC 9B45](https://amasat01.github.io/eagle/content/performance.html#perf-card-cpu-amd-epyc-9b45)
+- Kepler orbits, CPU: [Apple M4 Pro](https://amasat01.github.io/eagle/content/performance.html#perf-card-cpu-apple-m4-pro)
+- Kepler orbits, CPU: [Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz](https://amasat01.github.io/eagle/content/performance.html#perf-card-cpu-intel-r-xeon-r-w-2125-cpu-4-00ghz)
 
 Full cards, every workload and column: [eagle's performance page](https://amasat01.github.io/eagle/content/performance.html).

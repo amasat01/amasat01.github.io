@@ -46,6 +46,6 @@ Every hawk kernel carries its reverse-mode (`hawk.diff.vjp`) and forward-mode (`
 
 Every kernel in this family runs unchanged on CPU threads (OpenMP), no GPU, no CUDA toolchain:
 
-- Adaptive RKF7(8) Kepler orbits, N = 1,000,000: eagle CPU, 8 threads, 3.69 s.
+- Adaptive RKF7(8) Kepler orbits, N = 1,000,000: eagle CPU, 8 threads, 2.49 s.
 
 Every number on this page traces to a committed card: [eagle's performance page](https://amasat01.github.io/eagle/content/performance.html).
